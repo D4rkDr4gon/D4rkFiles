@@ -31,15 +31,18 @@ teclado, batería ni GPU. Lo tuyo (nombre, apps, atajos propios) vive fuera del 
 Tema por defecto (`red-dark`) en Hyprland.
 
 <p align="center">
-<img src="assets/screenshots/terminal.png" alt="Terminal con el banner DARKDRAGON y fastfetch" width="640">
+<img src="assets/screenshots/escritorio.jpg" alt="Escritorio con waybar" width="100%">
 </p>
 
-<p align="center">
-<img src="assets/screenshots/shortcuts.png" alt="Cheatsheet de atajos (SUPER+K)" width="640">
-</p>
+<table>
+<tr>
+<td><img src="assets/screenshots/terminal.jpg" alt="Terminal con el banner DARKDRAGON"></td>
+<td><img src="assets/screenshots/settings.jpg" alt="Menú de Settings"></td>
+</tr>
+</table>
 
 <p align="center">
-<img src="assets/screenshots/waybar.png" alt="Waybar: brillo, agentes IA, audio, red, VPN, bluetooth y batería" width="100%">
+<img src="assets/screenshots/agentes-ia.jpg" alt="Widget de agentes IA" width="70%">
 </p>
 
 ## Instalación
