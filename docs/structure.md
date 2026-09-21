@@ -15,6 +15,7 @@
 │   ├── lib/                env.sh (entorno) y theme.sh (motor de temas)
 │   └── wayland/            wayvnc-toggle
 ├── tools/                  TUIs en Python (cheatsheet de atajos)
+├── skills/d4rkfiles/       Skill de IA para Claude Code y opencode
 ├── themes/                 theme.json + preview.png por tema
 ├── assets/                 banner-art.txt, dragon.txt y wallpapers/ (generados por gen-assets.sh)
 ├── docs/                   Esta documentación
@@ -32,6 +33,7 @@
 | Cómo se ve una app | su `*.tpl` en `config/<app>/` |
 | Un paquete | `install/packages/*.txt` |
 | Un enlace nuevo | `manifest/links.tsv` |
+| Lo que sabe la skill de IA | `skills/d4rkfiles/SKILL.md` y `references/` |
 | Lo tuyo (nombre, apps, teclado) | `~/.config/dotfiles/user.conf` |
 
 ## Archivos generados

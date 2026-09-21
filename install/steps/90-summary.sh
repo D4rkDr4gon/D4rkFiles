@@ -13,6 +13,7 @@ step_summary() {
     2. Cambiá de tema:       theme            (lista)   |   theme <nombre>
     3. Tus ajustes:          ~/.config/dotfiles/user.conf y ~/.config/dotfiles/hypr/local.conf
     4. Verificar todo:       scripts/dotfiles-doctor.sh
+  Skill de IA:       "d4rkfiles" (Claude Code y opencode) para gestionar todo esto pidiéndoselo en lenguaje natural.
   Atajos básicos: Super+Enter (terminal) · Super+Space (launcher) · Super+K (todos los atajos)
   Lo reemplazado quedó respaldado en: ${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles/backups/
 MSG

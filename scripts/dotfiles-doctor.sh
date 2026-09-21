@@ -91,6 +91,7 @@ group_applies() {
         core)     return 0 ;;
         hyprland) command -v Hyprland &>/dev/null ;;
         x11)      command -v qtile &>/dev/null ;;
+        skills)   command -v claude &>/dev/null || command -v opencode &>/dev/null ;;
         *)        return 1 ;;
     esac
 }
@@ -379,6 +380,18 @@ section_configs() {
     else
         skip "sin current_theme.json en $(tilde "$STATE_DIR"): no se compara el tema"
     fi
+
+    # Skills de IA: el frontmatter debe tener name (igual al directorio) y description.
+    local sk d n desc
+    for sk in "$DOTFILES"/skills/*/SKILL.md; do
+        [ -f "$sk" ] || continue
+        d="$(basename "$(dirname "$sk")")"
+        n="$(sed -n '/^---$/,/^---$/{s/^name:[[:space:]]*//p}' "$sk" | head -1)"
+        desc="$(sed -n '/^---$/,/^---$/{s/^description:[[:space:]]*//p}' "$sk" | head -1)"
+        if [ "$n" != "$d" ]; then err "skill $d: name='$n' no coincide con el directorio"
+        elif [ -z "$desc" ] || [ "${#desc}" -gt 1024 ]; then err "skill $d: description vacía o de más de 1024 caracteres"
+        else pass "skill $d válida (name/description)"; fi
+    done
 
     # Validadores propios de cada app (solo si está corriendo/instalada)
     if command -v hyprctl &>/dev/null && [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]; then

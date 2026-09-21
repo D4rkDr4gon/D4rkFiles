@@ -31,7 +31,7 @@ for f in "${docs[@]}"; do
         [[ -e "$p" || -e "$p.tpl" ]] && continue
         git check-ignore -q "$p" 2>/dev/null && continue
         report "$f" "ruta inexistente: $p"
-    done < <(grep -oE '`(scripts|config|home|system|install|manifest|tools|themes|assets|docs)/[A-Za-z0-9_./-]+`' "$f" | tr -d '`' | sort -u)
+    done < <(grep -oE '`(scripts|config|home|system|install|manifest|tools|themes|assets|docs|skills)/[A-Za-z0-9_./-]+`' "$f" | tr -d '`' | sort -u)
 done
 
 if ((bad)); then echo "$bad problema(s) en la documentación"; exit 1; fi

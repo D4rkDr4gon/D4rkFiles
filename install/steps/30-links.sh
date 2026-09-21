@@ -11,6 +11,7 @@ manifest_each() {
             core) ;;
             hyprland) $WITH_HYPRLAND || continue ;;
             x11) $WITH_X11 || continue ;;
+            skills) $WITH_SKILLS || continue ;;
             *) continue ;;
         esac
         s="$DOTFILES_DIR/$src"; [[ "$src" == "." ]] && s="$DOTFILES_DIR"

@@ -1,6 +1,7 @@
 # Manifiesto de enlaces simbólicos: fuente única para install.sh y dotfiles-doctor.sh.
 # Columnas separadas por TAB:  origen (relativo al repo)  destino (relativo a $HOME)  grupo
-# Grupos: core (siempre) | hyprland | x11.  Un origen "." es el propio repo.
+# Grupos: core (siempre) | hyprland | x11 | skills (skill de IA; se omite con --no-skills).
+# Un origen "." es el propio repo.
 # Los directorios completos se enlazan con `ln -sfT`; lo que existía antes se
 # mueve a ~/.local/state/dotfiles/backups/<fecha>/ (nunca se borra).
 #
@@ -38,3 +39,5 @@ system/systemd-user/battery-watch.timer	.config/systemd/user/battery-watch.timer
 system/systemd-user/wayvnc.service	.config/systemd/user/wayvnc.service	hyprland
 system/systemd-user/hyprland-session-init.service	.config/systemd/user/hyprland-session-init.service	hyprland
 system/systemd-user/elephant.service	.config/systemd/user/elephant.service	hyprland
+skills/d4rkfiles	.claude/skills/d4rkfiles	skills
+skills/d4rkfiles	.config/opencode/skills/d4rkfiles	skills

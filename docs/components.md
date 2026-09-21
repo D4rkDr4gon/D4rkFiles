@@ -102,6 +102,10 @@ Firefox (`userChrome.css`/`userContent.css` en el perfil activo; `--restart-fire
 cliamp, lazygit, lazydocker, impala, hyprshell, GTK 3 (`gtk.css` + `settings.ini`), Thunar.
 bluetui no tiene tema propio: usa la paleta ANSI de kitty.
 
+## Skill de IA
+
+`skills/d4rkfiles/` — skill para Claude Code y opencode; ver [ai-skill.md](ai-skill.md).
+
 ## Herramientas y servicios
 
 - **`tools/shortcuts_tui.py`** — cheatsheet (`Super+K`) con los atajos de Hyprland, kitty,

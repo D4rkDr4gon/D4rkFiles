@@ -26,6 +26,7 @@ Qué instalar:
   --no-aur            No usa el AUR (ni instala yay)
   --no-upgrade        No ofrece `pacman -Syu` antes de instalar
   --with-ollama       Instala Ollama (IA local) sin preguntar
+  --no-skills         No instala la skill "d4rkfiles" para Claude Code y opencode
 
 Cómo ejecutarlo:
   -n, --dry-run       Muestra lo que haría, sin modificar nada
@@ -47,7 +48,7 @@ EOF
 #--- Argumentos ---------------------------------------------------------------
 ORIG_ARGS=("$@")   # copia para re-ejecutar el instalador del clone con las mismas opciones
 DRY_RUN=false; ASSUME_YES=false
-WITH_HYPRLAND=true; WITH_X11=true; USE_AUR=true; DO_UPGRADE=true; WITH_OLLAMA=false
+WITH_HYPRLAND=true; WITH_X11=true; USE_AUR=true; DO_UPGRADE=true; WITH_OLLAMA=false; WITH_SKILLS=true
 ONLY=""; SKIP=""; CLONE_DIR="${DOTFILES_DIR:-}"
 ALL_STAGES=(preflight packages configure links shell system optional summary)
 
@@ -61,6 +62,7 @@ while (($#)); do
         --no-aur)       USE_AUR=false ;;
         --no-upgrade)   DO_UPGRADE=false ;;
         --with-ollama)  WITH_OLLAMA=true ;;
+        --no-skills)    WITH_SKILLS=false ;;
         --configure)    ONLY="configure" ;;
         --only)         shift; ONLY="${1:?--only necesita una lista}" ;;
         --skip)         shift; SKIP="${1:?--skip necesita una lista}" ;;

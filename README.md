@@ -50,6 +50,13 @@ configuran en `~/.config/dotfiles/user.conf`; el instalador te los pregunta.
 | Bloqueo / login | gtklock · SDDM | betterlockscreen / i3lock · SDDM |
 | Común | kitty · zsh + powerlevel10k · dunst · Neovim (LazyVim) · herdr · lazygit · Thunar | |
 
+## Skill de IA
+
+El instalador deja lista la skill **`d4rkfiles`** para [Claude Code](https://claude.com/claude-code) y
+[opencode](https://opencode.ai): le pedís en lenguaje natural "cambiá al tema nord", "configurá mis
+monitores", "agregá este atajo", "actualizá el sistema" o "¿por qué no anda waybar?" y sabe dónde está cada
+cosa, cómo cambiarla sin romper nada y cómo recargarla. Ver [docs/ai-skill.md](docs/ai-skill.md).
+
 ## Personalizar
 
 Tu configuración vive en `~/.config/dotfiles/` (`user.conf`, overrides de Hyprland,
@@ -69,6 +76,7 @@ Ver [docs/customization.md](docs/customization.md).
 | [components.md](docs/components.md) | Qué hace cada pieza |
 | [scripts.md](docs/scripts.md) | Herramientas: doctor, update, theme, gen-assets… |
 | [security.md](docs/security.md) | Qué no se versiona y dónde van tus credenciales |
+| [ai-skill.md](docs/ai-skill.md) | La skill `d4rkfiles` para Claude Code y opencode |
 | [troubleshooting.md](docs/troubleshooting.md) | Problemas frecuentes |
 
 ## Licencia

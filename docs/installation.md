@@ -36,6 +36,7 @@ El repo puede estar en **cualquier ruta**: el instalador crea el symlink estable
 | `--no-aur` | No usa el AUR (ni instala `yay`) |
 | `--no-upgrade` | No ofrece `pacman -Syu` antes de instalar |
 | `--with-ollama` | Instala Ollama sin preguntar |
+| `--no-skills` | No instala la skill `d4rkfiles` de Claude Code y opencode |
 | `--list-stages` | Lista las etapas |
 
 Una opción desconocida es un error (no se ignora en silencio).
@@ -49,7 +50,7 @@ Se ejecutan en este orden (`./install.sh --list-stages`):
    Detecta la GPU con `lspci` (AMD/Intel/NVIDIA) y agrega solo lo que corresponde.
 3. **configure** — crea `~/.config/dotfiles/user.conf` (pregunta nombre y título) y
    `~/.config/dotfiles/hypr/local.conf`, y renderiza el tema por defecto.
-4. **links** — enlaces simbólicos de [`manifest/links.tsv`](../manifest/links.tsv).
+4. **links** — enlaces simbólicos de [`manifest/links.tsv`](../manifest/links.tsv), incluida la skill de IA ([ai-skill.md](ai-skill.md)).
 5. **shell** — powerlevel10k, shell por defecto (pregunta) y plugins de Neovim (pregunta).
 6. **system** — servicios, login manager, sesión "Hyprland (dotfiles)", unidades de
    usuario y grupos. Todo lo que toca `/etc` o `/usr` pregunta antes.
