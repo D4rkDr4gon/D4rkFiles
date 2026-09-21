@@ -26,6 +26,22 @@ kitty, dunst, Neovim, Firefox, la pantalla de login y unas veinte cosas más.
 Está pensado para que **cualquiera lo instale**: no asume usuario, ruta de clone, monitores,
 teclado, batería ni GPU. Lo tuyo (nombre, apps, atajos propios) vive fuera del repo.
 
+## Capturas
+
+Tema por defecto (`red-dark`) en Hyprland.
+
+<p align="center">
+<img src="assets/screenshots/terminal.png" alt="Terminal con el banner DARKDRAGON y fastfetch" width="640">
+</p>
+
+<p align="center">
+<img src="assets/screenshots/shortcuts.png" alt="Cheatsheet de atajos (SUPER+K)" width="640">
+</p>
+
+<p align="center">
+<img src="assets/screenshots/waybar.png" alt="Waybar: brillo, agentes IA, audio, red, VPN, bluetooth y batería" width="100%">
+</p>
+
 ## Instalación
 
 ```bash
