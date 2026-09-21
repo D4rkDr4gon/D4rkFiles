@@ -27,6 +27,9 @@ jobs:
           sudo apt-get install -y -qq zsh
           for f in home/zsh/zshrc home/zsh/modules/*.zsh; do zsh -n "$f"; done
 
+      - name: Documentación sin rutas ni enlaces rotos
+        run: ./scripts/check-docs.sh
+
       - name: JSON y TOML válidos
         run: |
           git ls-files -z 'themes/*/theme.json' | xargs -0 -n1 python3 -c 'import json,sys; json.load(open(sys.argv[1]))'
