@@ -38,6 +38,9 @@ env = WLR_NO_HARDWARE_CURSORS,1
 
 `hyprctl monitors` lista los nombres de salida; `hyprmon` (paquete AUR) los configura gráficamente.
 
+**Qtile/X11:** los monitores se configuran con `xrandr` (o `arandr`); poné el comando en tu
+`~/.xprofile` o en `local.zsh`. Qtile y polybar detectan los monitores conectados solos.
+
 ## zsh: aliases y funciones propias
 
 `~/.config/dotfiles/local.zsh` se carga al final de `.zshrc`. Ejemplo:
