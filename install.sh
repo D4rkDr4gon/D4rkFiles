@@ -45,6 +45,7 @@ EOF
 }
 
 #--- Argumentos ---------------------------------------------------------------
+ORIG_ARGS=("$@")   # copia para re-ejecutar el instalador del clone con las mismas opciones
 DRY_RUN=false; ASSUME_YES=false
 WITH_HYPRLAND=true; WITH_X11=true; USE_AUR=true; DO_UPGRADE=true; WITH_OLLAMA=false
 ONLY=""; SKIP=""; CLONE_DIR="${DOTFILES_DIR:-}"
@@ -90,7 +91,7 @@ else
         [[ -e "$DOTFILES_DIR" ]] && { echo "Error: $DOTFILES_DIR existe y no es este repo. Usá --dir." >&2; exit 1; }
         echo "Clonando $D4RKFILES_REPO en $DOTFILES_DIR ..."
         git clone --depth=1 "$D4RKFILES_REPO" "$DOTFILES_DIR"
-        exec "$DOTFILES_DIR/install.sh" --dir "$DOTFILES_DIR" "$@"
+        exec "$DOTFILES_DIR/install.sh" "${ORIG_ARGS[@]}" --dir "$DOTFILES_DIR"
     fi
 fi
 export DOTFILES_DIR
