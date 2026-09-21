@@ -1,0 +1,10 @@
+[Unit]
+Description=Battery level monitor — notifica cuando la batería está baja
+Documentation=https://wiki.archlinux.org/title/Laptop#Battery
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/share/dotfiles/scripts/battery-watch.sh
+IOSchedulingClass=idle
+CPUSchedulingPolicy=idle
+Nice=19

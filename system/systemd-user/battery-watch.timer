@@ -1,0 +1,10 @@
+[Unit]
+Description=Timer para monitoreo de batería — cada 2 minutos
+Documentation=https://wiki.archlinux.org/title/Laptop#Battery
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+
+[Install]
+WantedBy=timers.target

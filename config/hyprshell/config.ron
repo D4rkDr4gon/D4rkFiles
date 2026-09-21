@@ -1,0 +1,37 @@
+// hyprshell — overview de workspaces (Mod+W / swipe 3 dedos arriba) y Alt+Tab con previews.
+// Editar a mano o con `hyprshell config edit`. Se recarga solo al guardar.
+// Colores/forma: styles.css (los pisa scripts/theme-switch.sh, no editar los @define-color a mano).
+(
+    version: 4,
+    windows: Some(
+        scale: 8.5,
+        items_per_row: 3,            // 6 workspaces = 2 filas de 3
+        overview: Some(
+            key: "w",                // Super+W (Super_L solo = tap, pisaría el modificador de Mod)
+            modifier: "super",
+            filter_by: [],           // todos los workspaces, todas las ventanas
+            launcher: (
+                default_terminal: Some("kitty"),
+                launch_modifier: "ctrl",
+                width: 650,
+                max_items: 5,
+                show_when_empty: false,
+                plugins: (
+                    applications: Some(run_cache_weeks: 8, show_execs: false, show_actions_submenu: true),
+                    terminal: None,
+                    shell: None,
+                    websearch: None,
+                    calc: Some(),
+                    path: None,
+                    actions: None,
+                ),
+            ),
+        ),
+        switch: Some(
+            modifier: "alt",
+            key: "Tab",
+            filter_by: [current_monitor],   // multi-monitor: solo ventanas del monitor enfocado
+            switch_workspaces: false,
+        ),
+    ),
+)

@@ -1,0 +1,14 @@
+# ====== ZSH — configuración modular ======
+# ~/.zshrc es un symlink a este archivo (lo crea install.sh). Todo se resuelve
+# desde la ubicación real del archivo: no importa dónde esté clonado el repo.
+
+_zsh_home=${${(%):-%x}:A:h}                 # <repo>/home/zsh
+export DOTFILES="${_zsh_home:h:h}"   # siempre desde la ubicación real (ignora valores heredados)
+
+for _module in "$_zsh_home"/modules/*.zsh; do
+  [[ -r "$_module" ]] && source "$_module"
+done
+unset _module _zsh_home
+
+# Overrides propios de esta máquina (aliases, funciones, PATH extra). Nunca se versiona.
+[[ -r "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/local.zsh" ]] && source "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/local.zsh"

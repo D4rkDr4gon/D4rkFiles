@@ -1,0 +1,15 @@
+[Unit]
+Description=wayvnc - VNC server bajo demanda para usar una tablet como monitor secundario
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=%h/.local/share/dotfiles/scripts/wayland/wayvnc-toggle.sh on
+ExecStop=%h/.local/share/dotfiles/scripts/wayland/wayvnc-toggle.sh off
+
+# Sin [Install] a propósito: no se activa con `systemctl --user enable`.
+# Uso intermitente manual:
+#   systemctl --user start wayvnc
+#   systemctl --user stop wayvnc

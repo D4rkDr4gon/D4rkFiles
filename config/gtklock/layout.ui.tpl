@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkOverlay" id="window-box">
+    <property name="name">window-box</property>
+    <child>
+      <object class="GtkBox">
+        <property name="hexpand">true</property>
+        <property name="vexpand">true</property>
+      </object>
+    </child>
+    <child type="overlay">
+      <object class="GtkLabel" id="banner-label">
+        <property name="name">banner-label</property>
+        <property name="halign">center</property>
+        <property name="valign">center</property>
+        <property name="justify">left</property>
+        <property name="label">@banner_xml@</property>
+      </object>
+    </child>
+    <child type="overlay">
+      <object class="GtkBox" id="info-box">
+        <property name="name">info-box</property>
+        <property name="halign">start</property>
+        <property name="valign">end</property>
+        <property name="margin">40</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">8</property>
+        <child>
+          <object class="GtkBox" id="time-box">
+            <property name="name">time-box</property>
+            <property name="orientation">vertical</property>
+            <property name="halign">start</property>
+            <child>
+              <object class="GtkLabel" id="clock-label">
+                <property name="name">clock-label</property>
+                <property name="halign">start</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkLabel" id="date-label">
+                <property name="name">date-label</property>
+                <property name="halign">start</property>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+    <child type="overlay">
+      <object class="GtkRevealer" id="body-revealer">
+        <property name="name">body-revealer</property>
+        <property name="halign">end</property>
+        <property name="valign">end</property>
+        <property name="margin">40</property>
+        <property name="transition-type">crossfade</property>
+        <property name="reveal-child">0</property>
+        <child>
+          <object class="GtkGrid" id="body-grid">
+            <property name="name">body-grid</property>
+            <property name="row-spacing">8</property>
+            <property name="column-spacing">10</property>
+            <child>
+              <object class="GtkLabel" id="input-label">
+                <property name="name">input-label</property>
+                <property name="label" translatable="yes">Password:</property>
+                <property name="halign">start</property>
+              </object>
+              <packing>
+                <property name="left-attach">0</property>
+                <property name="top-attach">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkEntry" id="input-field">
+                <property name="name">input-field</property>
+                <property name="width-request">320</property>
+                <property name="visibility">0</property>
+                <property name="caps-lock-warning">0</property>
+                <property name="input-purpose">password</property>
+                <property name="secondary-icon-name">view-reveal-symbolic</property>
+                <signal name="icon-release" handler="window_pw_toggle_vis"/>
+                <signal name="activate" handler="window_pw_check"/>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">0</property>
+                <property name="width">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkRevealer" id="message-revealer">
+                <property name="name">message-revealer</property>
+                <property name="transition-type">none</property>
+                <property name="no-show-all">1</property>
+                <child>
+                  <object class="GtkScrolledWindow" id="message-scrolled-window">
+                    <property name="name">message-scrolled-window</property>
+                    <property name="hscrollbar-policy">never</property>
+                    <property name="max-content-height">256</property>
+                    <property name="propagate-natural-height">1</property>
+                    <child>
+                      <object class="GtkViewport">
+                        <child>
+                          <object class="GtkBox" id="message-box">
+                            <property name="name">message-box</property>
+                            <property name="orientation">vertical</property>
+                            <property name="homogeneous">1</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">1</property>
+                <property name="width">2</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkBox">
+                <property name="halign">end</property>
+                <property name="spacing">8</property>
+                <child>
+                  <object class="GtkLabel" id="warning-label">
+                    <property name="name">warning-label</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkLabel" id="error-label">
+                    <property name="name">error-label</property>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkButton" id="unlock-button">
+                    <property name="name">unlock-button</property>
+                    <property name="label" translatable="yes">Unlock</property>
+                    <style>
+                      <class name="suggested-action"/>
+                    </style>
+                    <signal name="clicked" handler="window_pw_check"/>
+                  </object>
+                </child>
+              </object>
+              <packing>
+                <property name="left-attach">1</property>
+                <property name="top-attach">2</property>
+                <property name="width">2</property>
+              </packing>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

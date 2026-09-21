@@ -1,0 +1,23 @@
+[server]
+# style.css se resuelve por defecto desde ~/.config/swayosd/ (symlink al repo);
+# theme-switch.sh lo regenera con los colores del tema activo.
+
+# Altura del OSD (0 = arriba, 1 = abajo)
+top_margin = 0.85
+
+# Volumen máximo alcanzable (%)
+max_volume = 100
+
+# Piso de brillo (%): evita apagar la pantalla del todo con la tecla de brillo
+min_brightness = 5
+
+show_percentage = true
+
+# Formato del OSD de playerctl
+playerctl_format = "{artist} - {title}"
+
+# Mostrar OSD cuando el firmware cambia el brillo del teclado por su cuenta
+keyboard_backlight = true
+
+# Duración en ms
+duration = 1000

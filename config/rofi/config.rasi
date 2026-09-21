@@ -1,0 +1,11 @@
+configuration {
+    modi: "drun,run,window";
+    show-icons: true;
+    display-drun: "APPS";
+    drun-display-format: "{name}";
+    sort: true;
+    sorting-method: "fzf";
+    disable-history: false;
+}
+
+@theme "theme.rasi"

@@ -1,0 +1,19 @@
+{
+    "color_scheme": "Packages/User/Dotfiles.sublime-color-scheme",
+    "theme": "Default Dark.sublime-theme",
+
+    "caret_color": "#d32f2f",
+    "accent_color": "#d32f2f",
+
+    "font_face": "Hack Nerd Font",
+    "font_size": 13,
+
+    "highlight_line": true,
+    "caret_style": "solid",
+
+    "ignored_packages":
+    [
+		"Vintage",
+    ],
+    "index_files": true,
+}

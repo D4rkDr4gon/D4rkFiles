@@ -1,0 +1,26 @@
+/* Historial de portapapeles (cliphist) — hereda todo de theme.rasi (colores,
+   radio, fuente, tematizados por theme-switch.sh); solo cambia la geometría:
+   más ancho, más líneas y íconos grandes para las miniaturas de imágenes. */
+@import "theme.rasi"
+
+window {
+    width:      720;
+    location:   center;
+    y-offset:   0;
+}
+
+entry {
+    placeholder:    "Clipboard";
+}
+
+listview {
+    lines:  10;
+}
+
+element {
+    padding:    6px 10px;
+}
+
+element-icon {
+    size:   40px;
+}

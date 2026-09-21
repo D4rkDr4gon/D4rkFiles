@@ -1,0 +1,69 @@
+{
+    "layer": "top",
+    "position": "top",
+    "height": 28,
+    "modules-left": ["custom/logo", "custom/workspaces"],
+    "modules-center": ["clock"],
+    "modules-right": ["custom/brillo", "pulseaudio", "network", "custom/bluetooth", "battery"],
+
+    "custom/logo": {
+        "format": "  ",
+        "on-click": "/usr/bin/bash $HOME/.config/rofi/scripts/settings-menu.sh"
+    },
+
+    "custom/workspaces": {
+        "exec": "python3 $HOME/.config/waybar/scripts/workspaces.py",
+        "exec-on-event": false,
+        "interval": 1,
+        "return-type": "json",
+        "format": "{}",
+        "on-click": "bash $HOME/.config/rofi/scripts/workspace-switcher.sh",
+        "on-scroll-up": "bash $HOME/.config/waybar/scripts/workspace-switch.sh prev",
+        "on-scroll-down": "bash $HOME/.config/waybar/scripts/workspace-switch.sh next"
+    },
+
+    "clock": {
+        "format": "{:%a %H:%M}",
+        "format-alt": "{:%A %Y-%m-%d %H:%M:%S}",
+        "interval": 1
+    },
+
+    "custom/brillo": {
+        "exec": "brightnessctl -m | cut -d, -f4",
+        "interval": 1,
+        "format": "󱠃 {}",
+        "on-scroll-up": "brightnessctl set +5%",
+        "on-scroll-down": "brightnessctl set 5%-"
+    },
+
+    "pulseaudio": {
+        "format": "󰕾 {volume}%",
+        "format-muted": "  Muted",
+        "on-scroll-up": "pactl set-sink-volume @DEFAULT_SINK@ +5%",
+        "on-scroll-down": "pactl set-sink-volume @DEFAULT_SINK@ -5%",
+        "on-click": "bash $HOME/.config/waybar/scripts/float-tui-launch.sh cliamp cliamp 100 32 cliamp"
+    },
+
+    "network": {
+        "format-wifi": "󰤨",
+        "format-ethernet": "󰛳",
+        "format-disconnected": "󰤭",
+        "on-click": "bash $HOME/.config/waybar/scripts/float-tui-launch.sh impala 'Red Wi-Fi' 90 28 impala"
+    },
+
+    "custom/bluetooth": {
+        "exec": "bash $HOME/.local/share/dotfiles/scripts/bluetooth-status.sh",
+        "interval": 2,
+        "on-click": "bash $HOME/.config/waybar/scripts/float-tui-launch.sh bluetui bluetui 90 28 bluetui"
+    },
+
+    "battery": {
+        "interval": 5,
+        "format": "󰂄",
+        "format-charging": "󰂄",
+        "format-discharging": "󰁹",
+        "format-full": "󰂄",
+        "format-low": "󰂎 {capacity}%",
+        "on-click": "bash $HOME/.config/waybar/scripts/battery-info.sh"
+    }
+}
