@@ -118,6 +118,7 @@ theme_load_user_tokens() {
     done <<<"$banner"
     TOK[banner_xml]="$xml"
     TOK[banner_qml]="$qml"
+    printf '%s\n' "$banner" > "$DOTFILES_DIR/home/zsh/banner.txt"   # lo imprime 60-banner.zsh
     TOK[battery]="$(df_detect_battery || true)"
     TOK[wifi_iface]="$(df_detect_wifi_iface || true)"
     # NVIDIA y VMs necesitan cursor por software en wlroots/Hyprland.

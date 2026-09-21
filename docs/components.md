@@ -65,9 +65,9 @@ principal por una condición de carrera conocida entre walker y elephant.
 
 ## Pantalla de bloqueo y login
 
-- **gtklock** (`config/gtklock/`) — bloqueo en Wayland (`scripts/lock-screen.sh`). Banner con
-  tu nombre y título; en X11 se usa `betterlockscreen` o `i3lock`.
-- **SDDM** (`system/sddm/dotfiles-ascii/`) — tema de login (fondo negro + banner). Se instala
+- **gtklock** (`config/gtklock/`) — bloqueo en Wayland (`scripts/lock-screen.sh`). Muestra el
+  banner del proyecto con tu nombre y título; en X11 se usa `betterlockscreen` o `i3lock`.
+- **SDDM** (`system/sddm/dotfiles-ascii/`) — tema de login (fondo negro + el mismo banner). Se instala
   con `scripts/setup-sddm-theme.sh`; el PAM con huella es **opcional**
   (`--with-fingerprint-pam`, requiere `fprintd`).
 
@@ -84,13 +84,13 @@ principal por una condición de carrera conocida entre walker y elephant.
 | `20-keybindings` | Home/End, Ctrl+flechas, Supr… |
 | `40-aliases` | `theme`, `dotfiles-*`, `ls`→`lsd`, `cat`→`bat`, navegación, VPN (si `VPN_PROFILE`), VNC |
 | `50-tools` | `hex-encode/decode`, `rot13`, funciones de Ollama (si está instalado) |
-| `60-banner` | Banner con tu nombre (desactivable con `DOTFILES_NO_BANNER=1`) |
+| `60-banner` | El banner del proyecto con tu nombre (desactivable con `DOTFILES_NO_BANNER=1`) |
 | `70-prompt` | powerlevel10k (`~/.p10k.zsh` tiene prioridad sobre `home/zsh/p10k.zsh`) |
 | `90-plugins` | zsh-autosuggestions y zsh-syntax-highlighting |
 
 ## Editores
 
-- **Neovim** (`config/nvim/`) — LazyVim; `lua/config/colors.lua` es generado.
+- **Neovim** (`config/nvim/`) — LazyVim con el mismo banner en el dashboard; `lua/config/colors.lua` es generado.
 - **Sublime Text** (`config/sublime-text/`) — solo `Preferences`, esquema de color (generado) y
   la lista de Package Control; los paquetes se descargan solos.
 - **opencode** (`config/opencode/opencode.jsonc`, generado) — colores de agentes y tema; sin

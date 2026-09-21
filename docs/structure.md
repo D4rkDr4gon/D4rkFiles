@@ -16,7 +16,7 @@
 │   └── wayland/            wayvnc-toggle
 ├── tools/                  TUIs en Python (cheatsheet de atajos)
 ├── themes/                 theme.json + preview.png por tema
-├── assets/wallpapers/      Wallpapers (generados por scripts/gen-assets.sh)
+├── assets/                 banner-art.txt, dragon.txt y wallpapers/ (generados por gen-assets.sh)
 ├── docs/                   Esta documentación
 ├── user.conf.example       Plantilla de tu configuración por usuario
 └── .github/workflows/      CI

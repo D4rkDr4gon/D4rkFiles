@@ -102,10 +102,11 @@ df_load_user_conf() {
     : "${KB_VARIANT:=}"
     : "${DISPLAY_MANAGER:=sddm}"
     : "${DEFAULT_THEME:=nord}"
+    : "${BANNER_ART_FILE:=}"
     : "${EXTRA_WALLPAPER_DIRS:=}"
     WALLPAPER_DIRS="${EXTRA_WALLPAPER_DIRS:+$EXTRA_WALLPAPER_DIRS:}$XDG_DATA_HOME/backgrounds:$DOTFILES_DIR/assets/wallpapers"
     export USER_DISPLAY_NAME USER_TITLE TERMINAL BROWSER FILE_MANAGER EDITOR_GUI \
-           KB_LAYOUT KB_VARIANT DISPLAY_MANAGER DEFAULT_THEME EXTRA_WALLPAPER_DIRS WALLPAPER_DIRS
+           KB_LAYOUT KB_VARIANT DISPLAY_MANAGER DEFAULT_THEME BANNER_ART_FILE EXTRA_WALLPAPER_DIRS WALLPAPER_DIRS
 }
 
 # Busca un wallpaper por nombre en WALLPAPER_DIRS (o acepta una ruta absoluta).
@@ -123,30 +124,41 @@ df_resolve_wallpaper() {
     return 1
 }
 
-# Banner de la pantalla de bloqueo / login: nombre (con figlet, si está instalado)
-# y una línea "Nombre - Título" entre barras. Imprime una línea por renglón.
+# Banner de la pantalla de bloqueo, login (SDDM) y terminal: el arte del proyecto
+# (assets/banner-art.txt, el DARKDRAGON) y una línea "Nombre - Título" entre barras.
+# BANNER_ART_FILE en user.conf usa otro arte; "none" deja solo el nombre (con figlet,
+# si está instalado). Imprime una línea por renglón.
 df_banner() {
-    local name="$USER_DISPLAY_NAME" text line width=0 i
+    local name="$USER_DISPLAY_NAME" text line width=0 i art_file
     local -a art=() out=()
     text="$name${USER_TITLE:+ - $USER_TITLE}"
+    art_file="${BANNER_ART_FILE:-$DOTFILES_DIR/assets/banner-art.txt}"
 
-    if command -v figlet >/dev/null 2>&1; then
-        while IFS= read -r line; do art+=("$line"); done < <(figlet -w 88 -f small -- "$name" 2>/dev/null | sed 's/[[:space:]]*$//')
+    if [[ "$art_file" == none ]]; then
+        if command -v figlet >/dev/null 2>&1; then
+            while IFS= read -r line; do art+=("$line"); done < <(figlet -w 88 -f small -- "$name" 2>/dev/null | sed 's/[[:space:]]*$//')
+        fi
+    elif [[ -r "$art_file" ]]; then
+        while IFS= read -r line; do art+=("$line"); done < "$art_file"
     fi
 
     width=$(( ${#text} + 20 ))
     for line in "${art[@]}"; do (( ${#line} > width )) && width=${#line}; done
     (( width < 40 )) && width=40
 
-    local bar dash pad
+    local bar dash pad rest
     printf -v bar '%*s' "$width" ''; bar="${bar// /=}"
-    pad=$(( (width - ${#text} - 10) / 2 ))
+    # "----------- >>> texto <<< -----------" ocupando exactamente el ancho del arte
+    rest=$(( width - ${#text} - 12 ))
+    (( rest < 4 )) && rest=4
+    pad=$(( (rest - 6) / 2 ))          # como el banner original: guiones más largos a la derecha
     (( pad < 2 )) && pad=2
     printf -v dash '%*s' "$pad" ''; dash="${dash// /-}"
+    local dash2; printf -v dash2 '%*s' "$(( rest - pad ))" ''; dash2="${dash2// /-}"
 
     out+=("$bar")
     for line in "${art[@]}"; do out+=("$line"); done
-    out+=("$dash  >>> $text <<<  $dash")
+    out+=("$dash  >>> $text <<<  $dash2")
     out+=("$bar")
     for i in "${!out[@]}"; do printf '%s\n' "${out[$i]}"; done
 }

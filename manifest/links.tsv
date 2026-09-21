@@ -21,7 +21,7 @@ config/herdr/config.toml	.config/herdr/config.toml	core
 config/herdr/launch.sh	.config/herdr/launch.sh	core
 config/opencode/opencode.jsonc	.config/opencode/opencode.jsonc	core
 config/sublime-text/Packages/User/Preferences.sublime-settings	.config/sublime-text/Packages/User/Preferences.sublime-settings	core
-config/sublime-text/Packages/User/Dotfiles.sublime-color-scheme	.config/sublime-text/Packages/User/Dotfiles.sublime-color-scheme	core
+config/sublime-text/Packages/User/Kali-Red-Hack.sublime-color-scheme	.config/sublime-text/Packages/User/Kali-Red-Hack.sublime-color-scheme	core
 config/sublime-text/Packages/User/Package Control.sublime-settings	.config/sublime-text/Packages/User/Package Control.sublime-settings	core
 config/hypr	.config/hypr	hyprland
 config/waybar	.config/waybar	hyprland

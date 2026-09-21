@@ -1,5 +1,32 @@
 # ====== FUNCIONES ======
 
+# extractPorts <archivo.gnmap>: IP y puertos abiertos de un escaneo de nmap; copia los
+# puertos al portapapeles (wl-copy en Wayland, xclip en X11).
+extractPorts() {
+  local ports ip
+  ports="$(grep -oP '\d{1,5}/open' "$1" | awk '{print $1}' FS='/' | xargs | tr ' ' ',')"
+  ip="$(grep -oP '\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}' "$1" | sort -u | head -n 1)"
+  printf '\n[*] Extracting information...\n\n\t[*] IP Address: %s\n\t[*] Open ports: %s\n\n' "$ip" "$ports"
+  if [[ -n "$WAYLAND_DISPLAY" ]] && command -v wl-copy >/dev/null; then
+    printf '%s' "$ports" | wl-copy
+  elif command -v xclip >/dev/null; then
+    printf '%s' "$ports" | xclip -sel clip
+  else
+    return 0
+  fi
+  echo "[*] Ports copied to clipboard"
+}
+
+# autopsy-fix: lanza Autopsy con JDK 21 (su launcher se rompe con otros JDK), desligado de la shell.
+autopsy-fix() {
+  local jdk=/usr/lib/jvm/java-21-openjdk
+  [[ -d "$jdk" ]] || { echo "Falta $jdk (paquete jdk21-openjdk)"; return 1; }
+  command -v autopsy >/dev/null || { echo "autopsy no está instalado"; return 1; }
+  unset CLASSPATH JAVACMD
+  JAVA_HOME="$jdk" PATH="$jdk/bin:$PATH" nohup autopsy --jdkhome "$jdk" >/dev/null 2>&1 &
+  disown
+}
+
 hex-encode() { echo "$@" | xxd -p; }
 hex-decode() { echo "$@" | xxd -p -r; }
 rot13()      { echo "$@" | tr 'A-Za-z' 'N-ZA-Mn-za-m'; }

@@ -7,6 +7,7 @@ alias dotfiles-update="$DOTFILES/scripts/dotfiles-update.sh"
 alias dotfiles-doctor="$DOTFILES/scripts/dotfiles-doctor.sh"
 alias dotfiles="cd $DOTFILES"
 alias zshconfig="${EDITOR:-nvim} ~/.zshrc"
+alias logo="$DOTFILES/scripts/logo.sh"
 
 # Editor y visor
 alias vi="nvim"
@@ -51,6 +52,9 @@ fi
 alias vnc-on="$DOTFILES/scripts/wayland/wayvnc-toggle.sh on"
 alias vnc-off="$DOTFILES/scripts/wayland/wayvnc-toggle.sh off"
 alias vnc-status="$DOTFILES/scripts/wayland/wayvnc-toggle.sh status"
+
+# Herramientas de ciberseguridad (solo si están instaladas)
+[[ -x "$HOME/.cargo/bin/ThreatDeck" ]] && alias threatdeck="$HOME/.cargo/bin/ThreatDeck"
 
 # Ollama (solo si está instalado)
 if command -v ollama >/dev/null; then

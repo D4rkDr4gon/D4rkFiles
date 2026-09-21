@@ -37,4 +37,11 @@ búsqueda web. Un resultado "en vivo" mientras se escribe no es posible con este
 (Thunar, Sublime, dunst, Obsidian…) `base + 0.05`. Con opacidad ≥ 0.98 todo pasa a 1.0.
 Los TUI flotantes van siempre en 0.97 para que se lean con cualquier tema.
 
+## Identidad
+
+El banner (`assets/banner-art.txt`), el dragón (`assets/dragon.txt`) y el logo de waybar
+(`config/waybar/logo.png`) son la identidad del proyecto y se ven igual en la terminal, la
+pantalla de bloqueo, el login y el dashboard de Neovim. Lo único que cambia por usuario es
+el nombre y el título.
+
 Ver [themes.md](themes.md) para el formato de `theme.json` y la lista de tokens.

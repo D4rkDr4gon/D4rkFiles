@@ -12,6 +12,7 @@ Lo leen los scripts, zsh, Hyprland y Qtile. Todo es opcional: lo que falta se au
 |---|---|---|
 | `USER_DISPLAY_NAME` | Nombre en el banner de zsh, la pantalla de bloqueo, SDDM y la bienvenida | Tu nombre (GECOS) o login |
 | `USER_TITLE` | Título/alias junto al nombre | vacío |
+| `BANNER_ART_FILE` | Arte del banner (por defecto el DARKDRAGON del proyecto, `assets/banner-art.txt`); `none` = solo tu nombre | — |
 | `TERMINAL`, `BROWSER`, `FILE_MANAGER`, `EDITOR_GUI` | Apps de los atajos | kitty, firefox, thunar, subl |
 | `KB_LAYOUT`, `KB_VARIANT` | Teclado de Hyprland/Qtile | `localectl` → `vconsole.conf` → `us` |
 | `DISPLAY_MANAGER` | Login manager a habilitar | `sddm` |

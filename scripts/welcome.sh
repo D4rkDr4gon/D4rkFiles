@@ -6,5 +6,5 @@
 source "$(dirname "$(readlink -f "$0")")/lib/env.sh"
 
 notify-send -u normal -t 3000 \
-    "Bienvenido de nuevo, ${USER_DISPLAY_NAME}" \
-    "${USER_TITLE:-Todos los sistemas en línea.}"
+    "Bienvenido de nuevo! ${USER_DISPLAY_NAME}" \
+    "Todos los sistemas en línea a la espera de órdenes."

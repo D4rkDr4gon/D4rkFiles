@@ -4,7 +4,8 @@
 |---|---|
 | `install.sh` | Instalador (ver [installation.md](installation.md)) |
 | `scripts/theme-switch.sh` (`theme`) | Aplica un tema ([themes.md](themes.md)) |
-| `scripts/gen-assets.sh` | Genera wallpapers, previews y el logo de waybar desde los temas |
+| `scripts/gen-assets.sh` | Genera wallpapers y previews desde los temas |
+| `scripts/logo.sh` (alias `logo`) | Muestra el dragón y el banner del proyecto en la terminal |
 | `scripts/dotfiles-doctor.sh` | Diagnóstico de solo lectura |
 | `scripts/dotfiles-update.sh` | Actualización del sistema con snapshot y rollback |
 | `scripts/lock-screen.sh` | Bloqueo (gtklock / betterlockscreen / i3lock) |

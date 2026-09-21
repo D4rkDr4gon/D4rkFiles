@@ -1,4 +1,9 @@
-# D4rkFiles
+<p align="center">
+  <img src="config/waybar/logo.png" alt="Logo de D4rkFiles" width="160">
+</p>
+
+<h1 align="center">D4rkFiles</h1>
+<p align="center"><sub>por <a href="https://github.com/D4rkDr4gon">D4rkDr4gon</a></sub></p>
 
 Dotfiles de Arch Linux con dos sesiones —**Hyprland** (Wayland) y **Qtile** (X11)— y un
 motor de temas: cambiás de tema y cambian a la vez el borde de las ventanas, waybar, rofi,
@@ -31,6 +36,9 @@ scripts/dotfiles-doctor.sh   # verifica la instalación
 
 `Super+Return` terminal · `Super+Space` buscador · `Super+Shift+Space` Settings ·
 `Super+K` todos los atajos ([docs/keybindings.md](docs/keybindings.md)).
+
+Tu nombre y título (banner de la terminal, pantalla de bloqueo, login de SDDM y saludo) se
+configuran en `~/.config/dotfiles/user.conf`; el instalador te los pregunta.
 
 ## Stack
 

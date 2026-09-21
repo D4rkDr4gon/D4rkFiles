@@ -23,12 +23,13 @@
 /config/rofi/theme-action.rasi
 /config/rofi/theme-drun.rasi
 /config/rofi/theme.rasi
-/config/sublime-text/Packages/User/Dotfiles.sublime-color-scheme
+/config/sublime-text/Packages/User/Kali-Red-Hack.sublime-color-scheme
 /config/swayosd/style.css
 /config/walker/themes/dotfiles/style.css
 /config/waybar/style.css
 /config/waybar/theme.css
 /home/zsh/colors.zsh
+/home/zsh/banner.txt
 /system/sddm/dotfiles-ascii/Main.qml
 /system/sddm/dotfiles-ascii/theme.conf
 /system/sessions/hyprland.desktop

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # gen-assets.sh — genera los wallpapers y las previews de cada tema desde su theme.json.
+# (El logo de waybar, config/waybar/logo.png, es el logo oficial del proyecto y no se genera.)
 #
 # Son imágenes originales (degradado + resplandor con la paleta del tema): no
 # hay material con copyright ni licencias que revisar. Salida:
 #   assets/wallpapers/<tema>.jpg      1920x1080
 #   themes/<tema>/preview.png         800x400 (paleta; la usa Settings → THEMES)
-#   config/waybar/logo.png            logo genérico del botón de Settings (una sola vez)
 #
 # Uso: scripts/gen-assets.sh [tema ...]     (sin argumentos: todos)
 # Requiere: imagemagick, jq.
@@ -68,19 +68,12 @@ gen_preview() {
     "${cmd[@]}" "$out"
 }
 
-gen_logo() {
-    # Anillo + punto central, blanco sobre transparente (se ve sobre cualquier tema oscuro).
-    magick -size 256x256 xc:none -fill none -stroke white -strokewidth 18 -draw "circle 128,128 128,44" \
-        -stroke none -fill white -draw "circle 128,128 128,88" "$ROOT/config/waybar/logo.png"
-}
-
 main() {
     local -a ids=("$@")
     local id json
     if ((${#ids[@]} == 0)); then
         for json in "$ROOT"/themes/*/theme.json; do ids+=("$(basename "$(dirname "$json")")"); done
     fi
-    gen_logo
     for id in "${ids[@]}"; do
         json="$ROOT/themes/$id/theme.json"
         [[ -f "$json" ]] || { echo "Tema inexistente: $id" >&2; continue; }

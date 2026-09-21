@@ -7,7 +7,9 @@
 # --- Identidad (banners de la pantalla de bloqueo, SDDM, zsh y bienvenida) ---
 #USER_DISPLAY_NAME="Tu Nombre"      # por defecto: nombre del usuario (GECOS) o login
 #USER_TITLE="Tu cargo o alias"      # opcional; vacío = no se muestra
-
+# El arte del banner (DARKDRAGON, assets/banner-art.txt) es la identidad del proyecto.
+# Para otro arte: BANNER_ART_FILE=/ruta/a/tu-arte.txt  ("none" = solo tu nombre, con figlet)
+#BANNER_ART_FILE=
 # --- Aplicaciones por defecto (atajos de Hyprland/Qtile) ---
 #TERMINAL=kitty
 #BROWSER=firefox

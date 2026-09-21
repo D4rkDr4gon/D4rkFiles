@@ -1,5 +1,5 @@
 {
-    "name": "Dotfiles",
+    "name": "Kali Red Hack",
     "author": "Custom",
     "globals":
     {
