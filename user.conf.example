@@ -1,0 +1,29 @@
+# ~/.config/dotfiles/user.conf — configuración por usuario/máquina.
+#
+# Se crea con `./install.sh --configure` (o copiando este archivo). Vive FUERA
+# del repo: nunca se versiona. Todo es opcional; lo que dejes comentado se
+# autodetecta. Formato: KEY=VALUE (sintaxis de shell).
+
+# --- Identidad (banners de la pantalla de bloqueo, SDDM, zsh y bienvenida) ---
+#USER_DISPLAY_NAME="Tu Nombre"      # por defecto: nombre del usuario (GECOS) o login
+#USER_TITLE="Tu cargo o alias"      # opcional; vacío = no se muestra
+
+# --- Aplicaciones por defecto (atajos de Hyprland/Qtile) ---
+#TERMINAL=kitty
+#BROWSER=firefox
+#FILE_MANAGER=thunar
+#EDITOR_GUI=subl
+
+# --- Teclado (Hyprland/Qtile) ---
+#KB_LAYOUT=latam                    # por defecto: localectl / vconsole.conf / us
+#KB_VARIANT=
+
+# --- Sistema ---
+#DISPLAY_MANAGER=sddm               # sddm | lightdm | gdm | greetd | none
+
+# --- Tema ---
+#DEFAULT_THEME=nord                 # tema aplicado por el instalador (ver `theme --list`)
+# Los wallpapers de cada tema se buscan por nombre de archivo en, por orden:
+#   $EXTRA_WALLPAPER_DIRS  ->  ~/.local/share/backgrounds  ->  assets/wallpapers (repo)
+# Copiá tus imágenes a ~/.local/share/backgrounds para usarlas sin tocar el repo.
+#EXTRA_WALLPAPER_DIRS="$HOME/Pictures/Wallpapers"   # directorios extra, separados por ':'

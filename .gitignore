@@ -1,0 +1,85 @@
+# ── Archivos generados desde plantillas (*.tpl) ────────────────────────────
+# `scripts/theme-switch.sh` los renderiza junto a su plantilla. Se editan en
+# el .tpl, nunca acá. El CI verifica que cada .tpl tenga su línea en esta lista.
+/config/dunst/dunstrc
+/config/fprint-osd/style.css
+/config/gtk-3.0/gtk.css
+/config/gtk-3.0/settings.ini
+/config/gtklock/config.ini
+/config/gtklock/layout.ui
+/config/gtklock/style.css
+/config/herdr/config.toml
+/config/hypr/env.conf
+/config/hyprshell/styles.css
+/config/hypr/theme.conf
+/config/impala/config.toml
+/config/kitty/colors.conf
+/config/lazydocker/config.yml
+/config/lazygit/config.yml
+/config/nvim/lua/config/colors.lua
+/config/opencode/opencode.jsonc
+/config/polybar/colors.ini
+/config/rofi/colors.rasi
+/config/rofi/theme-action.rasi
+/config/rofi/theme-drun.rasi
+/config/rofi/theme.rasi
+/config/sublime-text/Packages/User/Dotfiles.sublime-color-scheme
+/config/swayosd/style.css
+/config/walker/themes/dotfiles/style.css
+/config/waybar/style.css
+/config/waybar/theme.css
+/home/zsh/colors.zsh
+/system/sddm/dotfiles-ascii/Main.qml
+/system/sddm/dotfiles-ascii/theme.conf
+/system/sessions/hyprland.desktop
+
+# ── Estado y overrides por máquina ─────────────────────────────────────────
+# (viven en ~/.config/dotfiles y ~/.local/state/dotfiles, fuera del repo; se
+# listan por si alguien los copia adentro por error)
+user.conf
+local.zsh
+hypr/local.conf
+
+# ── Secretos y credenciales: NUNCA versionar ───────────────────────────────
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx
+*.ovpn
+*.conf.secret
+*.wg.conf
+refresh_token
+*token*.json
+id_rsa*
+id_ed25519*
+wayvnc/config
+PROTON/
+CITRIX/
+
+# ── Dependencias y artefactos ──────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+node_modules/
+*.log
+*.bak
+*.orig
+*.swp
+.DS_Store
+
+# ── Sublime Text: se regeneran con Package Control ─────────────────────────
+config/sublime-text/Lib/
+config/sublime-text/Installed Packages/
+config/sublime-text/Local/
+config/sublime-text/Packages/User/*.user-ca-bundle
+config/sublime-text/Packages/User/Terminus*
+
+# ── Herramientas locales ───────────────────────────────────────────────────
+.claude/
+.vscode/
+.idea/
+
+# dunst: drop-ins generados en runtime (dnd-menu.sh)
+config/dunst/dunstrc.d/

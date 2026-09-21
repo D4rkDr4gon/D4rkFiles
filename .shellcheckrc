@@ -1,0 +1,6 @@
+# Configuración de shellcheck para todo el repo.
+shell=bash
+source-path=SCRIPTDIR
+external-sources=true
+# SC2155: `local x=$(cmd)` — el código de retorno se pierde a propósito en scripts de UI.
+disable=SC2155

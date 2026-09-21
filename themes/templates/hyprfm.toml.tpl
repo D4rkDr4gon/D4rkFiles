@@ -1,0 +1,13 @@
+[colors]
+crust   = "@chip_battery@"
+mantle  = "@chip_bluetooth@"
+base    = "@background@"
+surface = "@chip_wlan@"
+overlay = "@chip_audio@"
+text    = "@foreground@"
+subtext = "@text_sub@"
+muted   = "@text_muted@"
+accent  = "@primary@"
+success = "@status_ok@"
+warning = "@status_warn@"
+error   = "@status_error@"

@@ -1,0 +1,6 @@
+accent = "@primary@"
+bright_fg = "@foreground@"
+fg = "@text_muted@"
+green = "@status_ok@"
+yellow = "@status_warn@"
+red = "@status_error@"
