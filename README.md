@@ -1,9 +1,23 @@
-<p align="center">
-  <img src="config/waybar/logo.png" alt="Logo de D4rkFiles" width="160">
-</p>
+<div align="center">
+<table>
+<tr>
+<td valign="middle"><img src="config/waybar/logo.png" alt="Logo de D4rkFiles" width="200"></td>
+<td valign="middle">
+<pre>
+██████╗  █████╗ ██████╗ ██╗  ██╗██████╗ ██████╗  █████╗  ██████╗  ██████╗ ███╗   ██╗
+██╔══██╗██╔══██╗██╔══██╗██║ ██╔╝██╔══██╗██╔══██╗██╔══██╗██╔════╝ ██╔═══██╗████╗  ██║
+██║  ██║███████║██████╔╝█████╔╝ ██║  ██║██████╔╝███████║██║  ███╗██║   ██║██╔██╗ ██║
+██║  ██║██╔══██║██╔══██╗██╔═██╗ ██║  ██║██╔══██╗██╔══██║██║   ██║██║   ██║██║╚██╗██║
+██████╔╝██║  ██║██║  ██║██║  ██╗██████╔╝██║  ██║██║  ██║╚██████╔╝╚██████╔╝██║ ╚████║
+╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝  ╚═════╝ ╚═╝  ╚═══╝
+</pre>
+</td>
+</tr>
+</table>
 
-<h1 align="center">D4rkFiles</h1>
-<p align="center"><sub>por <a href="https://github.com/D4rkDr4gon">D4rkDr4gon</a></sub></p>
+<h1>D4rkFiles</h1>
+<sub>por <a href="https://github.com/D4rkDr4gon">D4rkDr4gon</a></sub>
+</div>
 
 Dotfiles de Arch Linux con dos sesiones —**Hyprland** (Wayland) y **Qtile** (X11)— y un
 motor de temas: cambiás de tema y cambian a la vez el borde de las ventanas, waybar, rofi,
