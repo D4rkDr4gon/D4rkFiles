@@ -13,7 +13,7 @@
 # shellcheck disable=SC2034  # las etapas (install/steps/*.sh) leen las variables de flags
 set -euo pipefail
 
-DOTFILES_REPO="${DOTFILES_REPO:-https://github.com/D4rkDr4gon/D4rkFiles.git}"
+D4RKFILES_REPO="${D4RKFILES_REPO:-https://github.com/D4rkDr4gon/D4rkFiles.git}"
 DEFAULT_CLONE_DIR="$HOME/D4rkFiles"
 
 usage() {
@@ -40,7 +40,7 @@ Cómo ejecutarlo:
 Etapas (en orden): preflight packages configure links shell system optional summary
 (configure va antes de links: renderiza las plantillas que luego se enlazan)
 
-Variables: DOTFILES_REPO (URL del repo), DOTFILES_DIR (equivale a --dir).
+Variables: D4RKFILES_REPO (URL del repo), DOTFILES_DIR (equivale a --dir).
 EOF
 }
 
@@ -83,13 +83,13 @@ else
         # Bootstrap: sin el repo no hay etapas. Se clona y se vuelve a ejecutar desde ahí.
         command -v git >/dev/null 2>&1 || { echo "Error: falta git (sudo pacman -S git)." >&2; exit 1; }
         if $DRY_RUN; then
-            echo "[dry-run] git clone $DOTFILES_REPO $DOTFILES_DIR"
+            echo "[dry-run] git clone $D4RKFILES_REPO $DOTFILES_DIR"
             echo "[dry-run] (luego se ejecutaría el install.sh del clone con las mismas opciones)"
             exit 0
         fi
         [[ -e "$DOTFILES_DIR" ]] && { echo "Error: $DOTFILES_DIR existe y no es este repo. Usá --dir." >&2; exit 1; }
-        echo "Clonando $DOTFILES_REPO en $DOTFILES_DIR ..."
-        git clone --depth=1 "$DOTFILES_REPO" "$DOTFILES_DIR"
+        echo "Clonando $D4RKFILES_REPO en $DOTFILES_DIR ..."
+        git clone --depth=1 "$D4RKFILES_REPO" "$DOTFILES_DIR"
         exec "$DOTFILES_DIR/install.sh" --dir "$DOTFILES_DIR" "$@"
     fi
 fi
