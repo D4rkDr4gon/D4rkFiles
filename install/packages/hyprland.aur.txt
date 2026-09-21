@@ -1,0 +1,12 @@
+# Sesión Hyprland — AUR
+walker                        # buscador (Settings → APPS)
+elephant                      # backend de walker
+elephant-desktopapplications
+elephant-runner
+elephant-calc
+elephant-websearch
+cliamp                        # reproductor TUI (módulo de audio de waybar)
+hyprshell-bin                 # overview de workspaces + Alt+Tab con previews
+hyprfm-git                    # gestor de archivos para Hyprland (opcional; FILE_MANAGER)
+hyprmon                       # configuración de monitores (Settings → DISPLAYS)
+herdr                         # multiplexor de terminal (Mod+Shift+Enter)

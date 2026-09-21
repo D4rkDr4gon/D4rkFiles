@@ -1,0 +1,21 @@
+# Sesión Hyprland (Wayland)
+hyprland
+hyprpaper
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+waybar
+swayosd
+wl-clipboard
+cliphist
+grim
+slurp
+wlr-randr
+gtk-layer-shell
+kdeconnect
+wayvnc
+
+# Login y bloqueo de pantalla
+sddm
+gtklock
+gtklock-playerctl-module
+gtklock-userinfo-module

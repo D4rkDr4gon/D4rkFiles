@@ -1,0 +1,4 @@
+# Paquetes del AUR comunes (requieren yay; se omiten con --no-aur)
+sublime-text-4      # editor por defecto de los atajos (Mod+S); cambiable con EDITOR_GUI
+papirus-folders     # recolorea las carpetas de Papirus según el tema
+matcha-gtk-theme    # tema GTK usado por config/gtk-3.0/settings.ini

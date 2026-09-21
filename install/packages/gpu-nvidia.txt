@@ -1,0 +1,4 @@
+# GPU NVIDIA (detectada con lspci): solo las utilidades de espacio de usuario.
+# El módulo del kernel (nvidia / nvidia-dkms / nvidia-open) depende de tu kernel:
+# instalalo vos según la wiki de Arch.
+nvidia-utils

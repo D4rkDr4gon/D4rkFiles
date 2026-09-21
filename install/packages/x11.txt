@@ -1,0 +1,16 @@
+# Sesión Qtile (X11)
+qtile
+python-xcffib
+python-cairocffi
+python-dbus-next
+python-psutil
+python-iwlib
+polybar
+picom
+xorg-server
+xorg-xinit
+xorg-xrandr
+xorg-xset
+feh
+flameshot
+copyq

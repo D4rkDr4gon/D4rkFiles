@@ -1,0 +1,3 @@
+# GPU Intel (detectada con lspci)
+mesa
+vulkan-intel

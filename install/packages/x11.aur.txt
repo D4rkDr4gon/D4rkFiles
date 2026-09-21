@@ -1,0 +1,4 @@
+# Sesión Qtile (X11) — AUR
+qtile-extras        # widgets extra de Qtile
+betterlockscreen    # bloqueo de pantalla en X11
+i3lock-color

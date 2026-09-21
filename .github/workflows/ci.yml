@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint y comprobaciones estáticas
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: shellcheck (todos los .sh)
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+          git ls-files -z '*.sh' | xargs -0 shellcheck --severity=warning
+
+      - name: Sintaxis Python
+        run: git ls-files -z '*.py' | xargs -0 python3 -m py_compile
+
+      - name: Sintaxis zsh
+        run: |
+          sudo apt-get install -y -qq zsh
+          for f in home/zsh/zshrc home/zsh/modules/*.zsh; do zsh -n "$f"; done
+
+      - name: JSON y TOML válidos
+        run: |
+          git ls-files -z 'themes/*/theme.json' | xargs -0 -n1 python3 -c 'import json,sys; json.load(open(sys.argv[1]))'
+          git ls-files -z '*.toml' | xargs -0 -n1 python3 -c 'import tomllib,sys; tomllib.load(open(sys.argv[1],"rb"))' || true
+
+      - name: Cada plantilla (.tpl) tiene su salida en .gitignore
+        run: |
+          fail=0
+          for t in $(git ls-files 'config/**/*.tpl' 'home/**/*.tpl' 'system/**/*.tpl'); do
+            out="${t%.tpl}"
+            git check-ignore -q "$out" || { echo "Falta en .gitignore: /$out"; fail=1; }
+          done
+          exit $fail
+
+      - name: Sin datos personales ni secretos
+        run: |
+          # Rutas de usuario, marcas personales y credenciales conocidas. Ajustá la lista si agregás algo legítimo.
+          if git grep -nIE '/home/[a-z_][a-z0-9_-]*/|/Users/[A-Za-z]+/|BEGIN [A-Z ]*PRIVATE KEY|ghp_[A-Za-z0-9]{36}|sk-ant-[A-Za-z0-9_-]{20,}|AKIA[0-9A-Z]{16}' \
+               -- . ':!home/zsh/p10k.zsh' ':!.github' ':!docs' ':!*.md' ':!scripts/dotfiles-doctor.sh' | grep -v 'home/zsh/'; then
+            echo "::error::Se encontraron rutas de usuario o posibles credenciales"; exit 1
+          fi
+
+  packages:
+    name: Los paquetes declarados existen (Arch)
+    runs-on: ubuntu-latest
+    container: archlinux:base
+    steps:
+      - name: Dependencias
+        run: pacman -Syu --noconfirm git jq curl
+      - uses: actions/checkout@v4
+      - name: Paquetes oficiales en los repos, AUR en el AUR
+        run: |
+          fail=0
+          for f in install/packages/*.txt; do
+            aur=false; [[ "$f" == *.aur.txt ]] && aur=true
+            for p in $(awk '!/^[[:space:]]*(#|$)/ {print $1}' "$f"); do
+              if $aur; then
+                n=$(curl -fsS "https://aur.archlinux.org/rpc/v5/info?arg[]=$p" | jq -r '.resultcount')
+                [ "$n" -ge 1 ] || { echo "No existe en el AUR: $p ($f)"; fail=1; }
+              else
+                pacman -Sddp "$p" >/dev/null 2>&1 || { echo "No existe en los repos: $p ($f)"; fail=1; }
+              fi
+            done
+          done
+          exit $fail
+
+  install-dry-run:
+    name: install.sh --dry-run y enlaces (Arch, otro usuario)
+    runs-on: ubuntu-latest
+    container: archlinux:base
+    steps:
+      - name: Dependencias
+        run: pacman -Syu --noconfirm git jq sudo bash imagemagick
+      - uses: actions/checkout@v4
+      - name: Usuario de prueba y repo en una ruta arbitraria
+        run: |
+          useradd -m tester && echo 'tester ALL=(ALL) NOPASSWD: ALL' > /etc/sudoers.d/tester
+          mkdir -p /opt/dotfiles-checkout && cp -a . /opt/dotfiles-checkout && chown -R tester /opt/dotfiles-checkout
+      - name: dry-run
+        run: su tester -c 'cd /opt/dotfiles-checkout && ./install.sh --dry-run --yes --no-upgrade'
+      - name: configure + links reales y doctor
+        run: |
+          su tester -c 'cd /opt/dotfiles-checkout && ./install.sh --yes --only configure,links && ./scripts/dotfiles-doctor.sh --no-color links configs'
