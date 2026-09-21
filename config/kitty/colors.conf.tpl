@@ -22,11 +22,6 @@ inactive_border_color @chip_bluetooth@
 bell_border_color @secondary@
 # }}}
 
-# {{{ Status bar (kitty)
-statusbar_fg @foreground@
-statusbar_bg @background@
-# }}}
-
 # {{{ Paleta ANSI
 color0  @chip_bluetooth@
 color1  @status_error@
