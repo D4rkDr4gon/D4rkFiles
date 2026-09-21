@@ -26,6 +26,12 @@ configurar nada más: al abrir Claude Code u opencode, la skill aparece y se act
 encaja con su descripción. Si instalás alguna de las dos herramientas **después** de los dotfiles,
 corré `./install.sh --only links`. Para no instalarla: `./install.sh --no-skills`.
 
+## Statusline y widget "Agentes IA"
+
+El mismo paso configura la statusline de Claude Code (`config/claude/statusline-command.sh`, con los colores
+del tema): se enlaza a `~/.claude/statusline-command.sh` y se agrega `statusLine` a `~/.claude/settings.json`
+**solo si no tenés una**, con backup. Es la que alimenta el widget "Agentes IA" de waybar.
+
 ## Qué reglas le da
 
 Las mismas que sigue el repo (ver [structure.md](structure.md) y [security.md](security.md)):

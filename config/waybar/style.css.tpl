@@ -30,12 +30,33 @@ window#waybar {
 }
 
 #custom-brillo,
+#custom-claude-agents,
 #pulseaudio,
 #network,
+#custom-vpn,
 #custom-bluetooth,
 #battery {
     padding: 0 12px;
     color: @primary;
+}
+
+#custom-claude-agents.warning {
+    color: @alert;
+}
+
+#custom-claude-agents.critical {
+    color: @alert;
+    font-weight: bold;
+}
+
+#custom-vpn.connected {
+    color: @alert;
+    font-weight: bold;
+}
+
+#custom-vpn.disabled,
+#custom-vpn.disconnected {
+    color: @disabled;
 }
 
 #clock {

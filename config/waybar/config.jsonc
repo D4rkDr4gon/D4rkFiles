@@ -4,7 +4,7 @@
     "height": 28,
     "modules-left": ["custom/logo", "custom/workspaces"],
     "modules-center": ["clock"],
-    "modules-right": ["custom/brillo", "pulseaudio", "network", "custom/bluetooth", "battery"],
+    "modules-right": ["custom/brillo", "custom/claude-agents", "pulseaudio", "network", "custom/vpn", "custom/bluetooth", "battery"],
 
     "custom/logo": {
         "format": "  ",
@@ -36,6 +36,15 @@
         "on-scroll-down": "brightnessctl set 5%-"
     },
 
+    "custom/claude-agents": {
+        "exec": "bash $HOME/.config/waybar/scripts/claude-agents-status.sh",
+        "interval": 30,
+        "return-type": "json",
+        "format": "{}",
+        "tooltip": true,
+        "on-click": "bash $HOME/.config/waybar/scripts/claude-agents-launch.sh"
+    },
+
     "pulseaudio": {
         "format": "󰕾 {volume}%",
         "format-muted": "  Muted",
@@ -49,6 +58,15 @@
         "format-ethernet": "󰛳",
         "format-disconnected": "󰤭",
         "on-click": "bash $HOME/.config/waybar/scripts/float-tui-launch.sh impala 'Red Wi-Fi' 90 28 impala"
+    },
+
+    "custom/vpn": {
+        "exec": "bash $HOME/.config/waybar/scripts/vpn-status.sh",
+        "interval": 5,
+        "return-type": "json",
+        "format": "{}",
+        "tooltip": true,
+        "on-click": "bash $HOME/.config/waybar/scripts/float-tui-launch.sh vpn-tui 'VPN' 90 28 python3 $HOME/.local/share/dotfiles/tools/vpn_tui.py"
     },
 
     "custom/bluetooth": {

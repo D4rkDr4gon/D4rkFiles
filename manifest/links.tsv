@@ -41,3 +41,4 @@ system/systemd-user/hyprland-session-init.service	.config/systemd/user/hyprland-
 system/systemd-user/elephant.service	.config/systemd/user/elephant.service	hyprland
 skills/d4rkfiles	.claude/skills/d4rkfiles	skills
 skills/d4rkfiles	.config/opencode/skills/d4rkfiles	skills
+config/claude/statusline-command.sh	.claude/statusline-command.sh	skills

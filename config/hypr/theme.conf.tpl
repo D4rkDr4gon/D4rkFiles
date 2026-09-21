@@ -27,6 +27,7 @@ windowrule = match:class ^(remmina)$, opacity @opacity_secondary@ override
 windowrule = match:class ^(spotify)$, opacity @opacity_secondary@ override
 
 # TUIs flotantes: siempre casi opacos para que se lean con cualquier tema.
+windowrule = match:class ^(claude-agents)$, opacity @opacity_tui@ override
 windowrule = match:class ^(cliamp)$, opacity @opacity_tui@ override
 windowrule = match:class ^(bluetui)$, opacity @opacity_tui@ override
 windowrule = match:class ^(impala)$, opacity @opacity_tui@ override

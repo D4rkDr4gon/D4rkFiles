@@ -83,6 +83,13 @@ theme_load_tokens() {
     done
     TOK[bg_r]=${TOK[background_r]}; TOK[bg_g]=${TOK[background_g]}; TOK[bg_b]=${TOK[background_b]}
 
+    # Colores ANSI de 24 bits (statusline de Claude Code): \033[38;2;R;G;Bm
+    local ac h2
+    for ac in ok:status_ok warn:status_warn error:status_error primary:primary; do
+        h2="${TOK[${ac#*:}]#\#}"
+        TOK[ansi_${ac%%:*}]="$(printf '\\033[38;2;%d;%d;%dm' "$((16#${h2:0:2}))" "$((16#${h2:2:2}))" "$((16#${h2:4:2}))")"
+    done
+
     if [[ -n "${TOK[opencode_theme]}" ]]; then
         TOK[opencode_theme_line]="  \"theme\": \"${TOK[opencode_theme]}\","
     else

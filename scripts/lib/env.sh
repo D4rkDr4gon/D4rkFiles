@@ -101,7 +101,7 @@ df_load_user_conf() {
     : "${KB_LAYOUT:=$(df_detect_kb_layout)}"
     : "${KB_VARIANT:=}"
     : "${DISPLAY_MANAGER:=sddm}"
-    : "${DEFAULT_THEME:=nord}"
+    : "${DEFAULT_THEME:=red-dark}"
     : "${BANNER_ART_FILE:=}"
     : "${EXTRA_WALLPAPER_DIRS:=}"
     WALLPAPER_DIRS="${EXTRA_WALLPAPER_DIRS:+$EXTRA_WALLPAPER_DIRS:}$XDG_DATA_HOME/backgrounds:$DOTFILES_DIR/assets/wallpapers"

@@ -16,7 +16,7 @@ Lo leen los scripts, zsh, Hyprland y Qtile. Todo es opcional: lo que falta se au
 | `TERMINAL`, `BROWSER`, `FILE_MANAGER`, `EDITOR_GUI` | Apps de los atajos | kitty, firefox, thunar, subl |
 | `KB_LAYOUT`, `KB_VARIANT` | Teclado de Hyprland/Qtile | `localectl` → `vconsole.conf` → `us` |
 | `DISPLAY_MANAGER` | Login manager a habilitar | `sddm` |
-| `DEFAULT_THEME` | Tema del instalador | `nord` |
+| `DEFAULT_THEME` | Tema del instalador | `red-dark` |
 | `EXTRA_WALLPAPER_DIRS` | Carpetas extra de wallpapers (separadas por `:`) | — |
 | `VPN_PROFILE` | Conexión de NetworkManager para los alias `vpnup`/`vpndown` | — |
 | `VNC_RES`, `VNC_PORT` | Monitor virtual de `wayvnc-toggle` | `1920x1080`, `5900` |
@@ -58,6 +58,18 @@ export PATH="$HOME/tools/bin:$PATH"
 Copiá imágenes a `~/.local/share/backgrounds/` (o a una carpeta de `EXTRA_WALLPAPER_DIRS`).
 `Settings → BACKGROUNDS` (`Mod+Shift+Space`) las lista todas. Para que un **tema** use una:
 poné su nombre de archivo en `"wallpaper"` de `theme.json`.
+
+## VPN
+
+El módulo de VPN de waybar y su panel (`tools/vpn_tui.py`, `Super+K` no; se abre con click en el ícono) trabajan
+sobre **NetworkManager** y no traen ningún perfil. Para agregar el tuyo:
+
+1. Copiá el archivo de tu proveedor a `~/.config/dotfiles/vpn/` (`.conf` = WireGuard, `.ovpn` = OpenVPN).
+2. Abrí el panel → pestaña **2 Importar** → Enter sobre el archivo.
+3. En **1 Conexiones**: Enter conecta o desconecta, `d` elimina el perfil, `r` refresca.
+
+También sirve `nmcli connection import type wireguard file <archivo>`. Los perfiles que piden contraseña u OTP
+se conectan en la terminal (`nmcli --ask`). Los archivos de `~/.config/dotfiles/vpn/` nunca se versionan.
 
 ## Webapps
 

@@ -15,7 +15,7 @@
 │   ├── lib/                env.sh (entorno) y theme.sh (motor de temas)
 │   └── wayland/            wayvnc-toggle
 ├── tools/                  TUIs en Python (cheatsheet de atajos)
-├── skills/d4rkfiles/       Skill de IA para Claude Code y opencode
+├── skills/d4rkfiles/       Skill de IA para Claude Code y opencode (la statusline va en config/claude/)
 ├── themes/                 theme.json + preview.png por tema
 ├── assets/                 banner-art.txt, dragon.txt y wallpapers/ (generados por gen-assets.sh)
 ├── docs/                   Esta documentación

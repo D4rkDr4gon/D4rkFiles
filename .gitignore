@@ -1,6 +1,7 @@
 # ── Archivos generados desde plantillas (*.tpl) ────────────────────────────
 # `scripts/theme-switch.sh` los renderiza junto a su plantilla. Se editan en
 # el .tpl, nunca acá. El CI verifica que cada .tpl tenga su línea en esta lista.
+/config/claude/statusline-command.sh
 /config/dunst/dunstrc
 /config/fprint-osd/style.css
 /config/gtk-3.0/gtk.css
