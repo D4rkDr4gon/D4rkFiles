@@ -47,7 +47,7 @@ if [[ -n "$VPN_PROFILE" ]]; then
   alias vpndown="nmcli connection down \"$VPN_PROFILE\""
 fi
 
-# Pantalla compartida por VNC (segundo monitor, ver docs/configuration/wayvnc.md)
+# Pantalla compartida por VNC (segundo monitor, ver docs/components.md)
 alias vnc-on="$DOTFILES/scripts/wayland/wayvnc-toggle.sh on"
 alias vnc-off="$DOTFILES/scripts/wayland/wayvnc-toggle.sh off"
 alias vnc-status="$DOTFILES/scripts/wayland/wayvnc-toggle.sh status"

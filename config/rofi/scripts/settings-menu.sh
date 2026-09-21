@@ -191,7 +191,7 @@ main() {
             ;;
         "󰏓  APPS"|APPS)
             # Walker en Hyprland, el combi de rofi en Qtile/X11 (Walker no corre
-            # bajo X11). Mod+Space usa rofi drun en ambos (ver docs/configuration/walker.md).
+            # bajo X11). Mod+Space usa rofi drun en ambos (ver docs/components.md).
             if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
                 walker
             else

@@ -1,6 +1,6 @@
 // hyprshell — overview de workspaces (Mod+W / swipe 3 dedos arriba) y Alt+Tab con previews.
 // Editar a mano o con `hyprshell config edit`. Se recarga solo al guardar.
-// Colores/forma: styles.css (los pisa scripts/theme-switch.sh, no editar los @define-color a mano).
+// Colores/forma: styles.css se genera desde styles.css.tpl (scripts/theme-switch.sh); editá el .tpl.
 (
     version: 4,
     windows: Some(
