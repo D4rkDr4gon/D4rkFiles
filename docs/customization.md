@@ -73,8 +73,20 @@ se conectan en la terminal (`nmcli --ask`). Los archivos de `~/.config/dotfiles/
 
 ## Webapps
 
-`scripts/webapps.sh` lee `~/.config/dotfiles/webapps.conf` (una por línea:
-`nombre|manifest|página inicial|ícono opcional`). Sin ese archivo crea solo YouTube.
+Sitios web como apps de escritorio (ventana propia, sin pestañas, con ícono en el launcher)
+sobre **firefoxpwa** (`sudo pacman -S firefoxpwa`).
+
+**Settings → 󰖟 WEBAPPS** abre un gestor en la terminal (`scripts/webapp-manager.sh`):
+
+- `+ Nueva webapp`: pegá la URL (`drive.proton.me` alcanza) y confirmá el nombre. Detecta el
+  manifest del sitio; si no es PWA arma uno mínimo con el favicon, así sirve para cualquier web.
+- Sobre una app: `enter` la abre, `ctrl-d` la borra, `ctrl-r` la reinstala.
+
+La lista vive en `~/.config/dotfiles/webapps.conf` (una por línea:
+`nombre|manifest|página inicial|ícono`, manifest vacío = sitio sin PWA). El gestor la crea
+a partir de [`webapps.conf.example`](../webapps.conf.example) la primera vez; sin ese archivo
+`scripts/webapps.sh` usa el ejemplo (solo YouTube). `scripts/webapps.sh [nombre]` instala lo
+que falte de la lista, así que en otra máquina alcanza con copiar tu `webapps.conf` y correrlo.
 
 ## Cambiar la config de una app
 

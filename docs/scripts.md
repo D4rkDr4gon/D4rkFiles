@@ -15,6 +15,7 @@
 | `scripts/barupdate.sh` | Reinicia la barra (waybar o polybar según la sesión) |
 | `scripts/welcome.sh` | Notificación de bienvenida con tu nombre |
 | `scripts/webapps.sh` | Webapps con firefoxpwa ([customization.md](customization.md#webapps)) |
+| `scripts/webapp-manager.sh` | Gestor TUI de webapps: Settings → WEBAPPS ([customization.md](customization.md#webapps)) |
 | `scripts/setup-sddm-theme.sh` | Instala el tema de login de SDDM |
 | `scripts/wayland/wayvnc-toggle.sh` | Monitor virtual por VNC |
 | `scripts/bluetooth-status.sh` | Ícono de estado de bluetooth (waybar y polybar) |

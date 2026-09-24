@@ -10,7 +10,7 @@ CURRENT_THEME="$DOTFILES_STATE_DIR/current_theme.json"
 
 show_main_menu() {
     local items
-    items=$(printf "  THEMES\n  WORKSPACES\n󰏓  APPS\n  SEARCH\n  BACKGROUNDS\n  NOTIFICATIONS\n  SHORTCUTS\n󰍹  DISPLAYS\n󰚰  UPDATE\n")
+    items=$(printf "  THEMES\n  WORKSPACES\n󰏓  APPS\n󰖟  WEBAPPS\n  SEARCH\n  BACKGROUNDS\n  NOTIFICATIONS\n  SHORTCUTS\n󰍹  DISPLAYS\n󰚰  UPDATE\n")
     # lines = cantidad de opciones, para que se vean todas sin scroll
     printf '%s\n' "$items" \
         | rofi -dmenu -p "Settings" -theme "$HOME/.config/rofi/theme.rasi" \
@@ -197,6 +197,9 @@ main() {
             else
                 bash "$SETTINGS_DIR/spotlight-launch.sh"
             fi
+            ;;
+        *"WEBAPPS")
+            bash "$HOME/.config/waybar/scripts/webapps-launch.sh"
             ;;
         "  SEARCH"|SEARCH)
             web_search

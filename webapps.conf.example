@@ -1,0 +1,9 @@
+# ~/.config/dotfiles/webapps.conf — tus webapps (PWAs sobre firefoxpwa).
+#
+# Lo crea Settings → WEBAPPS la primera vez que agregás una (o copiá este
+# archivo). Vive FUERA del repo. Sin él, scripts/webapps.sh usa esta lista.
+#
+# Formato: nombre|manifest|página inicial|ícono
+#   manifest vacío → el sitio no es PWA; se arma un manifest mínimo al vuelo
+#   ícono vacío    → el del manifest
+YouTube|https://www.youtube.com/manifest.webmanifest|https://www.youtube.com/|
