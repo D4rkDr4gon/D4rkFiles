@@ -20,7 +20,10 @@ WORKSPACE_NAMES = {
     3: "  ",
     4: "  ",
     5: "  ",
-    6: "  "
+    6: "  ",
+    7: "  ",
+    8: "  ",
+    9: "  "
 }
 
 
@@ -73,7 +76,7 @@ def get_workspaces():
     workspaces = []
     names = []
 
-    for i in range(1, 7):  # Workspaces 1-6
+    for i in range(1, len(WORKSPACE_NAMES) + 1):  # Workspaces 1-9
         label = WORKSPACE_NAMES.get(i, str(i))
 
         # Buscar info del workspace i
