@@ -37,7 +37,8 @@ Barra: polybar; compositor: picom.
   `config.jsonc` no lleva batería ni interfaz fijas: waybar autodetecta.
   - **Agentes IA** (`custom/claude-agents`): uso de tu suscripción de Claude Code (ventanas de 5 h y 7 días) y el
     contexto de cada sesión abierta de Claude Code y opencode. Click abre el panel. El uso de Claude lo escribe la
-    statusline (`config/claude/statusline-command.sh`, que el instalador enlaza y activa en
+    statusline (`config/claude/statusline-command.sh`, que muestra `[modelo] - [esfuerzo] | ctx | 5h | 7d | carpeta`
+    y que el instalador enlaza y activa en
     `~/.claude/settings.json` solo si no tenés una); el de opencode se lee directo de su storage.
   - **VPN** (`custom/vpn`): estado de tus perfiles de NetworkManager; click abre `tools/vpn_tui.py`. **Viene vacío**:
     no trae ningún perfil ni proveedor (ver [customization.md](customization.md#vpn)). Sin perfiles muestra "Sin

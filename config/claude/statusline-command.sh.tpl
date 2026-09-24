@@ -1,11 +1,18 @@
 #!/bin/bash
-# Status line derived from PS1='[\u@\h \W]\$ ' in ~/.bashrc
+# Status line: [modelo] - [esfuerzo] | ctx | 5h | 7d | carpeta actual
 # + porcentaje de consumo de la suscripción (ventana de 5h y semanal de 7 días)
 # + porcentaje de contexto usado en la sesión (mismo dato que /context)
 
 input=$(cat)
 
-PROMPT=$(printf '[%s@%s %s]' "$(whoami)" "$(hostname -s)" "$(basename "$(pwd)")")
+MODEL=$(echo "$input" | jq -r '.model.display_name // .model.id // empty')
+EFFORT=$(echo "$input" | jq -r '.effort.level // empty')
+CWD=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // empty')
+[ -z "$CWD" ] && CWD=$(pwd)
+DIR=$(basename "$CWD")
+
+PROMPT="[${MODEL:-?}]"
+[ -n "$EFFORT" ] && PROMPT="${PROMPT} - [${EFFORT}]"
 
 GREEN='@ansi_ok@'
 YELLOW='@ansi_warn@'
@@ -86,6 +93,7 @@ fi
 LINE="$PROMPT"
 [ -n "$CTX" ] && LINE="${LINE} | ${CTX}"
 [ -n "$LIMITS" ] && LINE="${LINE} | ${LIMITS}"
+LINE="${LINE} | ${DIR}"
 
 echo -e "$LINE"
 
