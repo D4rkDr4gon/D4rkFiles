@@ -51,11 +51,18 @@
     ### Misc ###
     browser = /usr/bin/firefox
     always_run_script = true
+    # Click del medio: invoca la acción (ActionInvoked) -> scripts/wayland/notif-jump.py
+    # salta al workspace de la app. close_current la deja en el historial.
+    mouse_middle_click = do_action, close_current
     title = Dunst
     class = Dunst
     corner_radius = @radius@
     ignore_dbusclose = false
     force_xwayland = false
+
+# Anota id -> app de cada notificación para scripts/wayland/notif-jump.py.
+[notif_jump_record]
+    script = ~/.config/dunst/scripts/notif-record.sh
 
 [urgency_low]
     background = "@chip_battery@"

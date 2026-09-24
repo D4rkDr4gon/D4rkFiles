@@ -32,6 +32,7 @@ window#waybar {
 #custom-brillo,
 #custom-claude-agents,
 #pulseaudio,
+#custom-dnd,
 #network,
 #custom-vpn,
 #custom-bluetooth,
@@ -47,6 +48,10 @@ window#waybar {
 #custom-claude-agents.critical {
     color: @alert;
     font-weight: bold;
+}
+
+#custom-dnd.active {
+    color: @alert;
 }
 
 #custom-vpn.connected {

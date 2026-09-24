@@ -32,7 +32,7 @@ Barra: polybar; compositor: picom.
 ## waybar y polybar
 
 - **waybar** (`config/waybar/`, Wayland): logo → Settings, workspaces, reloj, brillo,
-  **Agentes IA**, audio (cliamp), red (impala), **VPN**, bluetooth (bluetui), batería. Los paneles se abren como
+  **Agentes IA**, audio (cliamp), **No molestar**, red (impala), **VPN**, bluetooth (bluetui), batería. Los paneles se abren como
   **popups flotantes** con `config/waybar/scripts/float-tui-launch.sh` (abre / enfoca / cierra).
   `config.jsonc` no lleva batería ni interfaz fijas: waybar autodetecta.
   - **Agentes IA** (`custom/claude-agents`): uso de tu suscripción de Claude Code (ventanas de 5 h y 7 días) y el
@@ -40,6 +40,9 @@ Barra: polybar; compositor: picom.
     statusline (`config/claude/statusline-command.sh`, que muestra `[modelo] - [esfuerzo] | ctx | 5h | 7d | carpeta`
     y que el instalador enlaza y activa en
     `~/.claude/settings.json` solo si no tenés una); el de opencode se lee directo de su storage.
+  - **No molestar** (`custom/dnd`, al lado del audio): `󰂛` activado (color `@alert`), `󰂚` desactivado.
+    Click hace toggle (`dnd-menu.sh --toggle`), click derecho abre el menú. Lee la regla `dnd_global` de dunst
+    (`config/waybar/scripts/dnd-status.sh`) y se refresca al instante con `pkill -RTMIN+9 waybar`.
   - **VPN** (`custom/vpn`): estado de tus perfiles de NetworkManager; click abre `tools/vpn_tui.py`. **Viene vacío**:
     no trae ningún perfil ni proveedor (ver [customization.md](customization.md#vpn)). Sin perfiles muestra "Sin
     perfiles VPN configurados".
@@ -67,6 +70,12 @@ principal por una condición de carrera conocida entre walker y elephant.
 
 - **dunst** — `dunstrc` es generado. No molestar escribe `dunstrc.d/50-dnd.conf` (ignorado por
   git) y guarda su estado en `~/.local/state/dotfiles/`.
+  **Click del medio** en una notificación (solo Hyprland) enfoca la ventana de la app que la mandó, cambiando de
+  workspace: dunst invoca la acción (`mouse_middle_click = do_action, close_current`) y
+  `scripts/wayland/notif-jump.py` escucha la señal `ActionInvoked` con `dbus-monitor`. Busca la ventana por el PID
+  de la conexión D-Bus que mandó la notificación (distingue webapps de FirefoxPWA, que notifican como `Firefox`) y,
+  si no, por nombre de app con el log de `config/dunst/scripts/notif-record.sh` (regla `[notif_jump_record]`).
+  Solo sirve con notificaciones que traen acción (navegadores, Discord, Telegram...); un `notify-send` pelado solo se cierra.
 - **swayosd** — OSD de volumen y brillo (Wayland). No relee su CSS en caliente: el motor de
   temas reinicia el servidor.
 - **fprint-osd** — OSD de huella para `sudo`/lock vía `fprintd`. Solo arranca si `fprintd` está instalado.

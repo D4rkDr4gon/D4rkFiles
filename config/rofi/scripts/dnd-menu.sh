@@ -42,6 +42,8 @@ is_dnd_active() { [ "$(cat "$STATE_GLOBAL")" = "true" ]; }
 set_dnd() {
     echo "$1" > "$STATE_GLOBAL"   # true|false
     write_dropin
+    # Refresca al instante el módulo custom/dnd de waybar ("signal": 9).
+    pkill -RTMIN+9 -x waybar 2>/dev/null
 }
 
 cancel_timer() {
@@ -221,6 +223,12 @@ if [ "$1" = "--disable-dnd" ]; then
     # este proceso, no queremos que nos mate antes de terminar el trabajo.
     set_dnd false
     rm -f "$TIMER_STATE"
+    exit 0
+fi
+
+if [ "$1" = "--toggle" ]; then
+    # Click en el módulo custom/dnd de waybar.
+    toggle_global
     exit 0
 fi
 
