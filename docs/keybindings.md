@@ -78,6 +78,9 @@ Prefijo `Ctrl+Space`, luego: `c` nueva pestaña · `n`/`p` siguiente/anterior ·
 pestaña · `Shift+1…9` workspace · `a` siguiente agente · `Alt+g` lazygit · `Alt+e` nvim ·
 `Alt+t` btop · `Alt+d` lazydocker · `Alt+o` opencode.
 
+Plugins (etapa `herdr` del instalador): `Shift+m` gestor de plugins · `Shift+p`/`Shift+o`
+mascota (mostrar/ajustes) · `Shift+r`/`Shift+q` cuotas de agentes (refrescar/ajustes).
+
 ## Personalizar
 
 Editá `config/hypr/hyprland.conf` o `config/qtile/modules/keys.py`, o agregá los tuyos en

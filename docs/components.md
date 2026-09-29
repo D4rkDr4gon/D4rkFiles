@@ -91,7 +91,10 @@ principal por una condición de carrera conocida entre walker y elephant.
 ## Terminal y shell
 
 - **kitty** (`config/kitty/`) — `colors.conf` (colores, paleta ANSI y fuente) es generado.
-- **herdr** — multiplexor de terminal; `config.toml` es generado (sección `[theme.custom]`).
+- **herdr** — multiplexor de terminal; `config.toml` es generado (sección `[theme.custom]`
+  y colores de las filas de cuota). La etapa `herdr` del instalador agrega los plugins
+  herdr-pet (mascota neon), herdr-plugin-manager y herdr-agent-usage (cuota de Claude y
+  opencode en el sidebar; envuelve la statusline de Claude sin reemplazarla).
 - **zsh** (`home/zsh/`) — `zshrc` carga `modules/*.zsh` en orden:
 
 | Módulo | Contenido |

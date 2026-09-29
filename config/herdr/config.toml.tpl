@@ -63,6 +63,42 @@ description = "run lazydocker"
 width = "80%"
 height = "80%"
 
+# --- Plugins (los instala la etapa "herdr" del instalador) --------------------
+# herdr-pet (nikok6/herdr-pet): mascota animada sobre los paneles de agentes
+[[keys.command]]
+key = "prefix+shift+p"
+type = "plugin_action"
+command = "pet.toggle"
+description = "pet: toggle"
+
+[[keys.command]]
+key = "prefix+shift+o"
+type = "plugin_action"
+command = "pet.settings"
+description = "pet: settings"
+
+# herdr-plugin-manager (speardragon/herdr-plugin-manager): gestor de plugins +
+# marketplace en popup (prefix+p ya es previous_tab)
+[[keys.command]]
+key = "prefix+shift+m"
+type = "plugin_action"
+command = "ray.plugin-manager.open"
+description = "plugin manager"
+
+# herdr-agent-usage (levi-qiao/herdr-agent-usage): cuota/contexto de Claude y
+# opencode en el sidebar (filas en [ui.sidebar.agents])
+[[keys.command]]
+key = "prefix+shift+r"
+type = "plugin_action"
+command = "herdr-agent-usage.refresh"
+description = "refresh all agent quotas"
+
+[[keys.command]]
+key = "prefix+shift+q"
+type = "plugin_action"
+command = "herdr-agent-usage.open-settings"
+description = "open agent quota settings"
+
 [theme]
 name = "terminal"
 
@@ -86,7 +122,21 @@ new_cwd = "follow"
 tab_bar_position = "bottom"
 status_indicators = "symbols"
 window_title = "herdr: {workspace}"
+agent_panel_sort = "spaces" # herdr-agent-usage
 
 [ui.toast]
 delivery = "herdr"
 delay_seconds = 1
+
+# Filas de cuota de herdr-agent-usage (formato "gauges"). Los comentarios
+# "# herdr-agent-usage" son las marcas con las que el plugin reconoce y
+# desinstala sus filas: no borrarlos. Colores del tema activo.
+[ui.sidebar]
+
+[ui.sidebar.agents]
+row_gap = 0 # herdr-agent-usage
+rows = [[{ token = "$quota_group", bold = true, dim = false }], [{ token = "$quota_icon", fg = "@foreground@", bold = false, dim = false, rules = [{ contains = "⁠", fg = "@status_ok@" }, { contains = "⁡", fg = "@status_warn@" }, { contains = "⁢", fg = "@status_error@" }] }, { token = "$quota_provider_model", fg = "@foreground@", bold = true, dim = false }], [{ token = "$quota_model", fg = "@foreground@", bold = false, dim = false }], [{ token = "$quota_error", fg = "@status_warn@", bold = false, dim = false }], [{ token = "$quota_context_normal", fg = "@status_ok@", bold = false, dim = false }, { token = "$quota_context_warning", fg = "@status_warn@", bold = false, dim = false }, { token = "$quota_context_danger", fg = "@status_error@", bold = false, dim = false }], [{ token = "$quota_nest_gap", bold = false, dim = false }]] # herdr-agent-usage-row
+
+# Protocolo gráfico de kitty (lo necesita herdr-pet para dibujar la mascota)
+[experimental]
+kitty_graphics = true

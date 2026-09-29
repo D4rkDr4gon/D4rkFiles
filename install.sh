@@ -38,7 +38,7 @@ Cómo ejecutarlo:
   --list-stages       Lista las etapas y termina
   -h, --help          Esta ayuda
 
-Etapas (en orden): preflight packages configure links shell system optional summary
+Etapas (en orden): preflight packages configure links herdr shell system optional summary
 (configure va antes de links: renderiza las plantillas que luego se enlazan)
 
 Variables: D4RKFILES_REPO (URL del repo), DOTFILES_DIR (equivale a --dir).
@@ -50,7 +50,7 @@ ORIG_ARGS=("$@")   # copia para re-ejecutar el instalador del clone con las mism
 DRY_RUN=false; ASSUME_YES=false
 WITH_HYPRLAND=true; WITH_X11=true; USE_AUR=true; DO_UPGRADE=true; WITH_OLLAMA=false; WITH_SKILLS=true
 ONLY=""; SKIP=""; CLONE_DIR="${DOTFILES_DIR:-}"
-ALL_STAGES=(preflight packages configure links shell system optional summary)
+ALL_STAGES=(preflight packages configure links herdr shell system optional summary)
 
 while (($#)); do
     case "$1" in
