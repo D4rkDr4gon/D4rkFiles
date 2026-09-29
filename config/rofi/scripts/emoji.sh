@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # ──────────────────────────────────────────────────────────
 # emoji.sh — Selector de emojis con rofi (Mod+E)
-# Busca por nombre en inglés y copia el emoji al portapapeles
-# (wl-copy en Wayland, xclip en X11).
+# Grilla de emojis grandes; se busca por nombre en inglés (el nombre va
+# como término invisible, `meta` de rofi) y al elegir uno se copia al
+# portapapeles (wl-copy en Wayland, xclip en X11). Requiere una fuente de
+# emojis a color (noto-fonts-emoji).
 # ──────────────────────────────────────────────────────────
 THEME="$HOME/.config/rofi/theme.rasi"
 
@@ -882,9 +884,16 @@ emojis() {
 EOF
 }
 
-choice="$(emojis | rofi -dmenu -i -p "Emoji" -no-custom -theme "$THEME" \
-    -theme-str 'entry { placeholder: "Buscar emoji..."; }')" || exit 0
-emoji="${choice%% *}"
+# "emoji\0meta\x1fnombre": se muestra solo el emoji y se busca por el nombre
+emoji="$(emojis | awk '{ e = $1; $1 = ""; sub(/^ /, ""); printf "%s\0meta\x1f%s\n", e, $0 }' \
+    | rofi -dmenu -i -p "Emoji" -no-custom -theme "$THEME" \
+        -theme-str 'window { width: 600px; }' \
+        -theme-str 'entry { placeholder: "Buscar emoji (en inglés)..."; }' \
+        -theme-str 'listview { columns: 9; lines: 5; fixed-columns: true; flow: horizontal; }' \
+        -theme-str 'element { orientation: vertical; padding: 6px 0; }' \
+        -theme-str 'element-icon { enabled: false; }' \
+        -theme-str 'element-text { horizontal-align: 0.5; }' \
+        -theme-str 'listview, element, element-text { font: "Noto Color Emoji 20"; }')" || exit 0
 [[ -n "$emoji" ]] || exit 0
 
 if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null; then
