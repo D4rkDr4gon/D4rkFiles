@@ -41,9 +41,12 @@ Tema por defecto (`red-dark`) en Hyprland.
 </tr>
 </table>
 
-<p align="center">
-<img src="assets/screenshots/agentes-ia.jpg" alt="Widget de agentes IA" width="70%">
-</p>
+<table>
+<tr>
+<td><img src="assets/screenshots/herdr.jpg" alt="Herdr con espacios, agentes IA y la mascota"></td>
+<td><img src="assets/screenshots/agentes-ia.jpg" alt="Widget de agentes IA"></td>
+</tr>
+</table>
 
 ## Instalación
 
