@@ -88,6 +88,30 @@ a partir de [`webapps.conf.example`](../webapps.conf.example) la primera vez; si
 `scripts/webapps.sh` usa el ejemplo (solo YouTube). `scripts/webapps.sh [nombre]` instala lo
 que falte de la lista, así que en otra máquina alcanza con copiar tu `webapps.conf` y correrlo.
 
+## Modos de escritorio
+
+Un modo ubica un conjunto de apps en workspaces fijos según lo que vayas a hacer (ej:
+TRABAJO con el chat en el 2 y el navegador en el 5; JUGAR con Steam en el 1). No viene
+ninguno de fábrica: los creás vos.
+
+**Settings → 󰕮 MODES** (o `Mod + Shift + M`) muestra tus modos para aplicar uno y, al
+final, **Gestionar modos...**, que abre un gestor en la terminal (`scripts/mode-manager.sh`):
+
+- `+ Nuevo modo`: nombre e ícono (Nerd Font).
+- Sobre un modo: `enter` edita sus apps, `ctrl-a` lo aplica, `ctrl-r` lo renombra, `ctrl-d` lo borra.
+- Dentro de un modo, `+ Agregar app` lista las **ventanas abiertas**: elegís una y toma su
+  clase exacta y el comando de su `.desktop` (las terminales se identifican por título).
+  También se puede cargar a mano. Sobre una app: `enter` cambia el workspace, `ctrl-e` el
+  comando, `ctrl-n` el nombre, `ctrl-d` la quita.
+
+Al aplicar un modo (`scripts/mode-switch.sh <modo>`), cada app que ya está abierta se mueve
+a su workspace y las que no, se abren ahí sin sacarte del workspace actual. Las que no
+forman parte del modo no se tocan (no cierra nada). Termina en el workspace 1.
+
+Los modos viven en `~/.config/dotfiles/modes.conf`, fuera del repo (formato en
+[`modes.conf.example`](../modes.conf.example)); el último aplicado queda en
+`~/.local/state/dotfiles/desktop-mode`. Requiere Hyprland.
+
 ## Cambiar la config de una app
 
 Editá el archivo del repo (`config/<app>/...`); el symlink hace que el cambio aplique al

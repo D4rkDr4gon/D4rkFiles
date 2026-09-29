@@ -16,6 +16,8 @@
 | `scripts/welcome.sh` | Notificación de bienvenida con tu nombre |
 | `scripts/webapps.sh` | Webapps con firefoxpwa ([customization.md](customization.md#webapps)) |
 | `scripts/webapp-manager.sh` | Gestor TUI de webapps: Settings → WEBAPPS ([customization.md](customization.md#webapps)) |
+| `scripts/mode-switch.sh` | Aplica un modo de escritorio; sin argumentos, menú rofi ([customization.md](customization.md#modos-de-escritorio)) |
+| `scripts/mode-manager.sh` | Gestor TUI de modos: Settings → MODES → Gestionar modos ([customization.md](customization.md#modos-de-escritorio)) |
 | `scripts/setup-sddm-theme.sh` | Instala el tema de login de SDDM |
 | `scripts/wayland/wayvnc-toggle.sh` | Monitor virtual por VNC |
 | `scripts/bluetooth-status.sh` | Ícono de estado de bluetooth (waybar y polybar) |

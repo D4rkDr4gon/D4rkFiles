@@ -1,0 +1,15 @@
+# ~/.config/dotfiles/modes.conf — tus modos de escritorio.
+#
+# Lo crea Settings → MODES → Gestionar modos al guardar el primero (o copiá
+# este archivo). Vive FUERA del repo. Un modo ubica un conjunto de apps en
+# workspaces fijos: si la app ya está abierta se mueve, si no se abre ahí.
+#
+# Formato: modo|ícono|workspace|match|comando|nombre
+#   línea sin workspace → cabecera del modo (existe aunque no tenga apps)
+#   match               → class:<regex> o title:<regex> (ver `hyprctl clients`)
+#   ícono               → Nerd Font; se toma el primero no vacío del modo
+#
+# Ejemplo:
+#   ESTUDIO|󰑴||||
+#   ESTUDIO||1|class:^md\.obsidian\.Obsidian$|obsidian|Obsidian
+#   ESTUDIO||5|class:^firefox$|firefox|Firefox
