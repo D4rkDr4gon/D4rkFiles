@@ -7,6 +7,8 @@
 # emojis a color (noto-fonts-emoji).
 # ──────────────────────────────────────────────────────────
 THEME="$HOME/.config/rofi/theme.rasi"
+# Fuente del tema (colors.rasi, la genera theme-switch) para la barra de búsqueda
+FONT="$(grep -oP 'font:\s*"\K[^"]+' "$HOME/.config/rofi/colors.rasi" 2>/dev/null || echo "monospace 12")"
 
 emojis() {
     cat <<'EOF'
@@ -884,7 +886,9 @@ emojis() {
 EOF
 }
 
-# "emoji\0meta\x1fnombre": se muestra solo el emoji y se busca por el nombre
+# "emoji\0meta\x1fnombre": se muestra solo el emoji y se busca por el nombre.
+# La fuente de emojis va en "*" (no solo en la grilla): rofi calcula el alto
+# de fila con la fuente global y, si no, los emojis salen cortados.
 emoji="$(emojis | awk '{ e = $1; $1 = ""; sub(/^ /, ""); printf "%s\0meta\x1f%s\n", e, $0 }' \
     | rofi -dmenu -i -p "Emoji" -no-custom -theme "$THEME" \
         -theme-str 'window { width: 600px; }' \
@@ -893,7 +897,8 @@ emoji="$(emojis | awk '{ e = $1; $1 = ""; sub(/^ /, ""); printf "%s\0meta\x1f%s\
         -theme-str 'element { orientation: vertical; padding: 6px 0; }' \
         -theme-str 'element-icon { enabled: false; }' \
         -theme-str 'element-text { horizontal-align: 0.5; }' \
-        -theme-str 'listview, element, element-text { font: "Noto Color Emoji 20"; }')" || exit 0
+        -theme-str '* { font: "Noto Color Emoji 20"; }' \
+        -theme-str "inputbar, prompt, entry { font: \"$FONT\"; }")" || exit 0
 [[ -n "$emoji" ]] || exit 0
 
 if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null; then
