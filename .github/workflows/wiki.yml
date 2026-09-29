@@ -1,0 +1,41 @@
+name: Wiki
+
+# Publica docs/ en la wiki de GitHub. La fuente es docs/ (la usan la skill de IA
+# y check-docs); la wiki se regenera entera con scripts/build-wiki.sh.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'scripts/build-wiki.sh'
+      - '.github/workflows/wiki.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wiki
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    name: Publicar la wiki
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clonar la wiki
+        run: git clone "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git" wiki
+
+      - name: Generar páginas
+        run: ./scripts/build-wiki.sh wiki
+
+      - name: Publicar
+        working-directory: wiki
+        run: |
+          git add -A
+          if git diff --cached --quiet; then echo "Sin cambios"; exit 0; fi
+          git -c user.name="github-actions[bot]" -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit -q -m "Sincroniza con docs/ (${GITHUB_SHA::7})"
+          git push

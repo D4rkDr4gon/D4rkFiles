@@ -1,0 +1,1 @@
+Esta wiki se genera desde [`docs/`](https://github.com/D4rkDr4gon/D4rkFiles/tree/main/docs) con `scripts/build-wiki.sh`: los cambios se hacen ahí, por PR, no editando la wiki. · [Repositorio](https://github.com/D4rkDr4gon/D4rkFiles) · [Issues](https://github.com/D4rkDr4gon/D4rkFiles/issues)

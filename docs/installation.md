@@ -51,11 +51,14 @@ Se ejecutan en este orden (`./install.sh --list-stages`):
 3. **configure** — crea `~/.config/dotfiles/user.conf` (pregunta nombre y título) y
    `~/.config/dotfiles/hypr/local.conf`, y renderiza el tema por defecto.
 4. **links** — enlaces simbólicos de [`manifest/links.tsv`](../manifest/links.tsv), incluida la skill de IA ([ai-skill.md](ai-skill.md)).
-5. **shell** — powerlevel10k, shell por defecto (pregunta) y plugins de Neovim (pregunta).
-6. **system** — servicios, login manager, sesión "Hyprland (dotfiles)", unidades de
+5. **herdr** — si herdr está instalado: plugins herdr-pet, herdr-plugin-manager y herdr-agent-usage
+   (este último se compila con `cargo`; si falta, ofrece instalar `rust`) e integraciones con Claude Code y
+   opencode. Si herdr no está, se omite.
+6. **shell** — powerlevel10k, shell por defecto (pregunta) y plugins de Neovim (pregunta).
+7. **system** — servicios, login manager, sesión "Hyprland (dotfiles)", unidades de
    usuario y grupos. Todo lo que toca `/etc` o `/usr` pregunta antes.
-7. **optional** — Ollama y webapps (siempre opcionales).
-8. **summary** — próximos pasos.
+8. **optional** — Ollama y webapps (siempre opcionales).
+9. **summary** — próximos pasos.
 
 `configure` va antes de `links` porque renderiza las plantillas que luego se enlazan.
 

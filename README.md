@@ -101,19 +101,21 @@ Ver [docs/customization.md](docs/customization.md).
 
 ## Documentación
 
-| Doc | Contenido |
+Toda la documentación está en la **[wiki](https://github.com/D4rkDr4gon/D4rkFiles/wiki)**. Su fuente es [`docs/`](docs/): se edita ahí y un workflow la publica en la wiki en cada push a `main`.
+
+| Página | Contenido |
 |---|---|
-| [installation.md](docs/installation.md) | Opciones, etapas, paquetes, backups, desinstalar |
-| [customization.md](docs/customization.md) | `user.conf`, monitores, wallpapers, alias propios |
-| [structure.md](docs/structure.md) | Layout del repo y archivos generados |
-| [themes.md](docs/themes.md) | Motor de temas, `theme.json`, plantillas, crear un tema |
-| [design-system.md](docs/design-system.md) | Reglas de diseño compartidas |
-| [keybindings.md](docs/keybindings.md) | Atajos de Hyprland, Qtile, kitty y herdr |
-| [components.md](docs/components.md) | Qué hace cada pieza |
-| [scripts.md](docs/scripts.md) | Herramientas: doctor, update, theme, gen-assets… |
-| [security.md](docs/security.md) | Qué no se versiona y dónde van tus credenciales |
-| [ai-skill.md](docs/ai-skill.md) | La skill `d4rkfiles` para Claude Code y opencode |
-| [troubleshooting.md](docs/troubleshooting.md) | Problemas frecuentes |
+| [Instalación](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Instalación) | Opciones, etapas, paquetes, backups, desinstalar |
+| [Personalización](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Personalización) | `user.conf`, monitores, wallpapers, alias propios |
+| [Estructura](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Estructura) | Layout del repo y archivos generados |
+| [Temas](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Temas) | Motor de temas, `theme.json`, plantillas, crear un tema |
+| [Sistema de diseño](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Sistema-de-diseño) | Reglas de diseño compartidas |
+| [Atajos](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Atajos) | Atajos de Hyprland, Qtile, kitty y herdr |
+| [Componentes](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Componentes) | Qué hace cada pieza |
+| [Scripts](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Scripts) | Herramientas: doctor, update, theme, gen-assets… |
+| [Seguridad](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Seguridad) | Qué no se versiona y dónde van tus credenciales |
+| [Skill de IA](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Skill-de-IA) | La skill `d4rkfiles` para Claude Code y opencode |
+| [Problemas frecuentes](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Problemas-frecuentes) | Problemas frecuentes |
 
 ## Licencia
 

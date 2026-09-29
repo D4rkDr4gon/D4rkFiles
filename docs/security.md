@@ -18,7 +18,7 @@ rutas de usuario, nombres ni datos de una máquina concreta.
 |---|---|
 | Password de wayvnc | `~/.config/dotfiles/wayvnc/config` (permisos 600; lo crea `wayvnc-toggle.sh init`) |
 | API keys (opencode, MCP…) | Variables de entorno (`{env:MI_API_KEY}` en `opencode.jsonc`), en tu `~/.zshenv` |
-| VPN | Gestionada por NetworkManager (`nmcli`), no por archivos del repo |
+| VPN | Perfiles en NetworkManager (`nmcli`); los archivos a importar, en `~/.config/dotfiles/vpn/` (nunca se versionan) |
 
 ## Cómo se verifica
 

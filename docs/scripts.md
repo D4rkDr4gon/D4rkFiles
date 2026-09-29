@@ -21,6 +21,11 @@
 | `scripts/setup-sddm-theme.sh` | Instala el tema de login de SDDM |
 | `scripts/wayland/wayvnc-toggle.sh` | Monitor virtual por VNC |
 | `scripts/bluetooth-status.sh` | Ícono de estado de bluetooth (waybar y polybar) |
+| `scripts/wayland/notif-jump.py` | Click del medio en una notificación → enfoca la app que la mandó ([components.md](components.md#notificaciones-y-osds)) |
+| `scripts/check-docs.sh` | Verifica que la documentación no tenga enlaces ni rutas rotas (lo corre el CI) |
+| `scripts/build-wiki.sh` | Genera la [wiki](https://github.com/D4rkDr4gon/D4rkFiles/wiki) a partir de `docs/` |
+| `tools/shortcuts_tui.py` | Cheatsheet de atajos (`Super+K`) |
+| `tools/vpn_tui.py` | Panel de VPN de waybar ([customization.md](customization.md#vpn)) |
 
 ## dotfiles-doctor
 

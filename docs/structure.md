@@ -13,13 +13,15 @@
 ├── system/                 Lo que requiere root o systemd: sddm/, sessions/, systemd-user/
 ├── scripts/                Herramientas (theme-switch, doctor, update, lock-screen…)
 │   ├── lib/                env.sh (entorno) y theme.sh (motor de temas)
-│   └── wayland/            wayvnc-toggle
-├── tools/                  TUIs en Python (cheatsheet de atajos)
+│   └── wayland/            wayvnc-toggle, notif-jump (click del medio en notificaciones)
+├── tools/                  TUIs en Python (cheatsheet de atajos, panel de VPN)
 ├── skills/d4rkfiles/       Skill de IA para Claude Code y opencode (la statusline va en config/claude/)
-├── themes/                 theme.json + preview.png por tema
+├── themes/                 theme.json + preview.png por tema; templates/ = apps externas (Firefox, HyprFM, cliamp)
 ├── assets/                 banner-art.txt, dragon.txt y wallpapers/ (generados por gen-assets.sh)
-├── docs/                   Esta documentación
+├── docs/                   Esta documentación (fuente de la wiki; docs/wiki/ = portada y menú)
 ├── user.conf.example       Plantilla de tu configuración por usuario
+├── modes.conf.example      Ejemplo de modos de escritorio
+├── webapps.conf.example    Ejemplo de webapps
 └── .github/workflows/      CI
 ```
 
@@ -50,6 +52,6 @@ Si un archivo que querés editar tiene un `.tpl` al lado, **editá el `.tpl`**.
 | Ruta | Contenido |
 |---|---|
 | `~/.local/share/dotfiles` | Symlink al repo (lo crea el instalador) |
-| `~/.config/dotfiles/` | Tu `user.conf`, `local.zsh`, `hypr/*.conf`, `webapps.conf`, config de wayvnc |
-| `~/.local/state/dotfiles/` | Tema activo (`current_theme.json`), backups, logs |
+| `~/.config/dotfiles/` | Tu `user.conf`, `local.zsh`, `hypr/*.conf`, `webapps.conf`, `modes.conf`, `vpn/`, config de wayvnc |
+| `~/.local/state/dotfiles/` | Tema activo (`current_theme.json`), backups, logs, estado de No molestar y del modo de escritorio |
 | `~/.local/share/backgrounds/` | Tus wallpapers |

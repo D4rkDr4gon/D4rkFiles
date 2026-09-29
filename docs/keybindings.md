@@ -10,12 +10,13 @@ todos los atajos (y permite reasignar su combinación).
 |---|---|
 | `Super+Return` | Terminal (`TERMINAL`) |
 | `Super+Shift+Return` | herdr (multiplexor de terminal) en kitty |
-| `Super+Space` | Buscador de apps (rofi) |
+| `Super+Space` | Buscador (rofi: `drun` en Hyprland, `combi` con comandos, calculadora y web en Qtile) |
 | `Super+Shift+Space` | Menú Settings (temas, workspaces, fondos, notificaciones, monitores, updates) |
 | `Super+B` | Navegador (`BROWSER`) |
 | `Super+F` | Gestor de archivos (`FILE_MANAGER`) |
 | `Super+S` | Editor (`EDITOR_GUI`) |
 | `Super+K` | Cheatsheet de atajos |
+| `Super+Shift+M` | Hyprland: modos de escritorio ([customization.md](customization.md#modos-de-escritorio)) |
 | `Super+V` | Historial del portapapeles (Hyprland: cliphist + rofi · Qtile: CopyQ) |
 | `Super+L` | Menú de acciones: bloquear, suspender, reiniciar, apagar, salir |
 | `Print` / `Super+Shift+S` | Captura de pantalla (región; Wayland: guarda y copia) |
@@ -36,13 +37,17 @@ todos los atajos (y permite reasignar su combinación).
 | Arrastrar / redimensionar con mouse | `Super+clic izq. / der.` | `Super+clic izq. / der.` (ventanas flotantes) |
 | Alt+Tab con previews | `Alt+Tab` (hyprshell) | — |
 | Overview de workspaces | `Super+W` o 3 dedos hacia arriba | — |
+| Stacks (layout `Stack`) | — | `Super+Alt+S` agregar · `Super+Alt+D` quitar · `Super+Alt+M/N` mover la ventana al stack siguiente / anterior |
+| Reordenar en el layout | — | `Super+Ctrl+J/K` |
 
-## Workspaces (1–6)
+## Workspaces
+
+Hyprland tiene atajos para los workspaces 1–9; Qtile, para sus 6 grupos.
 
 | Atajo | Acción |
 |---|---|
-| `Super+1…6` | Ir al workspace (lo trae al monitor actual, como Qtile) |
-| `Super+Shift+1…6` | Mover la ventana al workspace |
+| `Super+1…9` | Ir al workspace (lo trae al monitor actual, como Qtile) |
+| `Super+Shift+1…9` | Mover la ventana al workspace |
 | `Ctrl+Tab` / `Ctrl+Shift+Tab` | Hyprland: workspace siguiente / anterior · Qtile: foco abajo / arriba en el layout |
 | `Super+-` | Hyprland: ir a un workspace vacío |
 | gesto de 3 dedos ←→ | Hyprland: cambiar de workspace |
