@@ -58,6 +58,7 @@ Barra: polybar; compositor: picom.
 | `settings-menu.sh` | Menú principal: THEMES, WORKSPACES, APPS, SEARCH, BACKGROUNDS, NOTIFICATIONS, SHORTCUTS, DISPLAYS, UPDATE |
 | `action-menu.sh` | Bloquear, suspender, reiniciar, apagar, salir |
 | `clipboard-menu.sh` | Historial de portapapeles (cliphist); `Supr` borra una entrada |
+| `emoji.sh` | Selector de emojis (`Mod+E`): busca por nombre y copia al portapapeles |
 | `dnd-menu.sh` | No molestar (global, por tiempo y por app) |
 | `notification-center.sh`, `update-menu.sh`, `workspace-switcher.sh`, `web-search.sh` | Historial de notificaciones, updates, workspaces, búsqueda |
 | `spotlight-launch.sh`, `spotlight-fallback.sh` | Buscador combinado (apps + comandos + calculadora + web) |
