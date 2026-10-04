@@ -17,7 +17,7 @@
     idle_threshold = 120
 
     ### Text ###
-    font = @font_mono@ 10
+    font = @font_mono@ @font_size_m3@
     line_height = 4
     markup = full
     format = "<b>%s</b>\n%b"

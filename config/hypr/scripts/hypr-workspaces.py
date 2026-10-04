@@ -13,6 +13,8 @@ import os
 import sys
 
 THEME_CSS = os.path.expanduser("~/.config/waybar/theme.css")
+WS_CONF = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"),
+                       "dotfiles", "hypr", "workspaces.conf")
 
 WORKSPACE_NAMES = {
     1: "  ",
@@ -23,8 +25,20 @@ WORKSPACE_NAMES = {
     6: "  ",
     7: "  ",
     8: "  ",
-    9: "  "
+    9: "  ",
+    10: "  "
 }
+
+
+def ws_count():
+    """Workspaces habilitados: línea "# count: N" del override que genera
+    Settings → Workspaces (~/.config/dotfiles/hypr/workspaces.conf); 9 si no está."""
+    try:
+        with open(WS_CONF) as f:
+            m = re.search(r"^# count: *(\d+)", f.read(), re.M)
+        return max(1, min(len(WORKSPACE_NAMES), int(m.group(1)))) if m else 9
+    except OSError:
+        return 9
 
 
 def load_theme_colors():
@@ -76,7 +90,7 @@ def get_workspaces():
     workspaces = []
     names = []
 
-    for i in range(1, len(WORKSPACE_NAMES) + 1):  # Workspaces 1-9
+    for i in range(1, ws_count() + 1):  # Workspaces habilitados (1..N)
         label = WORKSPACE_NAMES.get(i, str(i))
 
         # Buscar info del workspace i

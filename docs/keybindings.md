@@ -42,13 +42,14 @@ todos los atajos (y permite reasignar su combinación).
 
 ## Workspaces
 
-Hyprland tiene atajos para los workspaces 1–9; Qtile, para sus 6 grupos.
+Hyprland tiene atajos para los workspaces 1–9 (la cantidad, de 1 a 10, se cambia en Settings →
+Workspaces); Qtile, para sus 6 grupos.
 
 | Atajo | Acción |
 |---|---|
-| `Super+1…9` | Ir al workspace (lo trae al monitor actual, como Qtile) |
-| `Super+Shift+1…9` | Mover la ventana al workspace |
-| `Ctrl+Tab` / `Ctrl+Shift+Tab` | Hyprland: workspace siguiente / anterior · Qtile: foco abajo / arriba en el layout |
+| `Super+1…N` | Ir al workspace (lo trae al monitor actual, como Qtile); el 10 es `Super+0` |
+| `Super+Shift+1…N` | Mover la ventana al workspace |
+| `Ctrl+Tab` / `Ctrl+Shift+Tab` | Hyprland: workspace siguiente / anterior (da la vuelta en 1..N) · Qtile: foco abajo / arriba en el layout |
 | `Super+-` | Hyprland: ir a un workspace vacío |
 | gesto de 3 dedos ←→ | Hyprland: cambiar de workspace |
 
@@ -90,3 +91,9 @@ mascota (mostrar/ajustes) · `Shift+r`/`Shift+q` cuotas de agentes (refrescar/aj
 
 Editá `config/hypr/hyprland.conf` o `config/qtile/modules/keys.py`, o agregá los tuyos en
 `~/.config/dotfiles/hypr/*.conf` (ver [customization.md](customization.md)).
+
+## Teclas de Settings y las TUIs
+
+Las teclas dentro de Settings y de las TUIs (VPN, Modes, Webapps…) se reasignan en
+Settings → Shortcuts → Settings y se guardan en `~/.config/dotfiles/keymap.json`. Detalle en
+[settings.md](settings.md#teclas-reasignables).

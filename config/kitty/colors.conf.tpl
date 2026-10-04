@@ -42,3 +42,4 @@ color15 @foreground@
 # }}}
 
 font_family      @font_mono@
+font_size        @font_size@.0

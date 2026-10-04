@@ -2,8 +2,9 @@
 """
 shortcuts_tui.py — Cheatsheet de shortcuts, ver + editar.
 
-Junta los atajos de Hyprland, kitty, herdr, Qtile (X11) y los defaults de
-LazyVim en una tab por app (no una lista
+Junta los atajos de Hyprland, kitty, herdr, Qtile (X11), los defaults de
+LazyVim y las teclas de las propias TUIs (Settings y sus secciones: keymap
+de dtui en ~/.config/dotfiles/keymap.json) en una tab por app (no una lista
 única — con 140+ atajos mezclados se hacía ilegible), y permite reasignar
 el combo de cualquiera de los editables (reescribe el archivo real de
 config; LazyVim queda solo-lectura, son defaults del plugin instalado, no
@@ -30,7 +31,8 @@ from typing import Callable, Optional
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from dtui import THEME, DView, Field, FormModal, Panel, Table, ViewApp, css  # noqa: E402
+from dtui import (THEME, KEYMAP_FILE, DView, Field, FormModal, Panel, Table, ViewApp, css,  # noqa: E402
+                  key_display, load_keymap, save_keymap)
 
 from rich.text import Text  # noqa: E402
 from textual import on  # noqa: E402
@@ -70,6 +72,8 @@ class Shortcut:
     rewrite: Callable[[str, str], str]  # (línea original, combo nuevo) -> línea nueva
     reload_hint: str
     editable: bool = True
+    default: str = ""   # Settings: tecla por defecto del binding
+    section: str = ""   # Settings: sección a la que pertenece
 
 
 # ── Parsers ──────────────────────────────────────────────────────────────
@@ -287,13 +291,89 @@ def parse_lazyvim() -> list[Shortcut]:
     return out
 
 
-APP_ORDER = ["Hyprland", "kitty", "herdr", "Qtile", "LazyVim"]
+# ── Settings (teclas de las TUIs propias) ──
+# Cada binding de Settings y sus secciones tiene un id ("FirewallView.add");
+# reasignar = guardar {id: teclas} en el keymap de dtui. Se aplica al instante
+# en Settings (set_keymap) y en las TUIs sueltas la próxima vez que se abren.
+
+ACTION_DESC = {"cycle(1)": "next panel", "cycle(-1)": "previous panel", "toggle_focus": "menu ↔ section",
+               "menu_move(1)": "menu down", "menu_move(-1)": "menu up", "quit": "quit", "leave": "back / close",
+               "switch": "switch panel", "down": "down", "up": "up", "activate": "select card action",
+               "focus_search": "search", "refresh": "refresh", "reload": "reload"}
+KEY_RE = re.compile(r"^((ctrl|shift|alt|super|meta)\+)*([a-z0-9]|f\d{1,2}|[a-z_]{2,}|[^\w\s,])$")
+SETTINGS_GLOBAL = ("Settings menu", "Every TUI")
+
+
+def binding_desc(b) -> str:
+    if b.description:
+        return b.description
+    return ACTION_DESC.get(b.action, re.sub(r"[_()]", " ", b.action).strip())
+
+
+def settings_catalog() -> list:
+    """(sección, binding) de Settings. Dentro de Settings usa su propio módulo
+    (__main__); suelto, lo importa."""
+    cat = getattr(sys.modules.get("__main__"), "binding_catalog", None)
+    if cat is None:
+        sys.path.insert(0, str(Path(__file__).resolve().parent / "settings"))
+        import settings_tui  # noqa: PLC0415 - pesado: solo al abrir la pestaña
+        cat = settings_tui.binding_catalog
+    return cat()
+
+
+def parse_settings() -> list[Shortcut]:
+    try:
+        catalog = settings_catalog()
+    except Exception:  # noqa: BLE001 - sin Settings importable, la pestaña queda vacía
+        return []
+    km = load_keymap()
+    out = []
+    for section, b in catalog:
+        keys = km.get(b.id, b.key)
+        desc = f"{section} · {binding_desc(b)}" + ("  (changed)" if b.id in km else "")
+        out.append(Shortcut(app="Settings", combo=", ".join(key_display(k) for k in keys.split(",")),
+                            action=b.id, description=desc, file=KEYMAP_FILE, line_no=0,
+                            rewrite=lambda line, combo: line,
+                            reload_hint="applied now in Settings; standalone TUIs on next launch",
+                            default=b.key, section=section))
+    return out
+
+
+def save_settings_key(s: Shortcut, combo: str, all_rows: list[Shortcut]) -> Optional[str]:
+    """Valida y guarda la tecla nueva en el keymap. Devuelve un error o None.
+    Vacío = vuelve al default."""
+    km = load_keymap()
+    combo = combo.strip().lower().replace(" ", "")
+    if not combo:
+        km.pop(s.action, None)
+        save_keymap(km)
+        return None
+    keys = [k for k in combo.split(",") if k]
+    bad = [k for k in keys if not KEY_RE.match(k)]
+    if bad:
+        return f"Not a key: {', '.join(bad)} (examples: a, ctrl+s, f5, slash, left)"
+    mine = {key_display(k) for k in keys}
+    for o in all_rows:
+        if o is s or o.app != "Settings":
+            continue
+        same_scope = o.section == s.section or o.section in SETTINGS_GLOBAL or s.section in SETTINGS_GLOBAL
+        if same_scope and mine & {k.strip() for k in o.combo.split(",")}:
+            return f"Already used by {o.description.split('  (')[0]} ({o.combo})"
+    if ",".join(keys) == s.default:
+        km.pop(s.action, None)
+    else:
+        km[s.action] = ",".join(keys)
+    save_keymap(km)
+    return None
+
+
+APP_ORDER = ["Hyprland", "kitty", "herdr", "Qtile", "LazyVim", "Settings"]
 
 
 def load_all() -> list[Shortcut]:
     return (
         parse_hyprland() + parse_kitty() + parse_herdr() + parse_qtile()
-        + parse_lazyvim()
+        + parse_lazyvim() + parse_settings()
     )
 
 
@@ -311,6 +391,7 @@ FORMATS = {
     "kitty": "format: ctrl+shift+enter",
     "herdr": "format: prefix+alt+g",
     "Qtile": 'format: mod, shift, f   (quotes for mods other than "mod" are added automatically)',
+    "Settings": "format: a · ctrl+s · f5 · slash · left — several: left,minus · empty = back to default",
 }
 
 
@@ -461,6 +542,9 @@ class ShortcutsView(DView):
             self.app.notify(f"Read only: {s.reload_hint}", severity="warning")
             return
 
+        if s.app == "Settings":
+            return self.edit_settings_key(s)
+
         def done(v: Optional[dict]) -> None:
             new_combo = (v or {}).get("combo", "").strip()
             if not new_combo or new_combo == s.combo:
@@ -476,6 +560,25 @@ class ShortcutsView(DView):
         hint = f"Current: {s.combo}  ({s.description or s.action})\n{FORMATS.get(s.app, '')}"
         self.app.push_screen(FormModal(f"Edit shortcut · {s.app}", [Field("combo", "Combo", s.combo)],
                                        hint=hint), done)
+
+    def edit_settings_key(self, s: Shortcut) -> None:
+        """Reasigna una tecla de Settings (keymap de dtui) y la aplica en vivo."""
+        def done(v: Optional[dict]) -> None:
+            if v is None:
+                return
+            err = save_settings_key(s, v.get("combo", ""), self.shortcuts)
+            if err:
+                return self.app.notify_err(err)
+            self.app.set_keymap(load_keymap())     # en Settings: al instante
+            self.app.notify_ok("Saved. " + ("Back to default" if not v.get("combo", "").strip() else s.reload_hint))
+            self.action_reload()
+
+        cur = load_keymap().get(s.action, s.default)
+        hint = (f"{s.description}\nDefault: {s.default}   ·   id: {s.action}\n"
+                f"{FORMATS['Settings']}")
+        self.app.push_screen(FormModal(f"Edit key · {s.section}", [Field("combo", "Keys", cur)],
+                                       hint=hint), done)
+
 
 
 def ShortcutsApp() -> ViewApp:

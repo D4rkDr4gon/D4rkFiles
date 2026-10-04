@@ -49,10 +49,17 @@ Código de salida: 0 todo bien · 1 errores (o avisos con `--strict`) · 2 uso i
 ## dotfiles-update
 
 ```bash
-dotfiles-update [all|check|snapshot|rollback|pacman|aur|clean|orphans] [--no-snapshot] [--no-aur] [--no-clean]
+dotfiles-update [all|check|snapshot|rollback|pacman|aur|clean|orphans|audit|firmware] [--no-snapshot] [--no-aur] [--no-clean]
 ```
 
 `all` crea un snapshot de **Timeshift** (debe estar configurado), corre `pacman -Syu` y
 `yay -Sua`, limpia cachés y avisa de `.pacnew` y de reinicio por kernel nuevo (`linux`,
 `-lts`, `-zen`, `-hardened`). El modo puede ir en cualquier posición. Rollback:
 `sudo timeshift --restore`.
+
+- `audit` — paquetes con CVEs conocidos (`arch-audit`, consulta security.archlinux.org): los que
+  se arreglan actualizando y los que todavía no tienen parche. `check` y `all` muestran un resumen.
+- `firmware` — `sudo fwupdmgr refresh`, lista lo nuevo (`fwupdmgr get-updates`) y pregunta antes
+  de instalar. Leer el estado no necesita root; bajar metadata e instalar sí (no hay agente de polkit).
+
+Settings → Update corre estos modos en la misma ventana y muestra el resumen de cada uno.

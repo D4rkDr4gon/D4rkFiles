@@ -40,12 +40,15 @@ inicial en `FOCUS` y pausa sus timers con `visible_now` cuando su sección no se
 | Pieza | Regla |
 |---|---|
 | `Panel` | Borde redondeado con el título sobre el borde y un subtítulo de estado abajo a la derecha. El panel con foco va en `primary`; el resto, borde y título atenuados |
-| `Table` | Selección de fila completa (`chip_audio` + negrita con foco, `chip_battery` sin foco); la fila seleccionada conserva los colores de cada celda |
+| `Table` | Selección de fila completa (`chip_audio` + negrita con foco, `chip_battery` sin foco); la fila seleccionada conserva los colores de cada celda. `set_rows()` refresca sin parpadeo (redibuja solo si cambió y conserva la selección por clave); filas `hdr:`/`gap:` son encabezados que el cursor saltea |
+| `Card` | Contenido libre (texto rich) que recibe foco, para paneles que no son tablas (mapa de monitores, luz nocturna); el panel que la contiene se marca como cualquier otro |
 | `KeyHints` | Línea fija al pie: tecla en `primary` + acción atenuada; cambia según el panel con foco |
 | Popups | `FormModal`, `ConfirmModal`, `PickModal`, `TextModal`: centrados, borde en `primary`, campos de una línea sin borde |
 | Barras | `meter10` para uso (`▓▓▓░░░░░░░`, verde/amarillo/rojo a 50/80 %), `charge10` para cargas (verde desde 50 %), `bar` para volumen/brillo |
 | Imágenes | `ImagePreview` (protocolo gráfico de kitty vía `python-textual-image`; sin el paquete, un texto) |
 | Navegación | `tab` cambia de panel, `j`/`k` o flechas mueven, `enter` es la acción principal, `q`/`esc` salen; con un popup abierto las teclas de atrás no hacen nada |
+| Teclas | Cada `Binding` de una `DView`/`DApp` recibe un id `Clase.acción` y se puede reasignar (keymap en `~/.config/dotfiles/keymap.json`, Settings → Shortcuts → Settings); el pie se traduce solo. Dale `description` a los que tienen `show=False` |
+| Procesos lentos | Lo que llama a procesos (nmcli, firewall-cmd, pacman, hyprctl…) va en un `@work(thread=True)` y la interfaz solo pinta; no usar `self.loading` como bandera (es una propiedad de Textual que muestra un spinner) |
 | Estados | `●` activo (`status_ok`), `○` inactivo, `✗` error (`status_error`), `✓` al día |
 
 ## Arquitectura del buscador único

@@ -11,6 +11,10 @@ recargarla. Es la puerta de entrada; el detalle lo lee de estos mismos documento
 - "Configurá mis dos monitores" · "cambiá el layout de teclado".
 - "Instalá `foo`" · "actualizá el sistema" · "¿qué paquetes me faltan?".
 - "Waybar no aparece" · "revisá mi instalación" · "volvé a mi config anterior".
+- "Poné bordes con gradiente y animaciones con rebote" · "subí el tamaño de letra".
+- "Quiero 6 workspaces" · "prendé la luz nocturna a las 22" · "prendé el firewall y dejá pasar KDE Connect".
+- "¿Tengo paquetes con vulnerabilidades?" · "actualizá el firmware" · "configurá Tailscale".
+- "Cambiá la tecla para permitir en Firewall a `n`" (teclas de Settings).
 
 ## Cómo se instala
 

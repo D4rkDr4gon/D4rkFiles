@@ -66,6 +66,17 @@ theme_load_tokens() {
     : "${TOK[radius]:=10}" "${TOK[opacity]:=0.80}" "${TOK[blur_enabled]:=true}"
     : "${TOK[blur_size]:=6}" "${TOK[blur_passes]:=2}" "${TOK[font_mono]:=Hack Nerd Font}"
     : "${TOK[icon_theme]:=Papirus-Dark}" "${TOK[opencode_theme]:=}"
+    # Forma extendida (Settings → Appearance / Fonts & cursor). Los defaults son
+    # los valores que ya tenía hyprland.conf: un tema que no los define se ve igual.
+    : "${TOK[blur_noise]:=0.0117}" "${TOK[blur_contrast]:=0.8916}" "${TOK[blur_brightness]:=1.0}"
+    : "${TOK[blur_vibrancy]:=0.1696}" "${TOK[blur_popups]:=false}"
+    : "${TOK[inactive_opacity]:=0.95}" "${TOK[dim_inactive]:=false}" "${TOK[dim_strength]:=0.5}"
+    : "${TOK[shadow_enabled]:=true}" "${TOK[shadow_style]:=dark}" "${TOK[shadow_range]:=8}" "${TOK[shadow_power]:=3}"
+    : "${TOK[border_size]:=2}" "${TOK[border_style]:=solid}" "${TOK[border_angle]:=45}"
+    : "${TOK[gaps_in]:=4}" "${TOK[gaps_out]:=8}" "${TOK[animations]:=smooth}"
+    : "${TOK[font_size]:=13}" "${TOK[font_ui]:=}"
+    TOK[font_size]=${TOK[font_size]%.*}
+    case "${TOK[animations]}" in smooth|snappy|bouncy|off) ;; *) TOK[animations]=smooth ;; esac
 
     # Opacidad por niveles (kitty = base, rofi = base-0.05, resto = base+0.05).
     # Con opacidad total (>=0.98) todo pasa a 1.0. Los TUI flotantes van fijos.
@@ -96,12 +107,35 @@ theme_load_tokens() {
     TOK[ansi_bright_cyan]=$(hex_blend "${TOK[foreground]}" "${TOK[ansi_cyan]}" 25)
 
     # Componentes RGB y colores sin "#" (Hyprland usa rgb(rrggbb)).
-    for c in background primary chip_battery; do
+    for c in background primary secondary chip_battery; do
         local h="${TOK[$c]#\#}"
         TOK[${c}_r]=$((16#${h:0:2})); TOK[${c}_g]=$((16#${h:2:2})); TOK[${c}_b]=$((16#${h:4:2}))
         TOK[${c}_hex]="$h"
     done
     TOK[bg_r]=${TOK[background_r]}; TOK[bg_g]=${TOK[background_g]}; TOK[bg_b]=${TOK[background_b]}
+
+    # Borde: solid = primary; gradient/rotating = primary → secondary a border_angle
+    # grados (rotating además gira: animación borderangle en loop).
+    if [[ "${TOK[border_style]}" == gradient || "${TOK[border_style]}" == rotating ]]; then
+        TOK[active_border]="rgba(${TOK[primary_hex]}ff) rgba(${TOK[secondary_hex]}ff) ${TOK[border_angle]}deg"
+    else
+        TOK[active_border]="rgb(${TOK[primary_hex]})"
+    fi
+    TOK[borderangle_anim]="borderangle, 1, 8, liner"
+    [[ "${TOK[border_style]}" == rotating ]] && TOK[borderangle_anim]="borderangle, 1, 60, liner, loop"
+    # Sombra: dark = el gris casi negro de siempre; glow = halo del primary (alpha 0x99).
+    TOK[shadow_color]="rgba(1a1a1aee)"
+    [[ "${TOK[shadow_style]}" == glow ]] && TOK[shadow_color]="rgba(${TOK[primary_hex]}99)"
+
+    # Tamaños de fuente relativos a font_size (13 → 12 rofi/workspaces, 10 waybar/dunst/GTK).
+    TOK[font_size_m1]=$(( TOK[font_size] - 1 ))
+    TOK[font_size_m3]=$(( TOK[font_size] - 3 ))
+    # GTK: font_ui vacío = la fuente de siempre (Sans 10)
+    if [[ -n "${TOK[font_ui]}" ]]; then
+        TOK[gtk_font]="${TOK[font_ui]} ${TOK[font_size_m3]}"
+    else
+        TOK[gtk_font]="Sans 10"
+    fi
 
     # Colores ANSI de 24 bits (statusline de Claude Code): \033[38;2;R;G;Bm
     local ac h2

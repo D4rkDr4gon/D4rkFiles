@@ -59,6 +59,7 @@ networkmanager-openvpn
 iwd
 bluez
 bluez-utils
+firewalld           # Settings → Firewall (instalado pero apagado hasta prenderlo desde ahí)
 
 # Utilidades
 brightnessctl
@@ -67,12 +68,15 @@ libnotify
 python
 python-pip
 python-textual
+python-pillow       # Settings → Fonts & cursor: vista previa real de fuentes, íconos y cursor
 sqlite
 python-gobject
 nodejs
 npm
 lua
 luarocks
+arch-audit          # Settings → Update: paquetes con CVEs conocidos (dotfiles-update audit)
+fwupd               # Settings → Update: firmware (dotfiles-update firmware)
 
 # Fuentes e iconos
 ttf-hack-nerd

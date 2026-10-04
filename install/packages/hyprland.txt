@@ -14,6 +14,7 @@ gtk-layer-shell
 kdeconnect
 wayvnc
 hypridle            # Settings → Power: bloqueo/apagado/suspensión por inactividad (apagado hasta activarlo)
+hyprsunset          # Settings → Displays: luz nocturna (apagada hasta activarla)
 
 # Login y bloqueo de pantalla
 sddm

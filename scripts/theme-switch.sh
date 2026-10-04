@@ -82,6 +82,13 @@ reload_components() {
 
     if command -v kitty >/dev/null 2>&1 && [[ -f "$DOTFILES_CONFIG/kitty/colors.conf" ]]; then
         kitty @ set-colors --all -c "$DOTFILES_CONFIG/kitty/colors.conf" 2>/dev/null || true
+        # font_size del tema en las ventanas abiertas (las nuevas lo leen de colors.conf)
+        kitty @ set-font-size --all "${TOK[font_size]}" 2>/dev/null || true
+    fi
+
+    # font_ui: fuente de interfaz GTK también para apps libadwaita/GTK4 (gsettings)
+    if [[ -n "${TOK[font_ui]:-}" ]] && command -v gsettings >/dev/null 2>&1; then
+        gsettings set org.gnome.desktop.interface font-name "${TOK[gtk_font]}" 2>/dev/null || true
     fi
 
     if [[ "${XDG_SESSION_TYPE:-}" == "wayland" ]]; then

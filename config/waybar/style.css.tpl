@@ -2,7 +2,7 @@
 
 * {
     font-family: "@font_mono@";
-    font-size: 10pt;
+    font-size: @font_size_m3@pt;
     min-height: 0;
     border: none;
     border-radius: 0;
@@ -26,7 +26,7 @@ window#waybar {
 
 #custom-workspaces {
     padding: 0 2px;
-    font-size: 12pt;
+    font-size: @font_size_m1@pt;
 }
 
 #custom-brillo,

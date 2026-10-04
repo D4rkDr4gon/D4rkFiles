@@ -9,5 +9,5 @@
     fg3:    @text_dim@;
     urgent: @status_error@;
 
-    font:   "@font_mono@ 12";
+    font:   "@font_mono@ @font_size_m1@";
 }

@@ -41,8 +41,9 @@ env = WLR_NO_HARDWARE_CURSORS,1
 `hyprctl monitors` lista los nombres de salida; `hyprmon` (paquete AUR) los configura gráficamente.
 
 [Settings](settings.md) también escribe en esa carpeta, nunca en el repo: `settings.conf`
-(input y cursor, como líneas planas `input:sensitivity = 0.2`) y `autostart.conf` (tus apps de
-inicio). Se pueden editar a mano; como Hyprland incluye los archivos en orden alfabético, lo que
+(input y cursor, como líneas planas `input:sensitivity = 0.2`), `autostart.conf` (tus apps de
+inicio) y `workspaces.conf` (cuántos workspaces habilitar: `unbind` de los que sobran y la línea
+`# count: N` que leen waybar, Ctrl+Tab y rofi). Se pueden editar a mano; como Hyprland incluye los archivos en orden alfabético, lo que
 pongas en `local.conf` queda por debajo de `settings.conf`.
 
 **Qtile/X11:** los monitores se configuran con `xrandr` (o `arandr`); poné el comando en tu
@@ -132,6 +133,12 @@ forman parte del modo no se tocan (no cierra nada). Termina en el workspace 1.
 Los modos viven en `~/.config/dotfiles/modes.conf`, fuera del repo (formato en
 [`modes.conf.example`](../modes.conf.example)); el último aplicado queda en
 `~/.local/state/dotfiles/desktop-mode`. Requiere Hyprland.
+
+## Teclas de las TUIs
+
+`~/.config/dotfiles/keymap.json` guarda las teclas de Settings y de las TUIs que reasignaste en
+Settings → Shortcuts → Settings (`{"FirewallView.add": "n"}`; solo lo que cambiaste). Borrarlo
+vuelve todo a los defaults.
 
 ## Cambiar la config de una app
 

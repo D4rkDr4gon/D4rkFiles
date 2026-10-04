@@ -1,9 +1,15 @@
 #!/usr/bin/env bash
 # Dual-WM workspace switcher (Qtile / Hyprland)
 
-LIST=" Workspace 1\n Workspace 2\n Workspace 3\n Workspace 4\n Workspace 5\n Workspace 6\n"
-# Hyprland tiene 9 workspaces; Qtile solo 6
-[ -n "$HYPRLAND_INSTANCE_SIGNATURE" ] && LIST+=" Workspace 7\n Workspace 8\n Workspace 9\n"
+# Hyprland: los habilitados en Settings → Workspaces ("# count: N" de
+# ~/.config/dotfiles/hypr/workspaces.conf, 9 si no existe); Qtile: 6
+N=6
+if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
+    N=$(sed -n 's/^# count: *\([0-9]\+\).*/\1/p' "${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/hypr/workspaces.conf" 2>/dev/null | head -1)
+    N=${N:-9}
+fi
+LIST=""
+for i in $(seq 1 "$N"); do LIST+=" Workspace $i\n"; done
 
 CHOICE=$(printf "$LIST" | rofi -dmenu -p "Go to workspace")
 

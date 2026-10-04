@@ -10,7 +10,8 @@ visibles van en inglés; comentarios y docs en español.
   la app: los atajos del pie se publican con `self.update_hints()`.
 - Panel: bloque con borde redondeado y título sobre el borde; el panel con
   foco lleva el borde en el color primario del tema, el resto atenuado.
-- Table: DataTable con selección de fila completa.
+- Table: DataTable con selección de fila completa (`set_rows` refresca sin parpadeo).
+- Card: contenido libre (rich) que recibe foco, para paneles que no son tablas.
 - KeyHints: línea de atajos al pie ("enter upload  a add  q quit").
 - FormModal / ConfirmModal / PickModal / TextModal: popups centrados.
 - ImagePreview (protocolo gráfico de kitty vía textual-image) y Swatches.
@@ -27,7 +28,7 @@ from __future__ import annotations
 import json
 import os
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable, Optional
 
@@ -41,6 +42,10 @@ from textual.widget import Widget
 from textual.widgets import DataTable, Input, Label, Select, Static
 
 THEME_FILE = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "dotfiles" / "current_theme.json"
+# Teclas reasignadas de las TUIs (Settings → Shortcuts → Settings): {id del binding: "teclas"}.
+# Es config del usuario: vive en ~/.config/dotfiles, no en el repo. Solo guarda lo que cambió.
+KEYMAP_FILE = Path(os.environ.get("DTUI_KEYMAP") or Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+                   / "dotfiles" / "keymap.json")
 
 # textual-image le pregunta a la terminal qué protocolo de imágenes soporta y
 # espera la respuesta: tiene que importarse ANTES de que arranque la app (si
@@ -143,6 +148,7 @@ Select > SelectOverlay {
 Select > SelectOverlay > .option-list--option-highlighted { background: %(chip_audio)s; text-style: bold; }
 
 DView { height: 1fr; }
+Card { height: auto; background: %(background)s; color: %(foreground)s; }
 ImagePreview { height: auto; align: center top; }
 ImagePreview Image { width: auto; height: auto; }
 ImagePreview .no-preview { color: %(muted)s; }
@@ -236,6 +242,32 @@ class Table(DataTable):
             row += 1
         if row < self.row_count:
             self.move_cursor(row=row)
+
+    def set_rows(self, rows: list[tuple[str, list]]) -> bool:
+        """Reemplaza las filas [(clave, [celdas])] solo si cambiaron, así un
+        refresco periódico no parpadea ni pierde la selección (que se busca
+        por clave). Devuelve True si redibujó."""
+        sig = repr(rows)
+        if sig == getattr(self, "_rows_sig", None):
+            return False
+        self._rows_sig = sig
+        key, row = self.selected_key(), self.cursor_row or 0
+        self.clear()
+        for k, cells in rows:
+            self.add_row(*cells, key=k)
+        keys = [k for k, _ in rows]
+        if self.row_count:
+            self.move_cursor(row=keys.index(key) if key in keys else min(row, self.row_count - 1))
+            if self._skippable(self.cursor_row):
+                self.first_selectable(self.cursor_row)
+        return True
+
+
+class Card(Static):
+    """Panel de contenido libre (texto armado con rich) que recibe foco, así
+    el Panel que lo contiene se marca y la vista atiende sus teclas."""
+
+    can_focus = True
 
 
 def Panel(*children, title: str = "", subtitle: str = "", id: str | None = None,
@@ -385,6 +417,52 @@ class ImagePreview(Vertical):
             self.query_one(_ImageWidget).image = str(path) if path and path.exists() else None
 
 
+# ── Teclas configurables ──────────────────────────────────
+# Cada Binding de una DView / DApp recibe un id "Clase.acción" (ej.
+# "FirewallView.add", "SettingsApp.quit"), así Textual puede reasignarlo con
+# un keymap (App.set_keymap) sin tocar el código de cada vista. Los atajos del
+# pie (hints) se traducen solos a la tecla nueva.
+
+KEY_DISPLAY = {"slash": "/", "minus": "-", "plus": "+", "equals_sign": "=", "question_mark": "?",
+               "left": "←", "right": "→", "up": "↑", "down": "↓", "escape": "esc", "enter": "enter",
+               "space": "space", "comma": ",", "full_stop": ".", "backspace": "bksp", "delete": "del"}
+
+
+def key_display(keys: str) -> str:
+    """Primera tecla de "a,b" como se muestra en el pie: slash → /, ctrl+s → ctrl+s."""
+    first = keys.split(",")[0].strip()
+    *mods, k = first.split("+") if first not in ("+", "plus") else ["plus"]
+    return "+".join(mods + [KEY_DISPLAY.get(k, k)])
+
+
+def load_keymap() -> dict[str, str]:
+    try:
+        km = json.loads(KEYMAP_FILE.read_text())
+        return {str(k): str(v) for k, v in km.items()} if isinstance(km, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def save_keymap(km: dict[str, str]) -> None:
+    KEYMAP_FILE.parent.mkdir(parents=True, exist_ok=True)
+    tmp = KEYMAP_FILE.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(dict(sorted(km.items())), indent=2, ensure_ascii=False) + "\n")
+    os.replace(tmp, KEYMAP_FILE)
+
+
+def _with_ids(cls) -> None:
+    """Pone id "Clase.acción" a los Binding propios de la clase que no tienen."""
+    own = cls.__dict__.get("BINDINGS")
+    if own:
+        cls.BINDINGS = [replace(b, id=f"{cls.__name__}.{b.action}") if isinstance(b, Binding) and not b.id else b
+                        for b in own]
+
+
+def bindings_of(cls) -> list[Binding]:
+    """Bindings propios (con id) de una DView / DApp, para listarlos o reasignarlos."""
+    return [b for b in cls.__dict__.get("BINDINGS", []) if isinstance(b, Binding) and b.id]
+
+
 # ── Vistas ────────────────────────────────────────────────
 
 class DView(Vertical):
@@ -396,6 +474,10 @@ class DView(Vertical):
     Settings que las contiene no se está mostrando."""
 
     FOCUS = "Table"
+
+    def __init_subclass__(cls, **kw) -> None:
+        _with_ids(cls)               # antes de que Textual combine los BINDINGS
+        super().__init_subclass__(**kw)
 
     def hints(self) -> list[tuple[str, str]]:
         return []
@@ -595,8 +677,42 @@ class DApp(App):
 
     CSS = BASE_CSS
     ENABLE_COMMAND_PALETTE = False
-    BINDINGS = [Binding("q", "quit", "quit", show=False),
-                Binding("escape", "leave", "back", show=False)]
+    BINDINGS = [Binding("q", "quit", "quit", show=False, id="DApp.quit"),
+                Binding("escape", "leave", "back", show=False, id="DApp.leave")]
+
+    def __init_subclass__(cls, **kw) -> None:
+        _with_ids(cls)
+        super().__init_subclass__(**kw)
+
+    def __init__(self, *args, **kw) -> None:
+        super().__init__(*args, **kw)
+        # Teclas reasignadas (keymap.json) antes del primer render
+        self._keymap = self._normalize_keymap(load_keymap())
+
+    def remap_hints(self, hints: list[tuple[str, str]]) -> list[tuple[str, str]]:
+        """Traduce las teclas por defecto de los atajos del pie a las del keymap,
+        mirando los bindings de la vista con foco y los de la app."""
+        if not self._keymap:
+            return hints
+        classes = [type(self)] + list(type(self).__mro__[1:])
+        f = self.focused
+        view = next((n for n in (f.ancestors_with_self if f else []) if isinstance(n, DView)), None)
+        if view is not None:
+            classes = list(type(view).__mro__) + classes
+        remap: dict[str, str] = {}
+        for c in classes:
+            for b in c.__dict__.get("BINDINGS", []):
+                if isinstance(b, Binding) and b.id in self._keymap:
+                    for k in b.key.split(","):
+                        remap.setdefault(key_display(k), key_display(self._keymap[b.id]))
+        out = []
+        for key, label in hints:
+            if key in remap:
+                key = remap[key]
+            elif "/" in key and len(key) > 1:
+                key = "/".join(remap.get(part, part) for part in key.split("/"))
+            out.append((key, label))
+        return out
 
     def check_action(self, action: str, parameters) -> Optional[bool]:
         # Con un popup abierto, las teclas de la pantalla principal (las
@@ -609,7 +725,7 @@ class DApp(App):
     def set_hints(self, hints: list[tuple[str, str]]) -> None:
         """Atajos del pie de la pantalla principal (no de un popup)."""
         try:
-            self.screen_stack[0].query_one("#hints", KeyHints).set_hints(hints)
+            self.screen_stack[0].query_one("#hints", KeyHints).set_hints(self.remap_hints(hints))
         except Exception:  # noqa: BLE001 - todavía sin montar
             pass
 

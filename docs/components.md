@@ -11,13 +11,19 @@ Qué hace cada pieza y dónde está su config. Todo vive en `config/<app>/` y se
   reglas de ventana, atajos). No tiene valores de máquina.
 - `env.conf` *(generado)* — `$terminal`, `$browser`, `$fileManager`, `$editor`, teclado, y
   `WLR_NO_HARDWARE_CURSORS` si se detecta NVIDIA o una VM.
-- `theme.conf` *(generado)* — color de borde, `rounding`, blur y opacidad por app.
+- `theme.conf` *(generado)* — borde (color sólido o gradiente, grosor), gaps, `rounding`, opacidad inactiva,
+  dim, blur (incluido el ajuste fino), sombra, preset de animaciones (`config/hypr/animations/<preset>.conf`)
+  y opacidad por app. Se carga antes que `hyprland.conf`, que por eso no define esas claves.
+- `hypridle.conf`, `hyprsunset.conf` *(generados por Settings → Power / Displays, en `.gitignore`)*.
 - `~/.config/dotfiles/hypr/*.conf` — **tus** overrides, cargados al final.
 - `config/hypr/scripts/start-hyprland.sh` — wrapper de arranque (limpia `DISPLAY`, activa la sesión de
   logind, guarda logs en `~/.local/state/hyprland/`). Lo usa la sesión "Hyprland (dotfiles)".
 - `config/hypr/scripts/start-hyprpaper.sh` — arranca hyprpaper con el wallpaper del tema activo.
 - `config/hypr/scripts/move-and-focus-workspace.sh`, `move-window-to-workspace.sh` — `Super+N` trae el
   workspace N al monitor actual (mismo comportamiento que Qtile).
+- `config/hypr/scripts/workspace-cycle.sh` — `Ctrl+Tab` / rueda sobre waybar: siguiente/anterior dando la
+  vuelta en los workspaces habilitados (`# count: N` de `~/.config/dotfiles/hypr/workspaces.conf`, 9 si no está).
+- `config/hypr/scripts/hypr-workspaces.py` — indicador de waybar; muestra los N habilitados.
 
 Autostart: waybar, dunst, swayosd, historial de portapapeles (cliphist), hyprpaper, hyprshell,
 la unidad `hyprland-session-init`, y (si están instalados) fprint-osd y KDE Connect.
@@ -43,7 +49,7 @@ Barra: polybar; compositor: picom.
   - **No molestar** (`custom/dnd`, al lado del audio): `󰂛` activado (color `@alert`), `󰂚` desactivado.
     Click hace toggle (`dnd-menu.sh --toggle`), click derecho abre el menú. Lee la regla `dnd_global` de dunst
     (`config/waybar/scripts/dnd-status.sh`) y se refresca al instante con `pkill -RTMIN+9 waybar`.
-  - **VPN** (`custom/vpn`): estado de tus perfiles de NetworkManager; click abre `tools/vpn_tui.py`. **Viene vacío**:
+  - **VPN** (`custom/vpn`): estado de tus perfiles de NetworkManager (y de Tailscale si está conectado); click abre `tools/vpn_tui.py`. **Viene vacío**:
     no trae ningún perfil ni proveedor (ver [customization.md](customization.md#vpn)). Sin perfiles muestra "Sin
     perfiles VPN configurados".
 - **polybar** (`config/polybar/`, X11): módulos en `modules/*.ini`. `launch.sh` autodetecta

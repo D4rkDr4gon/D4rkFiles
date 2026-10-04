@@ -33,7 +33,29 @@ colores son `#rrggbb`.
 
 Opcionales (defaults entre paréntesis): `radius` (10), `opacity` (0.80), `blur_enabled` (true),
 `blur_size` (6), `blur_passes` (2), `font_mono` (Hack Nerd Font), `icon_theme` (Papirus-Dark),
-`opencode_theme`, `icon`.
+`opencode_theme`, `icon`. Se editan en Settings → Appearance y Fonts & cursor.
+
+Forma extendida (opcionales; los defaults son los valores de siempre, así que un tema que no los
+define se ve igual):
+
+| Campo | Qué hace | Default |
+|---|---|---|
+| `border_size` | Grosor del borde de ventana | `2` |
+| `border_style` | `solid` = `primary` · `gradient` = `primary` → `secondary` · `rotating` = el gradiente gira | `solid` |
+| `border_angle` | Ángulo del gradiente (grados) | `45` |
+| `gaps_in` / `gaps_out` | Gaps entre ventanas / contra el borde de pantalla | `4` / `8` |
+| `inactive_opacity` | Opacidad de las ventanas sin foco | `0.95` |
+| `dim_inactive` / `dim_strength` | Oscurecer las ventanas sin foco y cuánto | `false` / `0.5` |
+| `blur_noise` / `blur_contrast` / `blur_brightness` / `blur_vibrancy` | Ajuste fino del blur | `0.0117` / `0.8916` / `1.0` / `0.1696` |
+| `blur_popups` | Blur también en menús y tooltips | `false` |
+| `shadow_enabled` / `shadow_range` / `shadow_power` | Sombra: on/off, alcance (px), caída 1–4 | `true` / `8` / `3` |
+| `shadow_style` | `dark` = gris casi negro · `glow` = halo del `primary` | `dark` |
+| `animations` | Preset `smooth` · `snappy` · `bouncy` · `off` (`config/hypr/animations/<preset>.conf`) | `smooth` |
+| `font_size` | Tamaño base: kitty = N, rofi y workspaces de waybar = N−1, waybar, dunst y GTK = N−3 | `13` |
+| `font_ui` | Fuente de interfaz GTK (también por `gsettings`); vacío = `Sans 10` | vacío |
+
+Todo eso llega a Hyprland por `config/hypr/theme.conf.tpl` (que se carga antes que
+`hyprland.conf`, por eso `hyprland.conf` ya no define gaps, borde, sombra ni animaciones).
 
 `wallpaper` se busca por nombre en `EXTRA_WALLPAPER_DIRS`, `~/.local/share/backgrounds` y
 `assets/wallpapers`. Una ruta absoluta también funciona, pero el doctor avisa (no es portable).
@@ -43,7 +65,9 @@ Opcionales (defaults entre paréntesis): `radius` (10), `opacity` (0.80), `blur_
 `@text_muted@`, `@text_dim@`, `@text_sub@` (mezclas de primer plano y fondo),
 `@radius_outer@` (radio + 4), `@opacity_secondary@`, `@opacity_rofi@`, `@opacity_tui@`,
 `@ansi_*` (paleta de 16 colores de kitty), `@primary_hex@`/`@chip_battery_hex@` (sin `#`),
-`@background_r/g/b`, `@font_mono_alt@` (variante "Mono" de Hack para gtklock y SDDM).
+`@background_r/g/b`, `@font_mono_alt@` (variante "Mono" de Hack para gtklock y SDDM),
+`@active_border@` (sólido o gradiente), `@shadow_color@`, `@borderangle_anim@`, `@secondary_hex@`,
+`@font_size_m1@` / `@font_size_m3@` (tamaño base −1 / −3) y `@gtk_font@` (`font_ui` + tamaño, o `Sans 10`).
 
 También hay tokens del usuario (de `user.conf` y autodetección): `@user_display_name@`,
 `@user_title@`, `@terminal@`, `@browser@`, `@file_manager@`, `@editor_gui@`, `@kb_layout@`,

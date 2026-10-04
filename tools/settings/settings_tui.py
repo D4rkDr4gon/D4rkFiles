@@ -40,7 +40,7 @@ from typing import Optional
 TOOLS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(TOOLS))                                    # dtui y las TUIs sueltas
 sys.path.insert(0, str(Path(__file__).resolve().parent / "sections"))   # secciones en archivos propios
-from dtui import (THEME, ConfirmModal, DApp, DView, Field, FormModal, ImagePreview, KeyHints, bar, charge10, meter10,  # noqa: E402
+from dtui import (THEME, ConfirmModal, DApp, DView, bindings_of, Field, FormModal, ImagePreview, KeyHints, bar, charge10, meter10,  # noqa: E402
                   Panel, PickModal, Table, TextModal, css, load_theme, swatches)
 
 from battery import BatteryView  # noqa: E402
@@ -48,7 +48,9 @@ from common import (CURRENT_THEME, DOTFILES, HYPRLAND, THEME_SWITCH, active_them
                     detach, display_name, editable_theme_dir, is_user_theme, resolve_wallpaper, run, theme_dirs,
                     tilde, user_conf, wallpaper_dirs)
 from colorpicker import ColorPickerView  # noqa: E402
+from displays import DisplaysView  # noqa: E402
 from defaultapps import DefaultAppsView  # noqa: E402
+from firewall import FirewallView  # noqa: E402
 from fonts import FontsView  # noqa: E402
 from inputdev import InputView  # noqa: E402
 from logs import LogsView  # noqa: E402
@@ -57,7 +59,10 @@ from phone import PhoneView  # noqa: E402
 from screenshots import ScreenshotsView  # noqa: E402
 from snapshots import SnapshotsView  # noqa: E402
 from startup import StartupView  # noqa: E402
+from power import PowerView  # noqa: E402
 from storage import StorageView  # noqa: E402
+from update import UpdateView  # noqa: E402
+from workspaces import WorkspacesView  # noqa: E402
 from themeeditor import ThemeEditorView  # noqa: E402
 from rich.text import Text  # noqa: E402
 from textual import work  # noqa: E402
@@ -69,7 +74,6 @@ from textual.widgets import ContentSwitcher, DataTable, Static  # noqa: E402
 # Perfil: el mismo logo que waybar; el nombre, de user.conf (o la cuenta)
 LOGO = DOTFILES / "config" / "waybar" / "logo.png"
 WALLPAPER_SET = DOTFILES / "scripts" / "wallpaper-set.sh"
-UPDATE_SH = DOTFILES / "scripts" / "dotfiles-update.sh"
 DND = DOTFILES / "config" / "rofi" / "scripts" / "dnd-menu.sh"
 IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp")
 
@@ -77,13 +81,6 @@ IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp")
 def load_view(module: str, attr: str):
     """Importa la vista de una TUI suelta (tools/<module>.py)."""
     return getattr(importlib.import_module(module), attr)
-
-
-def goto_workspace(ws: int) -> None:
-    if HYPRLAND:
-        run(["hyprctl", "dispatch", "workspace", str(ws)])
-    else:
-        run(["qtile", "cmd-obj", "-o", "group", str(ws), "-f", "toscreen"])
 
 
 # ── Themes ────────────────────────────────────────────────
@@ -165,47 +162,6 @@ class ThemesView(DView):
                        stderr=subprocess.DEVNULL, start_new_session=True)
         # Settings se reabre para tomar los colores nuevos (THEME se lee al importar)
         self.app.call_from_thread(self.app.restart, "themes")
-
-
-# ── Workspaces ────────────────────────────────────────────
-
-class WorkspacesView(DView):
-    """Ir a un workspace (1-9 en Hyprland, 1-6 en Qtile)."""
-
-    FOCUS = "#workspaces"
-
-    def compose(self) -> ComposeResult:
-        yield Panel(Table(id="workspaces"), title="  Workspaces", id="ws-panel")
-
-    def on_mount(self) -> None:
-        t = self.query_one("#workspaces", Table)
-        t.add_column("Workspace", key="ws", width=16)
-        t.add_column("Windows", key="n", width=10)
-        t.add_column("", key="extra", width=60)
-        info, active = {}, None
-        if HYPRLAND:
-            try:
-                info = {w["id"]: w for w in json.loads(run(["hyprctl", "workspaces", "-j"]).stdout)}
-                active = json.loads(run(["hyprctl", "activeworkspace", "-j"]).stdout).get("id")
-            except ValueError:
-                pass
-        for ws in range(1, 10 if HYPRLAND else 7):
-            w = info.get(ws, {})
-            extra = Text(w.get("lastwindowtitle", ""), style=THEME["muted"])
-            label = Text(f"  Workspace {ws}")
-            if ws == active:
-                label.append("  ●", style=THEME["status_ok"])
-            t.add_row(label, str(w.get("windows", 0)) if w else Text("—", style=THEME["muted"]), extra, key=str(ws))
-        if active:
-            t.move_cursor(row=active - 1)
-
-    def hints(self) -> list[tuple[str, str]]:
-        return [("enter", "go"), ("q", "quit")]
-
-    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        if event.data_table.id == "workspaces":
-            goto_workspace(int(event.row_key.value))
-            self.app.exit()
 
 
 # ── Backgrounds ───────────────────────────────────────────
@@ -445,85 +401,61 @@ class NotificationsView(DView):
             self.app.push_screen(PickModal("Silence an app", ["App (from history)"], rows), picked)
 
 
-# ── Displays ──────────────────────────────────────────────
-
-WAYVNC = DOTFILES / "scripts" / "wayland" / "wayvnc-toggle.sh"
-
-
-class DisplaysView(DView):
-    """Monitores conectados, la tablet como monitor (wayvnc) y hyprmon (de
-    terceros) en la misma ventana."""
-
-    FOCUS = "#displays"
-
-    def compose(self) -> ComposeResult:
-        yield Panel(Table(id="displays", show_header=False), title="󰍹  Displays", id="displays-panel")
-
-    def on_mount(self) -> None:
-        t = self.query_one("#displays", Table)
-        t.add_column("", key="name", width=36)
-        t.add_column("", key="info", width=70)
-        self.reload()
-
-    def reload(self) -> None:
-        t = self.query_one("#displays", Table)
-        t.clear()
-        muted, ok = THEME["muted"], THEME["status_ok"]
-        if HYPRLAND:
-            try:
-                for m in json.loads(run(["hyprctl", "monitors", "-j"]).stdout):
-                    t.add_row(Text(f"󰍹  {m['name']}"), Text(
-                        f"{m['width']}x{m['height']}@{m['refreshRate']:.0f}Hz · scale {m['scale']:g} · "
-                        f"{m.get('description', '')}", style=muted), key=f"mon:{m['name']}")
-            except (ValueError, KeyError):
-                pass
-        st = run(["bash", str(WAYVNC), "status"])
-        tablet = st.returncode == 0
-        m = re.search(r"([\d.]+:\d+)\s*$", st.stdout.strip())   # "wayvnc activo (PID n) en <ip>:<puerto>"
-        ip = m.group(1) if m else "<your IP>:5900"
-        t.add_row(Text(f"{'●' if tablet else '○'}  Tablet as monitor", style=f"bold {ok}" if tablet else ""),
-                  Text(f"on · connect the tablet's VNC app to {ip}" if tablet else
-                       "off · enter to extend the desktop to a tablet over VNC (first time: "
-                       "scripts/wayland/wayvnc-toggle.sh init)", style=muted),
-                  key="tablet")
-        t.add_row(Text("󰍹  Open display manager (hyprmon)", style=f"bold {THEME['primary']}"), "", key="open")
-        t.move_cursor(row=t.row_count - 1)
-
-    def hints(self) -> list[tuple[str, str]]:
-        return [("enter", "select"), ("q", "quit")]
-
-    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        if event.data_table.id != "displays":
-            return
-        key = event.row_key.value
-        if key == "tablet":
-            on = run(["bash", str(WAYVNC), "status"]).returncode == 0
-            r = run(["bash", str(WAYVNC), "off" if on else "on"])
-            if r.returncode == 0:
-                self.app.notify_ok("Tablet monitor off" if on else "Tablet monitor on: connect from the tablet")
-            else:
-                self.app.notify_err((r.stderr or r.stdout).strip().splitlines()[-1] if (r.stderr or r.stdout)
-                                    else "wayvnc failed")
-            self.reload()
-        elif key == "open":
-            if not shutil.which("hyprmon"):
-                return self.app.notify_err("hyprmon is not installed")
-            with self.app.suspend():
-                subprocess.run(["hyprmon"])
-            self.reload()
-
-
 # ── Appearance ────────────────────────────────────────────
 
-SHAPE_DEFAULTS = {"radius": 10, "opacity": 0.80, "blur_enabled": True, "blur_size": 6, "blur_passes": 2}
+# Campos de forma del tema activo, agrupados: (clave, nombre, tipo, default,
+# límites u opciones, descripción). tipo: int | float | bool | choice. Los
+# defaults son los de theme-switch.sh (= cómo se veía todo antes de que el
+# tema los defina). La fuente y su tamaño viven en Fonts & cursor.
+SHAPE_FIELDS = [
+    ("Shape", [
+        ("radius", "Corner radius", "int", 10, (0, 30), "windows, waybar, rofi, dunst, gtklock, OSDs (px)"),
+        ("border_size", "Border width", "int", 2, (0, 6), "window border (px)"),
+        ("border_style", "Border style", "choice", "solid", ("solid", "gradient", "rotating"),
+         "solid = primary · gradient = primary → secondary · rotating = spins"),
+        ("border_angle", "Gradient angle", "int", 45, (0, 359), "degrees (gradient / rotating)"),
+        ("gaps_in", "Inner gaps", "int", 4, (0, 30), "between windows (px)"),
+        ("gaps_out", "Outer gaps", "int", 8, (0, 60), "between windows and screen edge (px)"),
+    ]),
+    ("Transparency", [
+        ("opacity", "Opacity", "float", 0.80, (0.5, 1.0),
+         "kitty base; rofi −0.05, other apps +0.05 (≥ 0.98 = fully opaque)"),
+        ("inactive_opacity", "Inactive opacity", "float", 0.95, (0.5, 1.0), "windows without focus"),
+        ("dim_inactive", "Dim inactive", "bool", False, None, "darken windows without focus"),
+        ("dim_strength", "Dim strength", "float", 0.5, (0.0, 1.0), "how much they darken"),
+    ]),
+    ("Blur", [
+        ("blur_enabled", "Blur", "bool", True, None, "Hyprland background blur"),
+        ("blur_size", "Blur size", "int", 6, (1, 20), "blur radius"),
+        ("blur_passes", "Blur passes", "int", 2, (1, 6), "more passes = smoother, heavier"),
+        ("blur_noise", "Noise", "float", 0.0117, (0.0, 1.0), "grain over the blur (frosted glass)"),
+        ("blur_contrast", "Contrast", "float", 0.8916, (0.0, 2.0), "contrast of what's behind"),
+        ("blur_brightness", "Brightness", "float", 1.0, (0.0, 2.0), "brightness of what's behind"),
+        ("blur_vibrancy", "Vibrancy", "float", 0.1696, (0.0, 1.0), "saturation of what's behind"),
+        ("blur_popups", "Blur popups", "bool", False, None, "menus and tooltips too"),
+    ]),
+    ("Shadow", [
+        ("shadow_enabled", "Shadow", "bool", True, None, "window shadow"),
+        ("shadow_style", "Shadow style", "choice", "dark", ("dark", "glow"), "dark = classic · glow = primary halo"),
+        ("shadow_range", "Shadow range", "int", 8, (0, 50), "size (px)"),
+        ("shadow_power", "Shadow falloff", "int", 3, (1, 4), "1 = soft · 4 = sharp"),
+    ]),
+    ("Motion", [
+        ("animations", "Animations", "choice", "smooth", ("smooth", "snappy", "bouncy", "off"),
+         "smooth = default · snappy = fast · bouncy = overshoot + popin"),
+    ]),
+]
+SHAPE = {f[0]: f for _g, fields in SHAPE_FIELDS for f in fields}
 
 
 class AppearanceView(DView):
-    """Forma del tema activo (radius, opacity, blur): se guarda en su copia de
-    ~/.config/dotfiles/themes/ y se reaplica con theme-switch.sh, así llega a
-    todas las apps sin tocar themes/ del repo."""
+    """Forma del tema activo (bordes, gaps, opacidad, blur, sombra,
+    animaciones): se guarda en su copia de ~/.config/dotfiles/themes/ y se
+    reaplica con theme-switch.sh, así llega a todas las apps sin tocar themes/
+    del repo. r vuelve al default."""
 
     FOCUS = "#shape"
+    BINDINGS = [Binding("r", "reset", "reset to default")]
 
     def compose(self) -> ComposeResult:
         yield Panel(Table(id="shape"), title="󰉼  Appearance", id="shape-panel")
@@ -532,77 +464,100 @@ class AppearanceView(DView):
         t = self.query_one("#shape", Table)
         t.add_column("Setting", key="name", width=22)
         t.add_column("Value", key="value", width=14)
-        t.add_column("", key="desc", width=70)
+        t.add_column("", key="desc", width=80)
         self.reload()
+        t.first_selectable(t.cursor_row or 0)
 
-    def shape(self) -> dict:
+    def theme_data(self) -> dict:
         d = active_theme_dir()
-        data = json.loads((d / "theme.json").read_text()) if d else {}
-        return {k: data.get(k, v) for k, v in SHAPE_DEFAULTS.items()} | {"_custom": [k for k in SHAPE_DEFAULTS
-                                                                                      if k in data]}
+        return json.loads((d / "theme.json").read_text()) if d else {}
+
+    @staticmethod
+    def fmt(kind: str, value) -> str:
+        if kind == "bool":
+            return "on" if value in (True, "true") else "off"
+        if kind == "float":
+            return f"{float(value):.4g}"
+        return str(value)
 
     def reload(self) -> None:
         t = self.query_one("#shape", Table)
-        sh = self.shape()
-        rows = [
-            ("radius", "Corner radius", f"{sh['radius']} px", "windows, waybar, rofi, dunst, gtklock, OSDs"),
-            ("opacity", "Opacity", f"{float(sh['opacity']):.2f}",
-             "kitty base; rofi −0.05, other apps +0.05 (≥ 0.98 = fully opaque)"),
-            ("blur_enabled", "Blur", "on" if sh["blur_enabled"] in (True, "true") else "off",
-             "Hyprland background blur"),
-            ("blur_size", "Blur size", str(sh["blur_size"]), "blur radius"),
-            ("blur_passes", "Blur passes", str(sh["blur_passes"]), "more passes = smoother, heavier"),
-        ]
+        data = self.theme_data()
         row = t.cursor_row or 0
         t.clear()
-        for key, name, value, desc in rows:
-            v = Text(value, style="bold" if key in sh["_custom"] else THEME["muted"])
-            t.add_row(name, v, Text(desc, style=THEME["muted"]), key=key)
-        t.move_cursor(row=row)
+        for group, fields in SHAPE_FIELDS:
+            if t.row_count:
+                t.add_row("", "", "", key=f"gap:{group}")
+            t.add_row(Text(group.upper(), style=f"bold {THEME['primary']}"), "", "", key=f"hdr:{group}")
+            for key, name, kind, default, _lim, desc in fields:
+                custom = key in data
+                v = Text(self.fmt(kind, data.get(key, default)), style="bold" if custom else THEME["muted"])
+                t.add_row(f"  {name}", v, Text(desc, style=THEME["muted"]), key=key)
+        t.move_cursor(row=min(row, t.row_count - 1))
         d = active_theme_dir()
         self.query_one("#shape-panel").border_subtitle = (f" theme: {d.name}{' (yours)' if is_user_theme(d) else ''}"
                                                           " · bold = set by the theme, dim = default "
                                                           if d else " no active theme ")
 
     def hints(self) -> list[tuple[str, str]]:
-        return [("enter", "edit"), ("q", "quit")]
+        return [("enter", "edit"), ("r", "reset"), ("q", "quit")]
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        if event.data_table.id != "shape":
+        if event.data_table.id != "shape" or str(event.row_key.value) not in SHAPE:
             return
-        key, sh = event.row_key.value, self.shape()
+        key = str(event.row_key.value)
+        _k, name, kind, default, lim, _desc = SHAPE[key]
         d = active_theme_dir()
         if not d:
             return self.app.notify_err("No active theme found")
-        if key == "blur_enabled":
-            return self.save(d, key, not (sh[key] in (True, "true")))
-        limits = {"radius": (0, 30, int), "opacity": (0.5, 1.0, float), "blur_size": (1, 20, int),
-                  "blur_passes": (1, 6, int)}
-        lo, hi, kind = limits[key]
+        current = self.theme_data().get(key, default)
+        if kind == "bool":
+            return self.save(d, key, not (current in (True, "true")))
+        if kind == "choice":
+            rows = [(o, [Text(("● " if o == current else "  ") + o, style="bold" if o == current else "")])
+                    for o in lim]
+            return self.app.push_screen(PickModal(f"{name} · {d.name}", [name], rows),
+                                        lambda v: v and self.save(d, key, v))
+        lo, hi = lim
+        conv = int if kind == "int" else float
 
         def check(v: dict) -> Optional[str]:
             try:
-                n = kind(v["value"])
+                n = conv(v["value"])
             except ValueError:
-                return f"Must be a {'whole ' if kind is int else ''}number"
+                return f"Must be a {'whole ' if kind == 'int' else ''}number"
             return None if lo <= n <= hi else f"Must be between {lo} and {hi}"
 
         def done(v: Optional[dict]) -> None:
             if v:
-                self.save(d, key, kind(v["value"]))
+                self.save(d, key, conv(v["value"]))
 
-        self.app.push_screen(FormModal(f"{key.replace('_', ' ').capitalize()} · {d.name}",
-                                       [Field("value", f"Value ({lo}–{hi})", str(sh[key]))],
+        self.app.push_screen(FormModal(f"{name} · {d.name}", [Field("value", f"Value ({lo}–{hi})", str(current))],
                                        hint="Saved in your copy of the theme (~/.config/dotfiles/themes) "
                                             "and applied to every app.",
                                        validate=check), done)
 
+    def action_reset(self) -> None:
+        key, d = self.query_one("#shape", Table).selected_key(), active_theme_dir()
+        if not d or key not in SHAPE or key not in self.theme_data():
+            return
+        self.save(d, key, None)
+
     def save(self, d: Path, key: str, value) -> None:
+        """Escribe (o borra, con value=None) el campo en la copia editable del
+        tema (~/.config/dotfiles/themes) y reaplica."""
         d = editable_theme_dir(d)
+        if d is None:
+            return self.app.notify_err("Could not make an editable copy of the theme")
         f = d / "theme.json"
         data = json.loads(f.read_text())
-        data[key] = value
-        f.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+        if value is None:
+            data.pop(key, None)
+        else:
+            data[key] = value
+        tmp = f.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+        os.replace(tmp, f)
         self.query_one("#shape-panel").border_subtitle = " applying… "
         self.apply(d.name)
 
@@ -1154,48 +1109,6 @@ class BluetoothView(DView):
         self.reload()
 
 
-# ── Power ─────────────────────────────────────────────────
-
-# hypridle lee ~/.config/hypr/hypridle.conf, que es config/hypr del repo:
-# el archivo es generado y está en .gitignore.
-IDLE_CONF = DOTFILES / "config" / "hypr" / "hypridle.conf"
-IDLE_DEFAULTS = {"lock": 10, "screen": 15, "suspend": 0}   # minutos (0 = nunca)
-PROFILE_DESC = {"power-saver": "less heat and noise, longer battery", "balanced": "default",
-                "performance": "maximum speed, more power"}
-
-
-def idle_settings() -> dict:
-    """Tiempos de hypridle guardados en la cabecera de hypridle.conf."""
-    try:
-        m = re.search(r"# settings: lock=(\d+) screen=(\d+) suspend=(\d+)", IDLE_CONF.read_text())
-        if m:
-            return {"lock": int(m.group(1)), "screen": int(m.group(2)), "suspend": int(m.group(3))}
-    except OSError:
-        pass
-    return dict(IDLE_DEFAULTS)
-
-
-def write_idle_conf(st: dict) -> None:
-    lines = [
-        "# hypridle.conf — generado por Settings → Power (tools/settings/settings_tui.py).",
-        "# No editar a mano: se reescribe al cambiar los tiempos. 0 = nunca.",
-        f"# settings: lock={st['lock']} screen={st['screen']} suspend={st['suspend']}",
-        "",
-        "general {",
-        f"    lock_cmd = pidof gtklock || bash {DOTFILES}/scripts/lock-screen.sh",
-        "    before_sleep_cmd = loginctl lock-session",
-        "    after_sleep_cmd = hyprctl dispatch dpms on",
-        "}",
-    ]
-    if st["lock"]:
-        lines += ["", "listener {", f"    timeout = {st['lock'] * 60}", "    on-timeout = loginctl lock-session", "}"]
-    if st["screen"]:
-        lines += ["", "listener {", f"    timeout = {st['screen'] * 60}", "    on-timeout = hyprctl dispatch dpms off",
-                  "    on-resume = hyprctl dispatch dpms on", "}"]
-    if st["suspend"]:
-        lines += ["", "listener {", f"    timeout = {st['suspend'] * 60}", "    on-timeout = systemctl suspend", "}"]
-    IDLE_CONF.write_text("\n".join(lines) + "\n")
-
 
 def unit_state(unit: str) -> tuple[bool, bool]:
     """(activo, habilitado) de una unit de systemd --user."""
@@ -1204,101 +1117,6 @@ def unit_state(unit: str) -> tuple[bool, bool]:
     return active, enabled
 
 
-class PowerView(DView):
-    """Perfil de energía, brillo y bloqueo/apagado/suspensión por inactividad."""
-
-    FOCUS = "#power"
-    BINDINGS = [
-        Binding("left,minus", "bright(-5)", "brightness -"),
-        Binding("right,plus,equals_sign", "bright(5)", "brightness +"),
-    ]
-
-    def compose(self) -> ComposeResult:
-        yield Panel(Table(id="power", show_header=False), title="󰂄  Power", id="power-panel")
-
-    def on_mount(self) -> None:
-        t = self.query_one("#power", Table)
-        t.add_column("", key="name", width=34)
-        t.add_column("", key="value", width=30)
-        t.add_column("", key="desc", width=44)
-        self.reload()
-
-    def reload(self) -> None:
-        t = self.query_one("#power", Table)
-        row = t.cursor_row or 0
-        t.clear()
-        ok, muted = THEME["status_ok"], THEME["muted"]
-        cur = run(["powerprofilesctl", "get"]).stdout.strip()
-        for p in ("power-saver", "balanced", "performance") if cur else ():
-            t.add_row(Text(f"{'●' if p == cur else '○'}  Profile: {p}", style=f"bold {ok}" if p == cur else ""),
-                      "", Text(PROFILE_DESC[p], style=muted), key=f"profile:{p}")
-        b = run(["brightnessctl", "-m"]).stdout.split(",")
-        if len(b) >= 4:
-            pct = int(b[3].rstrip("%"))
-            v = bar(pct, 14)
-            v.append(f" {pct:3d}%", style="bold")
-            t.add_row("󰃠  Brightness", v, Text("←/→ to change", style=muted), key="brightness")
-        st, (active, _en) = idle_settings(), unit_state("hypridle.service")
-        if not shutil.which("hypridle"):
-            t.add_row(Text("○  Idle actions", style=muted), Text("not available", style=muted),
-                      Text("install hypridle to lock / suspend when idle", style=muted), key="noidle")
-            t.move_cursor(row=min(row, t.row_count - 1))
-            return
-        t.add_row(Text(f"{'●' if active else '○'}  Idle actions", style=f"bold {ok}" if active else ""),
-                  Text("on" if active else "off", style=ok if active else muted),
-                  Text("hypridle: lock, screen off and suspend when idle", style=muted), key="idle")
-        for k, label in (("lock", "Lock screen after"), ("screen", "Turn screen off after"),
-                         ("suspend", "Suspend after")):
-            t.add_row(f"   {label}", f"{st[k]} min" if st[k] else Text("never", style=muted), "", key=f"idle:{k}")
-        t.move_cursor(row=min(row, t.row_count - 1))
-
-    def hints(self) -> list[tuple[str, str]]:
-        return [("enter", "select / edit"), ("←/→", "brightness"), ("q", "quit")]
-
-    def action_bright(self, step: int) -> None:
-        run(["brightnessctl", "set", f"{abs(step)}%{'+' if step > 0 else '-'}"])
-        self.reload()
-
-    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        if event.data_table.id != "power":
-            return
-        key = event.row_key.value
-        if key.startswith("profile:"):
-            r = run(["powerprofilesctl", "set", key[8:]])
-            self.app.notify_ok(f"Profile: {key[8:]}") if r.returncode == 0 else self.app.notify_err(r.stderr.strip())
-        elif key == "idle":
-            active, _ = unit_state("hypridle.service")
-            if not active:
-                if not IDLE_CONF.exists():
-                    write_idle_conf(idle_settings())
-                run(["systemctl", "--user", "enable", "--now", "hypridle.service"])
-                self.app.notify_ok("Idle actions on")
-            else:
-                run(["systemctl", "--user", "disable", "--now", "hypridle.service"])
-                self.app.notify_ok("Idle actions off")
-        elif key.startswith("idle:"):
-            k, st = key[5:], idle_settings()
-
-            def check(v: dict) -> Optional[str]:
-                return None if v["min"].isdigit() and int(v["min"]) <= 600 else "Minutes from 0 to 600 (0 = never)"
-
-            def done(v: Optional[dict]) -> None:
-                if not v:
-                    return
-                st[k] = int(v["min"])
-                write_idle_conf(st)
-                if unit_state("hypridle.service")[0]:
-                    run(["systemctl", "--user", "restart", "hypridle.service"])
-                self.reload()
-
-            return self.app.push_screen(FormModal("Idle time", [Field("min", "Minutes (0 = never)", str(st[k]))],
-                                                  validate=check), done)
-        elif key in ("brightness", "noidle"):
-            return
-        self.reload()
-
-
-# ── Services ──────────────────────────────────────────────
 
 # Servicios de usuario que se muestran si están instalados (unit file presente)
 KNOWN_SERVICES = [
@@ -1308,6 +1126,7 @@ KNOWN_SERVICES = [
     ("wayvnc.service", "VNC server (tablet as a monitor, see Displays)"),
     ("hyprland-session-init.service", "Starts graphical-session.target for portals"),
     ("cliphist.service", "Clipboard history daemon"),
+    ("hyprsunset.service", "Night light / blue light filter (see Displays)"),
     ("hyprshell.service", "Window switcher and workspace overview"),
     ("kdeconnect.service", "KDE Connect (phone integration)"),
     ("mpris-proxy.service", "Bluetooth media buttons"),
@@ -1640,55 +1459,12 @@ class SystemView(DView):
                                            f"{path}\n\n{r.stdout}\nRecent commits:\n{log.stdout}", end=False))
 
 
-# ── Update ────────────────────────────────────────────────
-
-UPDATE_ACTIONS = [
-    ("check", "󰍉  Check", "List pending updates (pacman + AUR)"),
-    ("all", "󰚰  Full update", "Snapshot, then update pacman and AUR"),
-    ("snapshot", "󰄄  Snapshot", "Create a system snapshot"),
-    ("rollback", "󰑗  Rollback", "List snapshots to restore one"),
-    ("pacman", "󰣇  Pacman", "Update official repositories"),
-    ("aur", "󰏗  AUR (yay)", "Update AUR packages"),
-    ("clean", "󰃢  Clean", "Clean the package cache"),
-    ("orphans", "󰆴  Orphans", "Remove orphan packages"),
-]
-
-
-class UpdateView(DView):
-    """scripts/dotfiles-update.sh en la misma ventana (necesita terminal para sudo)."""
-
-    FOCUS = "#update"
-
-    def compose(self) -> ComposeResult:
-        yield Panel(Table(id="update", show_header=False), title="󰚰  Update", id="update-panel")
-
-    def on_mount(self) -> None:
-        t = self.query_one("#update", Table)
-        t.add_column("", key="name", width=20)
-        t.add_column("", key="desc", width=60)
-        for mode, name, desc in UPDATE_ACTIONS:
-            t.add_row(name, Text(desc, style=THEME["muted"]), key=mode)
-        self.query_one("#update-panel").border_subtitle = " runs here; sudo may ask for your fingerprint "
-
-    def hints(self) -> list[tuple[str, str]]:
-        return [("enter", "run"), ("q", "quit")]
-
-    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        if event.data_table.id != "update":
-            return
-        with self.app.suspend():
-            os.system("clear")
-            subprocess.run([str(UPDATE_SH), event.row_key.value])
-            input("\nPress enter to go back to Settings...")
-        self.app.refresh(layout=True)
-
-
 # ── App ───────────────────────────────────────────────────
 
 # Menú agrupado por categoría: (categoría, [(id, ícono, nombre)])
 CATEGORIES = [
     ("Connectivity", [("wifi", "󰖩", "Wi-Fi"), ("bluetooth", "󰂯", "Bluetooth"), ("vpn", "󰦝", "VPN"),
-                      ("phone", "󰏲", "Phone"), ("nettools", "󰛳", "Network tools")]),
+                      ("firewall", "󰒃", "Firewall"), ("phone", "󰏲", "Phone"), ("nettools", "󰛳", "Network tools")]),
     ("System", [("services", "\uf013", "Services"), ("startup", "󰒲", "Startup apps"), ("logs", "󰌱", "Logs"),
                 ("snapshots", "󰄄", "Snapshots"), ("system", "󰌢", "System"),
                 ("update", "󰚰", "Update")]),
@@ -1704,6 +1480,45 @@ CATEGORIES = [
                      ("backgrounds", "\uf03e", "Backgrounds")]),
 ]
 SECTIONS = [sec for _cat, secs in CATEGORIES for sec in secs]
+
+
+def section_views() -> dict:
+    """Clase (o fábrica) de la vista de cada sección del menú."""
+    vpn_view = load_view("vpn_tui", "view_class")()
+    return {
+        "themes": ThemesView, "modes": load_view("modes_tui", "ModesView"),
+        "workspaces": WorkspacesView, "webapps": load_view("webapps_tui", "WebappsView"),
+        "backgrounds": BackgroundsView, "notifications": NotificationsView,
+        "shortcuts": load_view("shortcuts_tui", "ShortcutsView"), "vpn": vpn_view,
+        "displays": DisplaysView, "update": UpdateView, "appearance": AppearanceView, "audio": AudioView,
+        "wifi": WifiView, "bluetooth": BluetoothView, "power": PowerView,
+        "clipboard": load_view("clipboard_tui", "ClipboardView"), "services": ServicesView, "system": SystemView,
+        "phone": PhoneView, "nettools": NetToolsView, "startup": StartupView, "logs": LogsView,
+        "snapshots": SnapshotsView, "screenshots": ScreenshotsView, "colorpicker": ColorPickerView,
+        "input": InputView, "battery": BatteryView, "storage": StorageView, "defaultapps": DefaultAppsView,
+        "themeeditor": ThemeEditorView, "fonts": FontsView, "firewall": FirewallView,
+        # En Settings, AI Agents suma el panel Providers (mostrar/ocultar cada uno)
+        "agents": functools.partial(load_view("agents_tui", "AgentsView"), manage=True),
+    }
+
+
+def binding_catalog() -> list[tuple[str, Binding]]:
+    """(sección, binding) de todas las teclas configurables de Settings, para
+    listarlas y reasignarlas en Shortcuts → Settings (keymap de dtui)."""
+    out = [("Settings menu", b) for b in bindings_of(SettingsApp)] + [("Every TUI", b) for b in bindings_of(DApp)]
+    views = section_views()
+    for sid, _icon, name in SECTIONS:
+        cls = getattr(views[sid], "func", views[sid])     # AI Agents es un functools.partial
+        for c in cls.__mro__:
+            if c is DView or not (isinstance(c, type) and issubclass(c, DView)):
+                break
+            out += [(name, b) for b in bindings_of(c)]
+    seen, uniq = set(), []
+    for sec, b in out:
+        if b.id not in seen:
+            seen.add(b.id)
+            uniq.append((sec, b))
+    return uniq
 
 
 class SettingsApp(DApp):
@@ -1732,23 +1547,7 @@ class SettingsApp(DApp):
         self.start = section if section in {s[0] for s in SECTIONS} else SECTIONS[0][0]
 
     def compose(self) -> ComposeResult:
-        vpn_view = load_view("vpn_tui", "view_class")()
-        views = {
-            "themes": ThemesView, "modes": load_view("modes_tui", "ModesView"),
-            "workspaces": WorkspacesView, "webapps": load_view("webapps_tui", "WebappsView"),
-            "backgrounds": BackgroundsView, "notifications": NotificationsView,
-            "shortcuts": load_view("shortcuts_tui", "ShortcutsView"), "vpn": vpn_view,
-            "displays": DisplaysView,
-            "update": UpdateView, "appearance": AppearanceView, "audio": AudioView, "wifi": WifiView,
-            "bluetooth": BluetoothView, "power": PowerView, "clipboard": load_view("clipboard_tui", "ClipboardView"),
-            "services": ServicesView, "system": SystemView,
-            # En Settings, AI Agents suma el panel Providers (mostrar/ocultar cada uno)
-            "phone": PhoneView, "nettools": NetToolsView, "startup": StartupView, "logs": LogsView,
-            "snapshots": SnapshotsView, "screenshots": ScreenshotsView, "colorpicker": ColorPickerView,
-            "input": InputView, "battery": BatteryView, "storage": StorageView, "defaultapps": DefaultAppsView,
-            "themeeditor": ThemeEditorView, "fonts": FontsView,
-            "agents": functools.partial(load_view("agents_tui", "AgentsView"), manage=True),
-        }
+        views = section_views()
         with Horizontal():
             with Vertical(id="left"):
                 yield Panel(ImagePreview(LOGO, id="logo"), Static(display_name(), id="name"), id="profile")

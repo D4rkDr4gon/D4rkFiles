@@ -43,7 +43,9 @@ local.zsh
 hypr/local.conf
 
 # ── Generados por Settings (tools/settings) dentro de config/ ────────────────
+# hypridle y hyprsunset solo leen ~/.config/hypr/, que es config/hypr del repo.
 /config/hypr/hypridle.conf
+/config/hypr/hyprsunset.conf
 
 # ── Secretos y credenciales: NUNCA versionar ───────────────────────────────
 .env

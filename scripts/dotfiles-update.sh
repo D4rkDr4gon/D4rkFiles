@@ -5,10 +5,12 @@
 #   2. pacman -Syu
 #   3. yay -Sua (solo AUR; los repos ya los actualizó pacman)
 #   4. Limpieza: caché de pacman y yay (paccache), journal, aviso de huérfanos
-#   5. Avisos: .pacnew pendientes y reinicio por kernel nuevo
+#   5. Avisos: .pacnew pendientes, reinicio por kernel nuevo y vulnerabilidades
+#   Aparte: firmware (fwupd) y auditoría de CVEs (arch-audit)
 #
 # Uso: dotfiles-update.sh [modo] [--no-snapshot] [--no-aur] [--no-clean] [-h]
 #   modo: all (default) | check | snapshot | rollback | pacman | aur | clean | orphans
+#         | firmware | audit
 # Rollback: sudo timeshift --restore   (o timeshift-gtk)
 #===============================================================================
 
@@ -29,11 +31,11 @@ MODE=all
 DO_SNAPSHOT=1; DO_AUR=1; DO_CLEAN=1
 for arg in "$@"; do      # el modo puede ir en cualquier posición
     case "$arg" in
-        all|check|snapshot|rollback|pacman|aur|clean|orphans) MODE="$arg" ;;
+        all|check|snapshot|rollback|pacman|aur|clean|orphans|firmware|audit) MODE="$arg" ;;
         --no-snapshot) DO_SNAPSHOT=0 ;;
         --no-aur)      DO_AUR=0 ;;
         --no-clean)    DO_CLEAN=0 ;;
-        -h|--help)     sed -n '3,12p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help)     sed -n '3,14p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *)             error "Opción desconocida: $arg (usá -h)" ;;
     esac
 done
@@ -131,6 +133,8 @@ check_updates() {
             log "AUR: al día"
         fi
     fi
+
+    audit_summary
 }
 
 rollback() {
@@ -168,6 +172,62 @@ remove_orphans() {
     sudo pacman -Rns $orphans
 }
 
+# ---------------------------------------------------- vulnerabilidades / firmware
+# arch-audit cruza lo instalado con security.archlinux.org (necesita red, no root)
+audit_summary() {
+    command -v arch-audit &>/dev/null || return 0
+    local all fix
+    all=$(arch-audit 2>/dev/null) || { warn "arch-audit falló (¿sin red?)"; return 0; }
+    fix=$(arch-audit -u 2>/dev/null)
+    if [ -z "$all" ]; then
+        log "Vulnerabilidades: ninguna conocida"
+    else
+        warn "Vulnerabilidades: $(echo "$all" | grep -c .) paquetes afectados, $(echo "$fix" | grep -c .) se arreglan actualizando (dotfiles-update audit)"
+    fi
+}
+
+audit() {
+    header "VULNERABILIDADES (arch-audit)"
+    command -v arch-audit &>/dev/null || error "arch-audit no está instalado (sudo pacman -S arch-audit)"
+    local all fix
+    all=$(arch-audit 2>/dev/null) || error "arch-audit falló (¿sin red?)"
+    fix=$(arch-audit -u 2>/dev/null)
+    if [ -z "$all" ]; then
+        log "Ningún paquete instalado tiene vulnerabilidades conocidas"
+        return 0
+    fi
+    if [ -n "$fix" ]; then
+        warn "Se arreglan actualizando ($(echo "$fix" | grep -c .)):"
+        echo "$fix"
+        echo
+    fi
+    local nofix
+    # las líneas son "<paquete> is affected by ...": $1 es el paquete
+    nofix=$(awk 'NR==FNR {f[$1]=1; next} !($1 in f)' <(echo "$fix") <(echo "$all"))
+    if [ -n "$nofix" ]; then
+        log "Sin parche publicado todavía ($(echo "$nofix" | grep -c .)):"
+        echo "$nofix"
+    fi
+}
+
+# fwupdmgr lee estado sin root; bajar metadata e instalar piden sudo (no hay
+# agente de polkit). get-updates sale con 2 cuando no hay nada.
+firmware() {
+    header "FIRMWARE (fwupd)"
+    command -v fwupdmgr &>/dev/null || error "fwupd no está instalado (sudo pacman -S fwupd)"
+    sudo fwupdmgr refresh --force || warn "No se pudo bajar la metadata de LVFS"
+    echo
+    fwupdmgr get-updates
+    case $? in
+        0) ;;
+        2) log "Firmware al día"; return 0 ;;
+        *) warn "fwupdmgr get-updates falló"; return 0 ;;
+    esac
+    echo
+    read -rp "¿Instalar las actualizaciones de firmware? [s/N] " ans
+    [[ "$ans" =~ ^[sSyY]$ ]] && sudo fwupdmgr update
+}
+
 # -------------------------------------------------------------------- avisos
 post_checks() {
     header "REVISIÓN"
@@ -189,6 +249,8 @@ post_checks() {
     if [ -n "$installed" ] && [ ! -d "/usr/lib/modules/$running" ]; then
         warn "Kernel actualizado ($installed): reiniciá para usarlo"
     fi
+
+    audit_summary
 }
 
 case "$MODE" in
@@ -199,6 +261,8 @@ case "$MODE" in
     pacman)   update_repos ;;
     aur)      update_aur ;;
     clean)    clean_cache ;;
+    firmware) firmware ;;
+    audit)    audit ;;
     all)
         [ "$DO_SNAPSHOT" -eq 1 ] && snapshot
         update_repos
