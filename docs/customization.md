@@ -68,25 +68,39 @@ poné su nombre de archivo en `"wallpaper"` de `theme.json`.
 ## VPN
 
 El módulo de VPN de waybar y su panel (`tools/vpn_tui.py`, `Super+K` no; se abre con click en el ícono) trabajan
-sobre **NetworkManager** y no traen ningún perfil. Para agregar el tuyo:
+sobre **NetworkManager** y no traen ningún perfil. Tiene tres paneles, uno por tipo; usás el que te sirva y
+los demás quedan vacíos:
 
-1. Copiá el archivo de tu proveedor a `~/.config/dotfiles/vpn/` (`.conf` = WireGuard, `.ovpn` = OpenVPN).
-2. Abrí el panel → pestaña **2 Importar** → Enter sobre el archivo.
-3. En **1 Conexiones**: Enter conecta o desconecta, `d` elimina el perfil, `r` refresca.
+| Panel | Qué agrupa | `n` |
+|---|---|---|
+| **NetworkManager** | Otras VPN de NM: OpenConnect, L2TP, vpnc, strongSwan, PPTP… (columna Type = plugin) | Abre `nm-connection-editor` para crearla |
+| **WireGuard** | `.conf` de cualquier proveedor (formato wg-quick) | Importa un `.conf` |
+| **OpenVPN** | `.ovpn` (paquete `networkmanager-openvpn`) | Importa un `.ovpn` |
 
-También sirve `nmcli connection import type wireguard file <archivo>`. Los perfiles que piden contraseña u OTP
-se conectan en la terminal (`nmcli --ask`). Los archivos de `~/.config/dotfiles/vpn/` nunca se versionan.
+1. Importá con `n` desde cualquier ruta, o copiá el archivo a `~/.config/dotfiles/vpn/`: ahí aparece en su panel
+   como *not imported* y `enter` lo importa.
+2. `enter` conecta o desconecta, `d` elimina el perfil de NetworkManager (no el archivo), `r` refresca.
+
+OpenVPN con `auth-user-pass` pide usuario y contraseña: el usuario queda en la conexión y la contraseña se pasa con
+un archivo temporal que se borra al instante (NetworkManager no la guarda); los perfiles solo de certificados
+conectan directo. Los de NetworkManager se conectan en la terminal (`nmcli --ask`) porque suelen pedir contraseña
+u OTP. También sirve `nmcli connection import type wireguard file <archivo>`. Los archivos de
+`~/.config/dotfiles/vpn/` nunca se versionan.
+
+Ninguna VPN arranca sola: lo importado queda con `autoconnect=no` (NetworkManager lo trae en `yes` y levantaría
+varias a la vez al iniciar) y al abrir el panel se apaga el autoconnect de las VPN importadas por fuera.
 
 ## Webapps
 
 Sitios web como apps de escritorio (ventana propia, sin pestañas, con ícono en el launcher)
 sobre **firefoxpwa** (`sudo pacman -S firefoxpwa`).
 
-**Settings → 󰖟 WEBAPPS** abre un gestor en la terminal (`scripts/webapp-manager.sh`):
+**Settings → 󰖟 WEBAPPS** abre un gestor en la terminal (`tools/webapps_tui.py`):
 
-- `+ Nueva webapp`: pegá la URL (`drive.proton.me` alcanza) y confirmá el nombre. Detecta el
+- `n`: pegá la URL (`drive.proton.me` alcanza) y confirmá el nombre. Detecta el
   manifest del sitio; si no es PWA arma uno mínimo con el favicon, así sirve para cualquier web.
-- Sobre una app: `enter` la abre, `ctrl-d` la borra, `ctrl-r` la reinstala.
+- Sobre una app: `enter` la abre, `d` la borra, `r` la reinstala. El panel **Detalle** muestra
+  página, manifest y si está en tu lista.
 
 La lista vive en `~/.config/dotfiles/webapps.conf` (una por línea:
 `nombre|manifest|página inicial|ícono`, manifest vacío = sitio sin PWA). El gestor la crea

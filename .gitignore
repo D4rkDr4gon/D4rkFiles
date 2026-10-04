@@ -60,8 +60,6 @@ refresh_token
 id_rsa*
 id_ed25519*
 wayvnc/config
-PROTON/
-CITRIX/
 
 # ── Dependencias y artefactos ──────────────────────────────────────────────
 __pycache__/

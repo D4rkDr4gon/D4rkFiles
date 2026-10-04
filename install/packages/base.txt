@@ -55,6 +55,7 @@ playerctl
 # Red y bluetooth
 networkmanager
 nm-connection-editor
+networkmanager-openvpn
 iwd
 bluez
 bluez-utils

@@ -1,18 +1,26 @@
 #!/usr/bin/env python3
 """
-vpn_tui.py — TUI para gestionar VPN vía NetworkManager (WireGuard, OpenVPN…).
+vpn_tui.py — TUI para gestionar VPN vía NetworkManager.
 
 No trae ningún perfil ni proveedor configurado: muestra las conexiones VPN que
-YA existen en NetworkManager y te deja importar las tuyas.
+YA existen en NetworkManager, separadas en tres paneles, y te deja importar las
+tuyas. Cada uno usa el tipo que prefiera; los paneles sin perfiles quedan vacíos.
 
-  Conexiones   Enter conecta / desconecta · d elimina · r refresca
-  Importar     Enter importa un archivo de ~/.config/dotfiles/vpn/
-                 *.conf -> WireGuard      *.ovpn -> OpenVPN
+  NetworkManager  otras VPN de NM (OpenConnect, L2TP, vpnc, strongSwan, PPTP…):
+                    se crean con nm-connection-editor y se conectan en la
+                    terminal (`nmcli --ask`), porque suelen pedir contraseña u OTP
+  WireGuard       .conf de cualquier proveedor (wg-quick)
+  OpenVPN         .ovpn (plugin networkmanager-openvpn); si el perfil usa
+                    auth-user-pass pide usuario y contraseña
 
-Agregar tu VPN: copiá el archivo de tu proveedor a ~/.config/dotfiles/vpn/ y
-abrí la pestaña "Importar". (También sirve `nmcli connection import type
-wireguard file <archivo>`.) Los perfiles con contraseña guardada se conectan
-sin más; los que la piden se conectan en la terminal (`nmcli --ask`).
+Atajos: tab cambia de panel · enter conecta / desconecta (o importa si la fila
+es un archivo todavía no importado) · n importa un archivo (o abre
+nm-connection-editor en NetworkManager) · d elimina el perfil · r refresca.
+
+Los archivos de ~/.config/dotfiles/vpn/ (*.conf -> WireGuard, *.ovpn ->
+OpenVPN) que todavía no están en NetworkManager aparecen en su panel como
+"not imported". También sirve `nmcli connection import type wireguard file
+<archivo>`.
 
 Modo rápido para waybar (sin Textual):
 
@@ -21,7 +29,9 @@ Modo rápido para waybar (sin Textual):
 Imprime una línea JSON {"text", "tooltip", "class"} y sale. class:
   "connected" | "disconnected" | "disabled" (sin ningún perfil VPN configurado).
 
-Atajo de la cheatsheet: se abre desde el módulo VPN de waybar (ventana flotante de kitty).
+Se abre desde el módulo VPN de waybar (ventana flotante de kitty) y como
+sección VPN de Settings (view_class()). Estilo común: tools/dtui.py; textos
+visibles en inglés.
 """
 
 from __future__ import annotations
@@ -30,6 +40,7 @@ import asyncio
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -37,41 +48,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-VPN_TYPES = {"vpn", "wireguard"}
 CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
 IMPORT_DIR = CONFIG_HOME / "dotfiles" / "vpn"
 IMPORT_KINDS = {".conf": "wireguard", ".ovpn": "openvpn"}
+KINDS = ["nm", "wireguard", "openvpn"]      # orden de los paneles
 ICON_ON, ICON_OFF = "󰦝", "󰦞"
 
 _UNESCAPED_COLON = re.compile(r"(?<!\\):")
 _VALID_IFNAME = re.compile(r"^[A-Za-z0-9_-]{1,15}$")  # IFNAMSIZ = 16 con el nul
-
-
-# ── tema (mismo estado que usan el resto de las TUIs) ───────────────────
-def _hex_blend(c1: str, c2: str, pct: int) -> str:
-    c1, c2 = c1.lstrip("#"), c2.lstrip("#")
-    a = [int(c1[i:i + 2], 16) for i in (0, 2, 4)]
-    b = [int(c2[i:i + 2], 16) for i in (0, 2, 4)]
-    return "#" + "".join(f"{(x * pct + y * (100 - pct)) // 100:02x}" for x, y in zip(a, b))
-
-
-def _load_theme() -> dict:
-    theme = {
-        "primary": "#c62828", "secondary": "#8e1a1a", "background": "#0a0a0a", "foreground": "#c5c8c6",
-        "chip_battery": "#141414", "chip_bluetooth": "#1e1e1e", "status_ok": "#5cb85c",
-        "status_warn": "#f9a825", "status_error": "#ff4444",
-    }
-    state = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state")
-    try:
-        data = json.loads((state / "dotfiles" / "current_theme.json").read_text())
-        theme.update({k: v for k, v in data.items() if k in theme})
-    except (OSError, ValueError):
-        pass
-    theme["text_muted"] = _hex_blend(theme["foreground"], theme["background"], 45)
-    return theme
-
-
-THEME = _load_theme()
 
 
 # ── NetworkManager ──────────────────────────────────────────────────────
@@ -85,8 +69,11 @@ def _run(cmd: list[str], timeout: float = 8.0) -> subprocess.CompletedProcess:
 @dataclass
 class Conn:
     name: str
-    kind: str      # "wireguard" | "vpn" (OpenVPN, etc.)
+    kind: str                    # "nm" | "wireguard" | "openvpn"
     active: bool
+    imported: bool = True        # False = archivo de IMPORT_DIR sin importar
+    plugin: str = ""             # vpn.service-type abreviado (openconnect, l2tp…)
+    path: Optional[Path] = None  # archivo fuente en IMPORT_DIR, si hay
 
 
 def _split_terse(line: str) -> list[str]:
@@ -94,42 +81,87 @@ def _split_terse(line: str) -> list[str]:
     return [p.replace("\\:", ":").replace("\\\\", "\\") for p in _UNESCAPED_COLON.split(line)]
 
 
-def list_conns() -> list[Conn]:
-    r = _run(["nmcli", "-t", "-f", "NAME,TYPE,DEVICE", "connection", "show"])
+def _service_type(name: str) -> str:
+    """Plugin de una conexión tipo vpn: `org.freedesktop.NetworkManager.openvpn` -> `openvpn`."""
+    r = _run(["nmcli", "-g", "vpn.service-type", "connection", "show", "id", name])
+    return r.stdout.strip().rsplit(".", 1)[-1]
+
+
+def nm_conns() -> list[Conn]:
+    """Conexiones VPN de NetworkManager. `connection show` solo dice TYPE=vpn:
+    el plugin se consulta por conexión para separar OpenVPN del resto."""
+    r = _run(["nmcli", "-t", "-f", "NAME,TYPE,ACTIVE", "connection", "show"])
     if r.returncode != 0:
         return []
     out = []
     for line in r.stdout.splitlines():
         parts = _split_terse(line)
-        if len(parts) < 3 or parts[1] not in VPN_TYPES:
+        if len(parts) < 3:
             continue
-        out.append(Conn(name=parts[0], kind=parts[1], active=bool(parts[2].strip())))
-    return sorted(out, key=lambda c: c.name.lower())
+        name, ctype, active = parts[0], parts[1], parts[2] == "yes"
+        if ctype == "wireguard":
+            out.append(Conn(name, "wireguard", active))
+        elif ctype == "vpn":
+            plugin = _service_type(name)
+            out.append(Conn(name, "openvpn" if plugin == "openvpn" else "nm", active, plugin=plugin))
+    return out
 
 
-def importable() -> list[tuple[Path, str]]:
-    """Archivos de IMPORT_DIR que todavía no están en NetworkManager."""
-    have = {c.name for c in list_conns()}
-    files = []
+def list_conns() -> list[Conn]:
+    """Conexiones de NM + archivos de IMPORT_DIR que todavía no están importados."""
+    conns = nm_conns()
+    have = {c.name for c in conns}
     try:
         for p in sorted(IMPORT_DIR.iterdir()):
-            if p.suffix.lower() in IMPORT_KINDS and p.stem not in have:
-                files.append((p, IMPORT_KINDS[p.suffix.lower()]))
+            kind = IMPORT_KINDS.get(p.suffix.lower())
+            if not kind:
+                continue
+            if p.stem in have:
+                for c in conns:
+                    if c.name == p.stem:
+                        c.path = p
+            else:
+                conns.append(Conn(p.stem, kind, False, imported=False, path=p))
     except OSError:
         pass
-    return files
+    return sorted(conns, key=lambda c: c.name.lower())
 
 
-def import_file(path: Path, kind: str) -> subprocess.CompletedProcess:
-    """Importa un .conf/.ovpn. NetworkManager usa el nombre del archivo como nombre de interfaz
-    (máx. 15 caracteres); si es más largo se importa una copia con nombre corto y se renombra
-    la conexión (connection.id admite cualquier largo)."""
+def no_autoconnect(name: str) -> None:
+    """NM importa los .conf/.ovpn con autoconnect=yes y levanta solas todas las VPN al
+    arrancar o al cambiar de red (varias a la vez): acá cada VPN se conecta a mano."""
+    _run(["nmcli", "connection", "modify", "id", name, "connection.autoconnect", "no"])
+
+
+def disable_autoconnect() -> None:
+    """Pasada al abrir la TUI: apaga el autoconnect de toda VPN de NM que lo tenga prendido,
+    incluidas las importadas por fuera. No desconecta nada: solo el arranque automático."""
+    r = _run(["nmcli", "-t", "-f", "NAME,TYPE,AUTOCONNECT", "connection", "show"])
+    for line in r.stdout.splitlines():
+        parts = _split_terse(line)
+        if len(parts) >= 3 and parts[1] in ("wireguard", "vpn") and parts[2] == "yes":
+            no_autoconnect(parts[0])
+
+
+def import_file(path: Path) -> subprocess.CompletedProcess:
+    r = _import_file(path)
+    if r.returncode == 0:
+        no_autoconnect(path.stem)
+    return r
+
+
+def _import_file(path: Path) -> subprocess.CompletedProcess:
+    """Importa un .conf/.ovpn. Para WireGuard, NetworkManager usa el nombre del archivo como
+    nombre de interfaz (máx. 15 caracteres); si es más largo se importa una copia con nombre
+    corto y se renombra la conexión (connection.id admite cualquier largo). OpenVPN copia
+    los certificados embebidos a ~/.local/share/networkmanager-openvpn/."""
+    kind = IMPORT_KINDS[path.suffix.lower()]
     if kind != "wireguard" or _VALID_IFNAME.match(path.stem):
         return _run(["nmcli", "connection", "import", "type", kind, "file", str(path)], timeout=20)
     try:
         data = path.read_bytes()
     except OSError as exc:
-        return subprocess.CompletedProcess(["nmcli"], 1, "", f"no se pudo leer {path}: {exc}")
+        return subprocess.CompletedProcess(["nmcli"], 1, "", f"could not read {path}: {exc}")
     fd, tmp = tempfile.mkstemp(prefix="wgimp", suffix=".conf")
     tmp_path = Path(tmp)
     try:
@@ -144,18 +176,47 @@ def import_file(path: Path, kind: str) -> subprocess.CompletedProcess:
         tmp_path.unlink(missing_ok=True)
 
 
+def openvpn_auth(name: str) -> tuple[bool, str]:
+    """(pide_contraseña, usuario_guardado) según vpn.data. connection-type
+    `password`/`password-tls` = .ovpn con auth-user-pass; `tls` = solo certificados."""
+    r = _run(["nmcli", "-g", "vpn.data", "connection", "show", "id", name])
+    data = {}
+    for item in r.stdout.strip().split(","):
+        k, _, v = item.partition("=")
+        data[k.strip()] = v.strip()
+    return data.get("connection-type", "tls").startswith("password"), data.get("username", "")
+
+
+def openvpn_up(name: str, user: str = "", password: str = "") -> subprocess.CompletedProcess:
+    """Conecta un perfil OpenVPN. El usuario queda guardado en la conexión; la contraseña
+    va por un passwd-file temporal (0600) que se borra al terminar: NM no la persiste."""
+    if user:
+        r = _run(["nmcli", "connection", "modify", "id", name, "+vpn.data", f"username={user}"])
+        if r.returncode != 0:
+            return r
+    if not password:
+        return _run(["nmcli", "connection", "up", "id", name], 40)
+    fd, tmp = tempfile.mkstemp(prefix="ovpn-", dir=os.environ.get("XDG_RUNTIME_DIR") or None)
+    try:
+        with os.fdopen(fd, "w") as fh:
+            fh.write(f"vpn.secrets.password:{password}\n")
+        return _run(["nmcli", "connection", "up", "id", name, "passwd-file", tmp], 40)
+    finally:
+        Path(tmp).unlink(missing_ok=True)
+
+
 def waybar_status_json() -> str:
-    conns = list_conns()
+    conns = nm_conns()
     active = [c for c in conns if c.active]
     if not conns:
         text, cls = ICON_OFF, "disabled"
-        tip = "Sin perfiles VPN configurados\nClick para agregar uno"
+        tip = "No VPN profiles yet\nClick to add one"
     elif active:
         text, cls = ICON_ON, "connected"
-        tip = "VPN: " + ", ".join(c.name for c in active) + "\nClick para gestionar VPN"
+        tip = "VPN: " + ", ".join(c.name for c in active) + "\nClick to manage VPNs"
     else:
         text, cls = ICON_OFF, "disconnected"
-        tip = f"VPN desconectada ({len(conns)} perfil{'es' if len(conns) != 1 else ''})\nClick para gestionar VPN"
+        tip = f"VPN disconnected ({len(conns)} profile{'s' if len(conns) != 1 else ''})\nClick to manage VPNs"
     return json.dumps({"text": text, "tooltip": tip, "class": cls}, ensure_ascii=False)
 
 
@@ -168,138 +229,238 @@ def main_waybar_status() -> None:
 
 
 # ── TUI (Textual, se importa solo si hace falta) ────────────────────────
-def build_app():
-    from textual import on
-    from textual.app import App, ComposeResult
+_VIEW_CLS = None
+
+
+def view_class():
+    """Clase de la vista de VPN (DView). Se arma acá y no arriba para que
+    --waybar-status siga sin cargar Textual; Settings la importa con esto."""
+    global _VIEW_CLS
+    if _VIEW_CLS is not None:
+        return _VIEW_CLS
+
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from dtui import THEME as T, ConfirmModal, DView, Field, FormModal, Panel, Table, css
+    from rich.text import Text
+    from textual.app import ComposeResult
     from textual.binding import Binding
-    from textual.containers import Horizontal, Vertical
-    from textual.screen import ModalScreen
-    from textual.widgets import Button, DataTable, Footer, Header, Static, TabbedContent, TabPane
 
-    class ConfirmModal(ModalScreen[bool]):
-        BINDINGS = [Binding("escape", "dismiss(False)", "")]
+    TITLES = {"nm": "󰛳  NetworkManager", "wireguard": "󰌆  WireGuard", "openvpn": "󰒃  OpenVPN"}
+    EMPTY = {"nm": " none: press n to create one ",
+             "wireguard": " none: press n to import a .conf ",
+             "openvpn": " none: press n to import a .ovpn "}
 
-        def __init__(self, msg: str) -> None:
-            super().__init__()
-            self._msg = msg
-
-        def compose(self) -> ComposeResult:
-            with Vertical(id="confirm-box"):
-                yield Static(self._msg)
-                with Horizontal(id="confirm-btns"):
-                    yield Button("Sí", id="yes", variant="error")
-                    yield Button("Cancelar", id="no")
-
-        @on(Button.Pressed)
-        def _pressed(self, event: Button.Pressed) -> None:
-            self.dismiss(event.button.id == "yes")
-
-    class VpnApp(App):
-        TITLE = "VPN"
-        CSS = """
-        Screen { background: %(background)s; color: %(foreground)s; }
-        Header { background: %(chip_battery)s; color: %(primary)s; }
-        Footer { background: %(chip_battery)s; }
-        DataTable { background: %(background)s; height: 1fr; }
-        DataTable > .datatable--cursor { background: %(primary)s; color: %(background)s; }
-        #hint { color: %(text_muted)s; padding: 1 2; }
-        #status { color: %(text_muted)s; height: 1; padding: 0 2; }
-        ConfirmModal { align: center middle; }
-        #confirm-box { background: %(chip_battery)s; padding: 2 3; width: 60; height: auto; }
-        #confirm-btns { height: auto; margin-top: 1; }
-        """ % THEME
+    class VpnView(DView):
+        FOCUS = "#wireguard"
+        DEFAULT_CSS = css("""
+        VpnView .panel { height: auto; max-height: 33%%; }
+        VpnView DataTable { height: auto; max-height: 100%%; }
+        """)
         BINDINGS = [
-            Binding("q", "quit", "salir"),
-            Binding("r", "reload", "refrescar"),
-            Binding("d", "delete", "eliminar"),
-            Binding("1", "tab('tab-conns')", "conexiones"),
-            Binding("2", "tab('tab-import')", "importar"),
+            Binding("tab", "cycle(1)", show=False),
+            Binding("shift+tab", "cycle(-1)", show=False),
+            Binding("n", "new", "new"),
+            Binding("d", "delete", "delete"),
+            Binding("r", "reload", "refresh"),
+            Binding("j", "down", show=False),
+            Binding("k", "up", show=False),
         ]
 
         def compose(self) -> ComposeResult:
-            yield Header(show_clock=False)
-            with TabbedContent(initial="tab-conns"):
-                with TabPane("1 Conexiones", id="tab-conns"):
-                    yield Static("", id="hint")
-                    yield DataTable(id="conns", cursor_type="row")
-                with TabPane("2 Importar", id="tab-import"):
-                    yield Static(f"Archivos de {IMPORT_DIR} (.conf = WireGuard, .ovpn = OpenVPN). Enter importa.", id="import-hint")
-                    yield DataTable(id="imports", cursor_type="row")
-            yield Static("", id="status")
-            yield Footer()
+            for kind in KINDS:
+                yield Panel(Table(id=kind), title=TITLES[kind], id=f"{kind}-panel")
 
         def on_mount(self) -> None:
-            self.query_one("#conns", DataTable).add_columns("Nombre", "Tipo", "Estado")
-            self.query_one("#imports", DataTable).add_columns("Archivo", "Tipo")
+            for kind in KINDS:
+                t = self.query_one(f"#{kind}", Table)
+                t.add_column("Name", key="name", width=28)
+                t.add_column("State", key="state", width=18)
+                t.add_column("Type" if kind == "nm" else "Source", key="src", width=30)
+            self.busy = ""
+            disable_autoconnect()   # cada VPN se conecta a mano
             self.action_reload()
+            self.set_interval(5.0, self.tick)
 
-        def _say(self, msg: str) -> None:
-            self.query_one("#status", Static).update(msg)
+        def tick(self) -> None:
+            if self.visible_now:
+                self.action_reload()
 
-        def action_tab(self, tab_id: str) -> None:
-            self.query_one(TabbedContent).active = tab_id
+        def fill(self, tid: str, rows: list) -> None:
+            t = self.query_one(f"#{tid}", Table)
+            row = t.cursor_row or 0
+            t.clear()
+            for key, cells in rows:
+                t.add_row(*cells, key=key)
+            if rows:
+                t.move_cursor(row=min(row, len(rows) - 1))
+
+        @staticmethod
+        def state(c: Conn) -> Text:
+            if not c.imported:
+                return Text("◌  not imported", style=T["status_warn"])
+            if c.active:
+                return Text("●  connected", style=f"bold {T['status_ok']}")
+            return Text("○  disconnected", style=T["muted"])
 
         def action_reload(self) -> None:
-            conns, files = list_conns(), importable()
-            table = self.query_one("#conns", DataTable)
-            table.clear()
-            for c in conns:
-                estado = "[b]● conectada[/b]" if c.active else "○ desconectada"
-                table.add_row(c.name, "WireGuard" if c.kind == "wireguard" else "VPN", estado, key=c.name)
-            self.query_one("#hint", Static).update(
-                "" if conns else
-                "Sin perfiles VPN.\nCopiá el archivo de tu proveedor a "
-                f"{IMPORT_DIR} y usá la pestaña 2 (Importar)."
-            )
-            imp = self.query_one("#imports", DataTable)
-            imp.clear()
-            for path, kind in files:
-                imp.add_row(path.name, kind, key=str(path))
+            conns = list_conns()
+            home = str(Path.home())
+            for kind in KINDS:
+                mine = [c for c in conns if c.kind == kind]
+                self.fill(kind, [(c.name, [c.name, self.state(c), Text(
+                    c.plugin if kind == "nm" else str(c.path).replace(home, "~") if c.path else "—",
+                    style=T["muted"])]) for c in mine])
+                active = [c.name for c in mine if c.active]
+                panel = self.query_one(f"#{kind}-panel")
+                panel.border_subtitle = (
+                    f" connected: {', '.join(active)} " if active else
+                    EMPTY[kind] if not mine else " disconnected ")
+            if self.busy:
+                self.query_one(f"#{self.focused_kind()}-panel").border_subtitle = f" {self.busy} "
+            self.update_hints()
 
-        @on(DataTable.RowSelected, "#conns")
-        async def _toggle(self, event: DataTable.RowSelected) -> None:
-            name = event.row_key.value
-            conn = next((c for c in list_conns() if c.name == name), None)
+        def focused_kind(self) -> str:
+            f = self.app.focused
+            return f.id if isinstance(f, Table) and f.id in KINDS else "wireguard"
+
+        def hints(self) -> list[tuple[str, str]]:
+            new = {"nm": "new (editor)", "wireguard": "import .conf", "openvpn": "import .ovpn"}
+            return [("enter", "connect/disconnect"), ("n", new[self.focused_kind()]), ("d", "delete"),
+                    ("tab", "panel"), ("r", "refresh"), ("q", "quit")]
+
+        def action_cycle(self, step: int) -> None:
+            i = KINDS.index(self.focused_kind())
+            self.query_one(f"#{KINDS[(i + step) % len(KINDS)]}", Table).focus()
+
+        def action_down(self) -> None:
+            if isinstance(self.app.focused, Table):
+                self.app.focused.action_cursor_down()
+
+        def action_up(self) -> None:
+            if isinstance(self.app.focused, Table):
+                self.app.focused.action_cursor_up()
+
+        def say(self, r: subprocess.CompletedProcess, ok_msg: str) -> None:
+            if r.returncode == 0:
+                self.app.notify_ok(ok_msg)
+            else:
+                msg = ((getattr(r, "stderr", "") or getattr(r, "stdout", "") or "").strip().splitlines() or
+                       ["failed (see nmcli)"])
+                self.app.notify_err(msg[-1])
+
+        async def run_busy(self, label: str, fn, *args) -> subprocess.CompletedProcess:
+            self.busy = label
+            self.action_reload()
+            r = await asyncio.to_thread(fn, *args)
+            self.busy = ""
+            return r
+
+        def find(self, name: str) -> Optional[Conn]:
+            return next((c for c in list_conns() if c.name == name), None)
+
+        async def on_data_table_row_selected(self, event: Table.RowSelected) -> None:
+            if event.data_table.id in KINDS and event.row_key.value:
+                await self.toggle(str(event.row_key.value))
+
+        async def import_path(self, path: Path) -> None:
+            r = await self.run_busy(f"importing {path.name}…", import_file, path)
+            self.say(r, f"{path.stem} imported")
+            self.action_reload()
+
+        async def toggle(self, name: str) -> None:
+            conn = self.find(name)
             if conn is None:
                 return
+            if not conn.imported:
+                return await self.import_path(conn.path)
             if conn.active:
-                self._say(f"Desconectando {name}…")
-                r = await asyncio.to_thread(_run, ["nmcli", "connection", "down", "id", name], 20)
-            elif conn.kind == "vpn":
+                r = await self.run_busy(f"disconnecting {name}…", _run,
+                                        ["nmcli", "connection", "down", "id", name], 20)
+                ok = f"{name} disconnected"
+            elif conn.kind == "nm":
                 # Puede pedir contraseña/OTP: se conecta en la terminal.
-                with self.suspend():
+                with self.app.suspend():
                     r = subprocess.run(["nmcli", "--ask", "connection", "up", "id", name])
+                ok = f"{name} connected"
+            elif conn.kind == "openvpn" and openvpn_auth(name)[0]:
+                return self.ask_openvpn(name)
             else:
-                self._say(f"Conectando {name}…")
-                r = await asyncio.to_thread(_run, ["nmcli", "connection", "up", "id", name], 30)
-            msg = (getattr(r, "stderr", "") or getattr(r, "stdout", "") or "").strip().splitlines()
-            self._say("OK" if r.returncode == 0 else (msg[-1] if msg else "falló (ver nmcli)"))
+                r = await self.run_busy(f"connecting {name}…", _run,
+                                        ["nmcli", "connection", "up", "id", name], 40)
+                ok = f"{name} connected"
+            self.say(r, ok)
             self.action_reload()
 
-        @on(DataTable.RowSelected, "#imports")
-        async def _import(self, event: DataTable.RowSelected) -> None:
-            path = Path(event.row_key.value)
-            self._say(f"Importando {path.name}…")
-            r = await asyncio.to_thread(import_file, path, IMPORT_KINDS[path.suffix.lower()])
-            msg = (r.stderr or r.stdout).strip().splitlines()
-            self._say("Importada: aparece en la pestaña Conexiones" if r.returncode == 0 else (msg[-1] if msg else "falló"))
-            self.action_reload()
+        def ask_openvpn(self, name: str) -> None:
+            user = openvpn_auth(name)[1]
+
+            async def done(v: Optional[dict]) -> None:
+                if v is None:
+                    return
+                r = await self.run_busy(f"connecting {name}…", openvpn_up, name,
+                                        v["user"].strip(), v["pass"])
+                self.say(r, f"{name} connected")
+                self.action_reload()
+
+            self.app.push_screen(FormModal(f"Connect · {name}",
+                                           [Field("user", "User", user),
+                                            Field("pass", "Password", password=True)],
+                                           hint="the password is not stored by NetworkManager",
+                                           enter_advances=True, focus="pass" if user else "user"),
+                                 lambda v: self.app.run_worker(done(v)))
+
+        def action_new(self) -> None:
+            kind = self.focused_kind()
+            if kind == "nm":
+                # OpenConnect, L2TP, vpnc…: cada plugin tiene su propio formulario
+                if shutil.which("nm-connection-editor"):
+                    subprocess.Popen(["nm-connection-editor", "--create", "--type=vpn"],
+                                     stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                                     stderr=subprocess.DEVNULL, start_new_session=True)
+                    return self.app.notify_ok("nm-connection-editor opened")
+                return self.app.notify_err("install nm-connection-editor (or use nmcli connection add type vpn)")
+            ext = ".conf" if kind == "wireguard" else ".ovpn"
+
+            def check(v: dict) -> Optional[str]:
+                p = Path(v["path"]).expanduser()
+                if not p.is_file():
+                    return f"File not found: {v['path']}"
+                if p.suffix.lower() != ext:
+                    return f"Expected a {ext} file"
+                if p.stem in {c.name for c in nm_conns()}:
+                    return f"'{p.stem}' is already imported"
+                return None
+
+            def done(v: Optional[dict]) -> None:
+                if v:
+                    self.app.run_worker(self.import_path(Path(v["path"]).expanduser()))
+
+            self.app.push_screen(FormModal(f"Import {TITLES[kind].split()[-1]} profile",
+                                           [Field("path", f"{ext} file", f"{IMPORT_DIR}/", files=True)],
+                                           hint=f"Any path works; files in {IMPORT_DIR}/\n"
+                                                "also show up here before importing.",
+                                           validate=check), done)
 
         def action_delete(self) -> None:
-            table = self.query_one("#conns", DataTable)
-            if self.query_one(TabbedContent).active != "tab-conns" or table.row_count == 0:
-                return
-            name = table.coordinate_to_cell_key(table.cursor_coordinate).row_key.value
+            t = self.query_one(f"#{self.focused_kind()}", Table)
+            name = t.selected_key()
+            conn = self.find(name) if name else None
+            if conn is None or not conn.imported:
+                return self.app.notify_err("nothing to delete: the profile is not imported")
 
-            def done(ok: Optional[bool]) -> None:
-                if ok:
-                    r = _run(["nmcli", "connection", "delete", "id", name])
-                    self._say("Eliminada" if r.returncode == 0 else "no se pudo eliminar")
+            def done(yes: bool) -> None:
+                if yes:
+                    if conn.active:
+                        _run(["nmcli", "connection", "down", "id", name], 15)
+                    self.say(_run(["nmcli", "connection", "delete", "id", name]), f"{name} deleted")
                     self.action_reload()
 
-            self.push_screen(ConfirmModal(f"¿Eliminar el perfil «{name}» de NetworkManager?"), done)
+            self.app.push_screen(ConfirmModal("Delete profile",
+                                              f"Delete “{name}” from NetworkManager?\n"
+                                              "The source file (if any) is kept."), done)
 
-    return VpnApp()
+    _VIEW_CLS = VpnView
+    return VpnView
 
 
 def main() -> None:
@@ -308,7 +469,9 @@ def main() -> None:
     if "-h" in sys.argv or "--help" in sys.argv:
         print(__doc__)
         return
-    build_app().run()
+    cls = view_class()   # agrega tools/ al path
+    from dtui import ViewApp
+    ViewApp(cls, title="VPN").run()
 
 
 if __name__ == "__main__":
