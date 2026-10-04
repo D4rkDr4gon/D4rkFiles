@@ -11,6 +11,7 @@ grim
 slurp
 wlr-randr
 gtk-layer-shell
+python-cairo           # widgets de escritorio: región de input (config/desktop-widgets)
 kdeconnect
 wayvnc
 hypridle            # Settings → Power: bloqueo/apagado/suspensión por inactividad (apagado hasta activarlo)

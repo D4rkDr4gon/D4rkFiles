@@ -30,6 +30,7 @@ config/walker	.config/walker	hyprland
 config/swayosd	.config/swayosd	hyprland
 config/hyprshell	.config/hyprshell	hyprland
 config/fprint-osd	.config/fprint-osd	hyprland
+config/desktop-widgets	.config/desktop-widgets	hyprland
 config/gtklock	.config/gtklock	hyprland
 config/qtile	.config/qtile	x11
 config/polybar	.config/polybar	x11

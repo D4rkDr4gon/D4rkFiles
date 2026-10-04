@@ -84,6 +84,7 @@ configuran en `~/.config/dotfiles/user.conf`; el instalador te los pregunta.
 | Barra | waybar | polybar |
 | Launcher | rofi (+ walker/elephant) | rofi |
 | Bloqueo / login | gtklock · SDDM | betterlockscreen / i3lock · SDDM |
+| Escritorio vacío | widgets propios (reloj, música, clima, sistema, agenda, pomodoro…), ubicables desde Settings | |
 | Común | kitty · zsh + powerlevel10k · dunst · Neovim (LazyVim) · herdr · lazygit · Thunar | |
 
 ## Skill de IA

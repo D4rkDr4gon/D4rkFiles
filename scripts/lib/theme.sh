@@ -136,6 +136,8 @@ theme_load_tokens() {
     else
         TOK[gtk_font]="Sans 10"
     fi
+    # Interfaz con la fuente del tema y, si no define una, la mono (desktop-widgets)
+    TOK[font_ui_or_mono]="${TOK[font_ui]:-${TOK[font_mono]}}"
 
     # Colores ANSI de 24 bits (statusline de Claude Code): \033[38;2;R;G;Bm
     local ac h2

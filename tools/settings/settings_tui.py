@@ -50,6 +50,7 @@ from common import (CURRENT_THEME, DOTFILES, HYPRLAND, THEME_SWITCH, active_them
 from colorpicker import ColorPickerView  # noqa: E402
 from displays import DisplaysView  # noqa: E402
 from defaultapps import DefaultAppsView  # noqa: E402
+from deskwidgets import DeskWidgetsView  # noqa: E402
 from firewall import FirewallView  # noqa: E402
 from fonts import FontsView  # noqa: E402
 from inputdev import InputView  # noqa: E402
@@ -1473,7 +1474,8 @@ CATEGORIES = [
                ("agents", "󰚩", "AI Agents")]),
     ("Hardware", [("displays", "󰍹", "Displays"), ("audio", "󰕾", "Audio"), ("input", "󰌌", "Input"),
                   ("power", "󰂄", "Power"), ("battery", "󰁹", "Battery"), ("storage", "󰋊", "Storage")]),
-    ("Desktop", [("modes", "󰕮", "Modes"), ("workspaces", "\uf009", "Workspaces"), ("webapps", "󰖟", "Webapps"),
+    ("Desktop", [("modes", "󰕮", "Modes"), ("workspaces", "\uf009", "Workspaces"),
+                 ("deskwidgets", "\uf108", "Desktop widgets"), ("webapps", "󰖟", "Webapps"),
                  ("defaultapps", "󰀻", "Default apps"), ("shortcuts", "\uf11c", "Shortcuts")]),
     ("Look & feel", [("themes", "󰏘", "Themes"), ("themeeditor", "󰏘", "Theme editor"),
                      ("appearance", "󰉼", "Appearance"), ("fonts", "󰛖", "Fonts & cursor"),
@@ -1496,7 +1498,7 @@ def section_views() -> dict:
         "phone": PhoneView, "nettools": NetToolsView, "startup": StartupView, "logs": LogsView,
         "snapshots": SnapshotsView, "screenshots": ScreenshotsView, "colorpicker": ColorPickerView,
         "input": InputView, "battery": BatteryView, "storage": StorageView, "defaultapps": DefaultAppsView,
-        "themeeditor": ThemeEditorView, "fonts": FontsView, "firewall": FirewallView,
+        "themeeditor": ThemeEditorView, "deskwidgets": DeskWidgetsView, "fonts": FontsView, "firewall": FirewallView,
         # En Settings, AI Agents suma el panel Providers (mostrar/ocultar cada uno)
         "agents": functools.partial(load_view("agents_tui", "AgentsView"), manage=True),
     }

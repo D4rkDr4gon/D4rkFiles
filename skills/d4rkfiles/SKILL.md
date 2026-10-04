@@ -16,7 +16,7 @@ la documentación del repo; **leela bajo demanda, no la reescribas de memoria**.
 | El repo (siempre, sea donde sea que esté clonado) | `~/.local/share/dotfiles` (symlink estable) |
 | Tu configuración de usuario | `~/.config/dotfiles/user.conf` |
 | Overrides de Hyprland (monitores, atajos propios) | `~/.config/dotfiles/hypr/*.conf` |
-| Lo que escribe Settings | `~/.config/dotfiles/hypr/settings.conf` (input, cursor), `autostart.conf`, `workspaces.conf` (cantidad de workspaces) |
+| Lo que escribe Settings | `~/.config/dotfiles/hypr/settings.conf` (input, cursor), `autostart.conf`, `workspaces.conf` (cantidad de workspaces), `desktop-widgets.conf` (widgets de escritorio: cuáles, zona de cada uno, clima, agenda `.ics`, pomodoro, teléfono, red) |
 | Teclas reasignadas de Settings y las TUIs | `~/.config/dotfiles/keymap.json` (`{id: teclas}`, solo lo cambiado) |
 | Temas propios / copias editadas desde Settings | `~/.config/dotfiles/themes/<tema>/theme.json` |
 | Generados por Settings dentro del repo (en `.gitignore`) | `config/hypr/hypridle.conf`, `config/hypr/hyprsunset.conf` |
@@ -59,6 +59,7 @@ Layout del repo: `config/<app>/` (→ `~/.config/<app>`), `home/zsh/`, `system/`
 | `~/.config/dotfiles/hypr/workspaces.conf` | `hyprctl reload` (Settings → Workspaces lo hace solo) |
 | `config/hypr/hyprsunset.conf` / `hypridle.conf` | `systemctl --user restart hyprsunset` / `hypridle` |
 | `~/.config/dotfiles/keymap.json` | se aplica al instante en Settings; las TUIs sueltas al reabrirlas |
+| `~/.config/dotfiles/desktop-widgets.conf` / su `style.css` | al instante (el daemon los vigila); si cambia el `.py`, reiniciar `config/desktop-widgets/desktop-widgets.py` |
 
 ## Qué hacer ante cada pedido
 

@@ -67,7 +67,8 @@ Todo eso llega a Hyprland por `config/hypr/theme.conf.tpl` (que se carga antes q
 `@ansi_*` (paleta de 16 colores de kitty), `@primary_hex@`/`@chip_battery_hex@` (sin `#`),
 `@background_r/g/b`, `@font_mono_alt@` (variante "Mono" de Hack para gtklock y SDDM),
 `@active_border@` (sólido o gradiente), `@shadow_color@`, `@borderangle_anim@`, `@secondary_hex@`,
-`@font_size_m1@` / `@font_size_m3@` (tamaño base −1 / −3) y `@gtk_font@` (`font_ui` + tamaño, o `Sans 10`).
+`@font_size_m1@` / `@font_size_m3@` (tamaño base −1 / −3), `@gtk_font@` (`font_ui` + tamaño, o `Sans 10`)
+y `@font_ui_or_mono@` (`font_ui`, o `font_mono` si el tema no define una; la usan los widgets de escritorio).
 
 También hay tokens del usuario (de `user.conf` y autodetección): `@user_display_name@`,
 `@user_title@`, `@terminal@`, `@browser@`, `@file_manager@`, `@editor_gui@`, `@kb_layout@`,

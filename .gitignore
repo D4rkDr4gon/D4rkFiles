@@ -3,6 +3,7 @@
 # el .tpl, nunca acá. El CI verifica que cada .tpl tenga su línea en esta lista.
 /config/claude/statusline-command.sh
 /config/dunst/dunstrc
+/config/desktop-widgets/style.css
 /config/fprint-osd/style.css
 /config/gtk-3.0/gtk.css
 /config/gtk-3.0/settings.ini

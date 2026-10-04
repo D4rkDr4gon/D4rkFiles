@@ -26,7 +26,7 @@ Qué hace cada pieza y dónde está su config. Todo vive en `config/<app>/` y se
 - `config/hypr/scripts/hypr-workspaces.py` — indicador de waybar; muestra los N habilitados.
 
 Autostart: waybar, dunst, swayosd, historial de portapapeles (cliphist), hyprpaper, hyprshell,
-la unidad `hyprland-session-init`, y (si están instalados) fprint-osd y KDE Connect.
+la unidad `hyprland-session-init`, los widgets de escritorio y (si están instalados) fprint-osd y KDE Connect.
 
 ## Qtile (X11)
 
@@ -87,6 +87,36 @@ Settings y el historial del portapapeles (`Mod+V`) ya no son menús de rofi: son
 - **swayosd** — OSD de volumen y brillo (Wayland). No relee su CSS en caliente: el motor de
   temas reinicia el servidor.
 - **fprint-osd** — OSD de huella para `sudo`/lock vía `fprintd`. Solo arranca si `fprintd` está instalado.
+- **Widgets de escritorio** (`config/desktop-widgets/`, solo Hyprland) — cuando el workspace activo de un
+  monitor no tiene ventanas aparecen: reloj y fecha, lo que suena (MPRIS con `playerctl`, portada y botones, con
+  el logo y nombre de la app real: webapp de firefoxpwa, Spotify aunque se publique como chromium, o el sitio
+  de la pestaña —YouTube, SoundCloud…—),
+  clima ([Open-Meteo](https://open-meteo.com), sin API key, cache de 30 min), sistema (CPU, RAM, disco,
+  batería), uso de los agentes IA (lo que escribe la statusline de Claude Code y
+  `config/waybar/scripts/opencode-context.sh`, según `~/.config/dotfiles/agents.conf`), estado (updates
+  pendientes del cache de Settings → Update —no sale a la red—, VPNs conectadas, pendientes) y una lista de
+  pendientes (escribir + Enter, click tacha, click derecho borra). Opcionales, apagados por defecto:
+  **Agenda** (próximos días desde `.ics` —URLs o archivos en `agenda_ics`, cache de 30 min— o desde los
+  calendarios del plugin Full Calendar de un vault de Obsidian, con `agenda_source=obsidian`; parser propio sin
+  dependencias en `config/desktop-widgets/agenda.py`: RRULE, zonas horarias —también las de Windows de Outlook—,
+  excepciones), **Pomodoro** (foco/pausas con notificación, opcionalmente No molestar de dunst durante el foco),
+  **Phone** (KDE Connect por D-Bus: batería, señal, notificaciones del teléfono, botón para hacerlo sonar) y
+  **Network** (SSID y señal, IP, gráfico de tráfico; IP pública opcional vía api.ipify.org).
+  - `desktop-widgets.py`: daemon GTK3 + `gtk-layer-shell`, una capa `BOTTOM` por monitor (namespace
+    `desktop-widgets`, con `blur on`/`ignore_alpha` por `layerrule`). Escucha el socket2 de Hyprland y consulta
+    `j/monitors`/`j/workspaces` por el socket (sin lanzar `hyprctl`); muestra la capa del monitor cuyo
+    workspace activo tiene 0 ventanas y no tiene un especial abierto. Oculto no hace polling. La capa cubre el
+    monitor menos waybar, pero solo las tarjetas reciben clicks (región de input). El teclado lo toma solo al
+    hacer click en el campo del todo y lo suelta al irse el foco a una ventana u otro monitor, o con `Esc`.
+  - **Ubicación por widget**: cada uno va en una de 9 zonas (`top-left`, `top`, `top-right`, `left`,
+    `center`, `right`, `bottom-left`, `bottom`, `bottom-right`); los que comparten zona se apilan según
+    `order`. En las zonas del centro van en filas de a 3; en costados y esquinas, en columna (partida en dos si
+    no entra en el alto). Presets: dashboard, columna izquierda/derecha y repartido en las esquinas.
+  - `dwlib.py`: lógica sin GTK. Config en `~/.config/dotfiles/desktop-widgets.conf` (la escribe Settings →
+    Desktop widgets; sin ese archivo: todo prendido al centro y el clima sin ciudad), todo y caches en
+    `~/.local/state/dotfiles/desktop-widgets/`. Para probar: `DESKTOP_WIDGETS_CONF` / `DESKTOP_WIDGETS_STATE`.
+  - Estilo: `config/desktop-widgets/style.css.tpl` (rampa `chip_*`, `radius`, `font_ui_or_mono`,
+    `font_mono`). Config, estilo y todo se releen en caliente; si se toca el `.py`, reiniciar el daemon.
 
 ## Pantalla de bloqueo y login
 
