@@ -232,4 +232,32 @@ if [ "$1" = "--toggle" ]; then
     exit 0
 fi
 
+# Subcomandos sin rofi (los usa Settings → Notifications, tools/settings).
+case "${1:-}" in
+    --status)
+        # {"active": bool, "remaining": "1h 5m"|"", "apps": [{"app", "enabled"}]}
+        active=false; is_dnd_active && active=true
+        while IFS=$'\t' read -r enabled app; do
+            [ -z "$app" ] && continue
+            printf '%s\t%s\n' "$enabled" "$app"
+        done <"$STATE_LIST" \
+            | jq -R -s --argjson active "$active" --arg rem "$(timer_remaining)" '
+                {active: $active, remaining: $rem,
+                 apps: (split("\n") | map(select(length > 0) | split("\t")
+                        | {app: .[1], enabled: (.[0] == "1")}))}'
+        exit 0 ;;
+    --on)  set_dnd true; exit 0 ;;
+    --off) cancel_timer; set_dnd false; exit 0 ;;
+    --timer)
+        [[ "${2:-}" =~ ^[0-9]+$ ]] || { echo "Uso: $(basename "$0") --timer <segundos>" >&2; exit 2; }
+        set_dnd true; start_timer "$2"; exit 0 ;;
+    --app-toggle)
+        [ -n "${2:-}" ] || exit 2
+        toggle_app "$2"; exit 0 ;;
+    --app-add)
+        app="${2//\"/}"; [ -n "$app" ] || exit 2
+        grep -qP "\t\Q$app\E\$" "$STATE_LIST" 2>/dev/null || printf '1\t%s\n' "$app" >>"$STATE_LIST"
+        regenerate_rules; exit 0 ;;
+esac
+
 main_menu

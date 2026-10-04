@@ -46,6 +46,8 @@ def float_and_opacity(client):
 FLOAT_GEOMETRY = {
     "claude-agents": (900, 760, 16, 40),
     "shortcuts": (900, 620, 16, 40),
+    "settings": (1560, 960, None, None),   # None: centrada
+    "clipboard": (1200, 680, None, None),
 }
 
 
@@ -55,8 +57,12 @@ def _apply_floating_geometry(client, width, height, margin_right, margin_top):
             client.enable_floating()
         screen = client.qtile.current_screen
         client.set_size_floating(width, height)
-        x = screen.x + screen.width - width - margin_right
-        y = screen.y + margin_top
+        if margin_right is None:
+            x = screen.x + (screen.width - width) // 2
+            y = screen.y + (screen.height - height) // 2
+        else:
+            x = screen.x + screen.width - width - margin_right
+            y = screen.y + margin_top
         client.set_position_floating(x, y)
         client.bring_to_front()
     except Exception:

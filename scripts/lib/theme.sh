@@ -8,9 +8,29 @@
 
 THEMES_DIR="$DOTFILES_DIR/themes"
 TEMPLATES_DIR="$THEMES_DIR/templates"
+# Temas propios del usuario (Settings → Theme editor). Fuera del repo y con
+# prioridad sobre los del repo si comparten nombre de carpeta.
+USER_THEMES_DIR="$DOTFILES_CONF_DIR/themes"
 CURRENT_THEME_FILE="$DOTFILES_STATE_DIR/current_theme.json"
 
 declare -A TOK=()
+
+# Carpeta de un tema por nombre: primero la del usuario, después la del repo.
+theme_dir() {
+    local d
+    for d in "$USER_THEMES_DIR/$1" "$THEMES_DIR/$1"; do
+        [[ -f "$d/theme.json" ]] && { printf '%s' "$d"; return 0; }
+    done
+    return 1
+}
+
+# Lista los nombres de carpeta de todos los temas (usuario + repo, sin repetir).
+theme_names() {
+    local d
+    for d in "$USER_THEMES_DIR"/*/ "$THEMES_DIR"/*/; do
+        [[ -f "$d/theme.json" ]] && basename "$d"
+    done | awk '!seen[$0]++'
+}
 
 # Mezcla dos colores "#rrggbb"; pct = peso (0-100) del primero.
 hex_blend() {
@@ -175,7 +195,9 @@ render_all_templates() {
 write_current_theme() {
     local json="$1"
     mkdir -p "$DOTFILES_STATE_DIR"
-    jq --arg wp "${TOK[wallpaper]}" '.wallpaper = $wp' "$json" > "$CURRENT_THEME_FILE.tmp" \
+    # .dir = carpeta del tema (la usa Settings para saber cuál está activo).
+    jq --arg wp "${TOK[wallpaper]}" --arg dir "$(basename "$(dirname "$json")")" \
+        '.wallpaper = $wp | .dir = $dir' "$json" > "$CURRENT_THEME_FILE.tmp" \
         && mv -f "$CURRENT_THEME_FILE.tmp" "$CURRENT_THEME_FILE"
 }
 

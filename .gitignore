@@ -42,6 +42,9 @@ user.conf
 local.zsh
 hypr/local.conf
 
+# ── Generados por Settings (tools/settings) dentro de config/ ────────────────
+/config/hypr/hypridle.conf
+
 # ── Secretos y credenciales: NUNCA versionar ───────────────────────────────
 .env
 .env.*

@@ -11,13 +11,13 @@ todos los atajos (y permite reasignar su combinación).
 | `Super+Return` | Terminal (`TERMINAL`) |
 | `Super+Shift+Return` | herdr (multiplexor de terminal) en kitty |
 | `Super+Space` | Buscador (rofi: `drun` en Hyprland, `combi` con comandos, calculadora y web en Qtile) |
-| `Super+Shift+Space` | Menú Settings (temas, workspaces, fondos, notificaciones, monitores, updates) |
+| `Super+Shift+Space` | Settings: TUI con todas las opciones del entorno ([settings.md](settings.md)) |
 | `Super+B` | Navegador (`BROWSER`) |
 | `Super+F` | Gestor de archivos (`FILE_MANAGER`) |
 | `Super+S` | Editor (`EDITOR_GUI`) |
 | `Super+K` | Cheatsheet de atajos |
 | `Super+Shift+M` | Hyprland: modos de escritorio ([customization.md](customization.md#modos-de-escritorio)) |
-| `Super+V` | Historial del portapapeles (Hyprland: cliphist + rofi · Qtile: CopyQ) |
+| `Super+V` | Historial del portapapeles (Hyprland: cliphist + `tools/clipboard_tui.py` · Qtile: CopyQ) |
 | `Super+L` | Menú de acciones: bloquear, suspender, reiniciar, apagar, salir |
 | `Print` / `Super+Shift+S` | Captura de pantalla (región; Wayland: guarda y copia) |
 | `Super+Ctrl+R` | Recargar barra (y la config del WM) |

@@ -34,9 +34,8 @@ list_themes() {
     local d name display current=""
     [[ -f "$CURRENT_THEME_FILE" ]] && current="$(jq -r '.name // empty' "$CURRENT_THEME_FILE" 2>/dev/null || true)"
     echo "Temas disponibles:"
-    for d in "$THEMES_DIR"/*/; do
-        [[ -f "$d/theme.json" ]] || continue
-        name="$(basename "$d")"
+    for name in $(theme_names); do
+        d="$(theme_dir "$name")"
         display="$(jq -r '.name' "$d/theme.json")"
         printf '  %-18s %s%s\n' "$name" "$display" "$([[ "$display" == "$current" ]] && echo '  (activo)')"
     done
@@ -128,9 +127,8 @@ restart_firefox() {
 
 apply_theme() {
     local name="$1" render_only="$2" restart_ff="$3"
-    local dir="$THEMES_DIR/$name"
-
-    [[ -f "$dir/theme.json" ]] || {
+    local dir
+    dir="$(theme_dir "$name")" || {
         echo "Error: tema '$name' no encontrado (theme --list)" >&2
         exit 1
     }

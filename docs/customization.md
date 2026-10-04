@@ -10,7 +10,7 @@ Lo leen los scripts, zsh, Hyprland y Qtile. Todo es opcional: lo que falta se au
 
 | Clave | Para qué | Por defecto |
 |---|---|---|
-| `USER_DISPLAY_NAME` | Nombre en el banner de zsh, la pantalla de bloqueo, SDDM y la bienvenida | Tu nombre (GECOS) o login |
+| `USER_DISPLAY_NAME` | Nombre en el banner de zsh, la pantalla de bloqueo, SDDM, la bienvenida y Settings | Tu nombre (GECOS) o login |
 | `USER_TITLE` | Título/alias junto al nombre | vacío |
 | `BANNER_ART_FILE` | Arte del banner (por defecto el DARKDRAGON del proyecto, `assets/banner-art.txt`); `none` = solo tu nombre | — |
 | `TERMINAL`, `BROWSER`, `FILE_MANAGER`, `EDITOR_GUI` | Apps de los atajos | kitty, firefox, thunar, subl |
@@ -18,6 +18,7 @@ Lo leen los scripts, zsh, Hyprland y Qtile. Todo es opcional: lo que falta se au
 | `DISPLAY_MANAGER` | Login manager a habilitar | `sddm` |
 | `DEFAULT_THEME` | Tema del instalador | `red-dark` |
 | `EXTRA_WALLPAPER_DIRS` | Carpetas extra de wallpapers (separadas por `:`) | — |
+| `EXTRA_REPO_DIRS` | Carpetas extra donde Settings → System busca clones de git (separadas por `:`; `~` siempre) | — |
 | `VPN_PROFILE` | Conexión de NetworkManager para los alias `vpnup`/`vpndown` | — |
 | `VNC_RES`, `VNC_PORT` | Monitor virtual de `wayvnc-toggle` | `1920x1080`, `5900` |
 
@@ -38,6 +39,11 @@ env = WLR_NO_HARDWARE_CURSORS,1
 ```
 
 `hyprctl monitors` lista los nombres de salida; `hyprmon` (paquete AUR) los configura gráficamente.
+
+[Settings](settings.md) también escribe en esa carpeta, nunca en el repo: `settings.conf`
+(input y cursor, como líneas planas `input:sensitivity = 0.2`) y `autostart.conf` (tus apps de
+inicio). Se pueden editar a mano; como Hyprland incluye los archivos en orden alfabético, lo que
+pongas en `local.conf` queda por debajo de `settings.conf`.
 
 **Qtile/X11:** los monitores se configuran con `xrandr` (o `arandr`); poné el comando en tu
 `~/.xprofile` o en `local.zsh`. Qtile y polybar detectan los monitores conectados solos.
@@ -95,14 +101,15 @@ TRABAJO con el chat en el 2 y el navegador en el 5; JUGAR con Steam en el 1). No
 ninguno de fábrica: los creás vos.
 
 **Settings → 󰕮 MODES** (o `Mod + Shift + M`) muestra tus modos para aplicar uno y, al
-final, **Gestionar modos...**, que abre un gestor en la terminal (`scripts/mode-manager.sh`):
+final, **Gestionar modos...**, que abre un gestor en la terminal (`tools/modes_tui.py`) con
+dos paneles: **Modos** arriba y las **Apps** del modo seleccionado abajo (`tab` cambia):
 
-- `+ Nuevo modo`: nombre e ícono (Nerd Font).
-- Sobre un modo: `enter` edita sus apps, `ctrl-a` lo aplica, `ctrl-r` lo renombra, `ctrl-d` lo borra.
-- Dentro de un modo, `+ Agregar app` lista las **ventanas abiertas**: elegís una y toma su
-  clase exacta y el comando de su `.desktop` (las terminales se identifican por título).
-  También se puede cargar a mano. Sobre una app: `enter` cambia el workspace, `ctrl-e` el
-  comando, `ctrl-n` el nombre, `ctrl-d` la quita.
+- Panel Modos: `enter` aplica el modo, `n` nuevo (nombre e ícono Nerd Font), `r` renombra,
+  `d` borra.
+- `a` lista las **ventanas abiertas**: elegís una y toma su clase exacta y el comando de su
+  `.desktop` (las terminales se identifican por título). La primera fila, **Cargar a mano**,
+  abre el formulario vacío.
+- Panel Apps: `enter`/`e` edita nombre, comando, match y workspace; `d` la quita.
 
 Al aplicar un modo (`scripts/mode-switch.sh <modo>`), cada app que ya está abierta se mueve
 a su workspace y las que no, se abren ahí sin sacarte del workspace actual. Las que no

@@ -8,7 +8,7 @@
 
     "custom/logo": {
         "format": "  ",
-        "on-click": "/usr/bin/bash $HOME/.config/rofi/scripts/settings-menu.sh"
+        "on-click": "/usr/bin/bash $HOME/.config/waybar/scripts/settings-launch.sh"
     },
 
     "custom/workspaces": {
@@ -37,7 +37,7 @@
     },
 
     "custom/claude-agents": {
-        "exec": "bash $HOME/.config/waybar/scripts/claude-agents-status.sh",
+        "exec": "python3 $HOME/.config/waybar/scripts/claude-agents-status.py",
         "interval": 30,
         "return-type": "json",
         "format": "{}",

@@ -29,3 +29,7 @@
 #   $EXTRA_WALLPAPER_DIRS  ->  ~/.local/share/backgrounds  ->  assets/wallpapers (repo)
 # Copiá tus imágenes a ~/.local/share/backgrounds para usarlas sin tocar el repo.
 #EXTRA_WALLPAPER_DIRS="$HOME/Pictures/Wallpapers"   # directorios extra, separados por ':'
+
+# --- Settings ---
+# Settings → System busca clones de git en ~ y en estas carpetas (separadas por ':').
+#EXTRA_REPO_DIRS="/mnt/data/code"

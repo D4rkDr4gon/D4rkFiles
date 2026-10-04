@@ -14,7 +14,7 @@
 ├── scripts/                Herramientas (theme-switch, doctor, update, lock-screen…)
 │   ├── lib/                env.sh (entorno) y theme.sh (motor de temas)
 │   └── wayland/            wayvnc-toggle, notif-jump (click del medio en notificaciones)
-├── tools/                  TUIs en Python (cheatsheet de atajos, panel de VPN)
+├── tools/                  TUIs en Python (base común dtui.py, Settings, atajos, VPN, modos, webapps, portapapeles, agentes)
 ├── skills/d4rkfiles/       Skill de IA para Claude Code y opencode (la statusline va en config/claude/)
 ├── themes/                 theme.json + preview.png por tema; templates/ = apps externas (Firefox, HyprFM, cliamp)
 ├── assets/                 banner-art.txt, dragon.txt y wallpapers/ (generados por gen-assets.sh)

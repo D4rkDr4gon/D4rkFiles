@@ -27,14 +27,19 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
 
-from textual import on
-from textual.app import App, ComposeResult
-from textual.containers import Vertical
-from textual.screen import ModalScreen
-from textual.widgets import DataTable, Footer, Header, Input, Label, TabbedContent, TabPane
+import sys
 
-# Raíz del repo: DOTFILES_DIR si está exportado; si no, dos niveles arriba de
-# este archivo (tools/), que resuelve también los symlinks.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from dtui import THEME, DView, Field, FormModal, Panel, Table, ViewApp, css  # noqa: E402
+
+from rich.text import Text  # noqa: E402
+from textual import on  # noqa: E402
+from textual.app import ComposeResult  # noqa: E402
+from textual.binding import Binding  # noqa: E402
+from textual.containers import Horizontal  # noqa: E402
+from textual.widgets import DataTable, Input  # noqa: E402
+
+# Raíz del repo: DOTFILES_DIR si está exportado; si no, un nivel arriba de tools/
 DOTFILES = Path(os.environ.get("DOTFILES_DIR") or Path(__file__).resolve().parents[1])
 CONFIG = DOTFILES / "config"
 HYPR_CONF = CONFIG / "hypr" / "hyprland.conf"
@@ -50,37 +55,6 @@ QTILE_KEYS = CONFIG / "qtile" / "modules" / "keys.py"
 LAZYVIM_DEFAULT_KEYMAPS = Path.home() / ".local/share/nvim/lazy/LazyVim/lua/lazyvim/config/keymaps.lua"
 
 
-def _hex_blend(c1: str, c2: str, pct: int) -> str:
-    """Réplica de hex_blend() en scripts/lib/theme.sh."""
-    c1, c2 = c1.lstrip("#"), c2.lstrip("#")
-    r1, g1, b1 = int(c1[0:2], 16), int(c1[2:4], 16), int(c1[4:6], 16)
-    r2, g2, b2 = int(c2[0:2], 16), int(c2[2:4], 16), int(c2[4:6], 16)
-    r = (r1 * pct + r2 * (100 - pct)) // 100
-    g = (g1 * pct + g2 * (100 - pct)) // 100
-    b = (b1 * pct + b2 * (100 - pct)) // 100
-    return f"#{r:02x}{g:02x}{b:02x}"
-
-
-def _load_theme() -> dict:
-    defaults = {
-        "primary": "#c62828", "secondary": "#8e1a1a",
-        "background": "#0a0a0a", "foreground": "#c5c8c6",
-        "chip_battery": "#141414", "chip_bluetooth": "#1e1e1e",
-        "chip_wlan": "#2a0d0d", "chip_audio": "#3a1515",
-        "status_ok": "#5cb85c", "status_warn": "#f9a825", "status_error": "#ff4444",
-    }
-    state = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state")
-    theme_file = state / "dotfiles" / "current_theme.json"
-    try:
-        data = json.loads(theme_file.read_text())
-        defaults.update({k: v for k, v in data.items() if k in defaults})
-    except (OSError, json.JSONDecodeError):
-        pass
-    defaults["text_muted"] = _hex_blend(defaults["foreground"], defaults["background"], 45)
-    return defaults
-
-
-THEME = _load_theme()
 
 
 @dataclass
@@ -142,12 +116,12 @@ def parse_hyprland() -> list[Shortcut]:
             reload_hint=hint,
         ))
 
-    hs_hint = "no editable acá — editar hyprshell/config.ron (se recarga solo)"
-    _ro("SUPER, W", "hyprshell overview", "overview de workspaces + launcher", HYPRSHELL_CONF, hs_hint)
-    _ro("ALT, Tab", "hyprshell switch", "cambiar ventana con previews (soltar Alt confirma)", HYPRSHELL_CONF, hs_hint)
-    gs_hint = "no editable acá — editar las líneas `gesture =` de config/hypr/hyprland.conf"
-    _ro("3 dedos ← →", "workspace anterior/siguiente", "gesto de touchpad, sigue el dedo", HYPR_CONF, gs_hint)
-    _ro("3 dedos ↑", "hyprshell overview", "gesto de touchpad", HYPR_CONF, gs_hint)
+    hs_hint = "not editable here — edit hyprshell/config.ron (reloads by itself)"
+    _ro("SUPER, W", "hyprshell overview", "workspace overview + launcher", HYPRSHELL_CONF, hs_hint)
+    _ro("ALT, Tab", "hyprshell switch", "switch window with previews (release Alt to confirm)", HYPRSHELL_CONF, hs_hint)
+    gs_hint = "not editable here — edit the `gesture =` lines in config/hypr/hyprland.conf"
+    _ro("3 fingers ← →", "previous/next workspace", "touchpad gesture, follows the finger", HYPR_CONF, gs_hint)
+    _ro("3 fingers ↑", "hyprshell overview", "touchpad gesture", HYPR_CONF, gs_hint)
     return out
 
 
@@ -169,7 +143,7 @@ def parse_kitty() -> list[Shortcut]:
         out.append(Shortcut(
             app="kitty", combo=combo, action=action.strip(), description=action.strip(),
             file=KITTY_CONF, line_no=i, rewrite=rewrite,
-            reload_hint="reabrir la terminal (o ctrl+shift+F5 en kitty)",
+            reload_hint="reopen the terminal (or ctrl+shift+F5 in kitty)",
         ))
     return out
 
@@ -208,7 +182,7 @@ def parse_herdr() -> list[Shortcut]:
                 out.append(Shortcut(
                     app="herdr", combo=combo, action="[[keys.command]]",
                     description="", file=HERDR_CONF, line_no=i, rewrite=rewrite,
-                    reload_hint="theme <tema activo> (regenera config.toml) y herdr server reload-config",
+                    reload_hint="theme <active theme> (regenerates config.toml), then herdr server reload-config",
                 ))
                 # la descripción viene en una línea posterior del mismo bloque;
                 # se completa cuando aparezca (ver abajo, referencia al último item)
@@ -227,7 +201,7 @@ def parse_herdr() -> list[Shortcut]:
                 out.append(Shortcut(
                     app="herdr", combo=combo, action=name, description=name.replace("_", " "),
                     file=HERDR_CONF, line_no=i, rewrite=rewrite,
-                    reload_hint="theme <tema activo> (regenera config.toml) y herdr server reload-config",
+                    reload_hint="theme <active theme> (regenerates config.toml), then herdr server reload-config",
                 ))
             # los que son lista (next_tab = ["prefix+n", ...]) se muestran
             # solo-lectura: editar un alternate a mano es más seguro
@@ -238,7 +212,7 @@ def parse_herdr() -> list[Shortcut]:
                     app="herdr", combo=items.replace('"', ""), action=name,
                     description=f"{name.replace('_', ' ')} (alternates, editar a mano)",
                     file=HERDR_CONF, line_no=i, rewrite=lambda o, n: o, editable=False,
-                    reload_hint="theme <tema activo> (regenera config.toml) y herdr server reload-config",
+                    reload_hint="theme <active theme> (regenerates config.toml), then herdr server reload-config",
                 ))
     return out
 
@@ -283,7 +257,7 @@ def parse_lazyvim() -> list[Shortcut]:
     no un archivo de este repo — no hay dónde "guardar" un rebind de forma
     persistente sin correr el riesgo de que una actualización del plugin
     lo pise. Para agregar/pisar un keymap propio de verdad, se edita
-    lazy-nvim/lua/config/keymaps.lua (hoy vacío) a mano.
+    config/nvim/lua/config/keymaps.lua (hoy vacío) a mano.
 
     Parsea llamadas `map(MODE, "LHS", RHS, { ..., desc = "..." })` — RHS
     puede ser un string o una función multilínea, no hace falta parsearlo
@@ -308,7 +282,7 @@ def parse_lazyvim() -> list[Shortcut]:
         out.append(Shortcut(
             app="LazyVim", combo=lhs, action=f"[{mode}]", description=desc,
             file=LAZYVIM_DEFAULT_KEYMAPS, line_no=0, rewrite=lambda o, n: o, editable=False,
-            reload_hint="no editable — son defaults del plugin, agregar overrides en config/nvim/lua/config/keymaps.lua",
+            reload_hint="not editable — plugin defaults, add overrides in config/nvim/lua/config/keymaps.lua",
         ))
     return out
 
@@ -332,169 +306,180 @@ def save_shortcut(s: Shortcut, new_combo: str) -> None:
 
 # ── UI ───────────────────────────────────────────────────────────────────
 
-class EditModal(ModalScreen[Optional[str]]):
-    DEFAULT_CSS = ("""
-    EditModal { align: center middle; }
-    #edit-box {
-        background: %(chip_battery)s;
-        padding: 2 3;
-        width: 70;
-        height: auto;
-    }
-    #edit-title { color: %(primary)s; text-style: bold; margin-bottom: 1; }
-    #edit-current { color: %(text_muted)s; margin-bottom: 1; }
-    #edit-hint { color: %(text_muted)s; margin-bottom: 1; }
-    Input { background: %(chip_bluetooth)s; color: %(foreground)s; margin-bottom: 1; }
-    """) % THEME
-
-    def __init__(self, shortcut: Shortcut) -> None:
-        super().__init__()
-        self.shortcut = shortcut
-
-    def compose(self) -> ComposeResult:
-        s = self.shortcut
-        hint = {
-            "Hyprland": "formato: SUPER SHIFT, F  (o SUPER, K)",
-            "kitty": "formato: ctrl+shift+enter",
-            "herdr": "formato: prefix+alt+g",
-            "Qtile": 'formato: mod, shift, f   (las comillas de los mods que no son "mod" se agregan solas)',
-        }.get(s.app, "")
-        with Vertical(id="edit-box"):
-            yield Label(f"Editar atajo — {s.app}", id="edit-title")
-            yield Label(f"Actual: {s.combo}  ({s.description or s.action})", id="edit-current")
-            yield Label(hint, id="edit-hint")
-            yield Input(value=s.combo, id="combo-input")
-            yield Label("Enter para guardar · Esc para cancelar", id="edit-hint2")
-
-    def on_mount(self) -> None:
-        self.query_one("#combo-input", Input).focus()
-
-    @on(Input.Submitted)
-    def _submit(self, event: Input.Submitted) -> None:
-        self.dismiss(event.value.strip())
-
-    def key_escape(self) -> None:
-        self.dismiss(None)
+FORMATS = {
+    "Hyprland": "format: SUPER SHIFT, F  (or SUPER, K)",
+    "kitty": "format: ctrl+shift+enter",
+    "herdr": "format: prefix+alt+g",
+    "Qtile": 'format: mod, shift, f   (quotes for mods other than "mod" are added automatically)',
+}
 
 
-def _slug(app: str) -> str:
-    return app.lower().replace(" ", "-")
+class ShortcutsView(DView):
+    """Buscar + apps + atajos de la app elegida. Se usa sola (ShortcutsApp) o en Settings."""
 
-
-class ShortcutsApp(App):
-    TITLE = "Shortcuts"
-    ENABLE_COMMAND_PALETTE = False
-
-    CSS = ("""
-    Screen { background: %(background)s; }
-    Header { background: %(background)s; color: %(primary)s; }
-    Footer { background: %(background)s; color: %(text_muted)s; }
-    #search { background: %(chip_battery)s; color: %(foreground)s; margin: 1 1 0 1; }
-    Tabs { background: %(background)s; }
-    Tab { color: %(text_muted)s; }
-    Tab:hover { color: %(foreground)s; }
-    Tab.-active { color: %(primary)s; text-style: bold; }
-    Underline > .underline--bar { color: %(primary)s; background: %(chip_battery)s; }
-    TabPane { padding: 1 0 0 0; }
-    DataTable { background: %(background)s; color: %(foreground)s; }
-    DataTable > .datatable--header { background: %(chip_battery)s; color: %(text_muted)s; }
-    DataTable > .datatable--cursor { background: %(chip_wlan)s; color: %(primary)s; }
-    DataTable > .datatable--hover  { background: %(chip_battery)s; }
-    """) % THEME
+    FOCUS = "#apps"
+    DEFAULT_CSS = css("""
+    #search-panel { height: 3; }
+    #search { background: %(background)s; padding: 0; }
+    #search:focus { background: %(background)s; }
+    #body { height: 1fr; }
+    #apps-panel { width: 22; }
+    #list-panel { width: 1fr; }
+    """)
 
     BINDINGS = [
-        ("q", "quit", "salir"),
-        ("r", "reload", "recargar"),
-        ("enter", "edit", "editar"),
-        ("/", "focus_search", "buscar"),
+        Binding("/", "focus_search", "search"),
+        Binding("tab", "switch", show=False),
+        Binding("shift+tab", "switch", show=False),
+        Binding("r", "reload", "reload"),
+        Binding("escape", "back", show=False),
+        Binding("j", "down", show=False),
+        Binding("k", "up", show=False),
     ]
 
-    def __init__(self) -> None:
-        super().__init__()
+    def __init__(self, **kw) -> None:
+        super().__init__(**kw)
         self.shortcuts: list[Shortcut] = []
+        self.rows: list[Shortcut] = []
 
     def compose(self) -> ComposeResult:
-        yield Header()
-        yield Input(placeholder="Buscar por combo o descripción (en la app actual)...", id="search")
-        with TabbedContent(id="tabs"):
-            for app in APP_ORDER:
-                with TabPane(app, id=f"tab-{_slug(app)}"):
-                    yield DataTable(id=f"table-{_slug(app)}")
-        yield Footer()
+        yield Panel(Input(placeholder="combo or description…", id="search"), title="  Search", id="search-panel")
+        with Horizontal(id="body"):
+            yield Panel(Table(show_header=False, id="apps"), title="Apps", id="apps-panel")
+            yield Panel(Table(id="list"), title="Shortcuts", id="list-panel")
 
     def on_mount(self) -> None:
+        apps = self.query_one("#apps", DataTable)
+        apps.add_column("App", key="app", width=12)
+        apps.add_column("N", key="n", width=4)
         for app in APP_ORDER:
-            table = self.query_one(f"#table-{_slug(app)}", DataTable)
-            table.cursor_type = "row"
-            table.add_columns("Combo", "Descripción/Acción")
+            apps.add_row(app, "", key=app)
+        lst = self.query_one("#list", DataTable)
+        lst.add_column("Combo", key="combo", width=26)
+        lst.add_column("Description / action", key="desc", width=70)
         self.action_reload()
+
+    # ── datos ──
+
+    def query_text(self) -> str:
+        return self.query_one("#search", Input).value.strip().lower()
+
+    def matches(self, app: str) -> list[Shortcut]:
+        q = self.query_text()
+        rows = [s for s in self.shortcuts if s.app == app]
+        return [s for s in rows if not q or q in s.combo.lower() or q in (s.description or s.action).lower()]
+
+    def active_app(self) -> str:
+        t = self.query_one("#apps", DataTable)
+        return APP_ORDER[t.cursor_row] if t.cursor_row is not None and t.cursor_row < len(APP_ORDER) else APP_ORDER[0]
+
+    def refresh_tables(self) -> None:
+        apps = self.query_one("#apps", DataTable)
+        for app in APP_ORDER:
+            apps.update_cell(app, "n", Text(str(len(self.matches(app))), style=THEME["muted"]))
+        app = self.active_app()
+        lst = self.query_one("#list", DataTable)
+        lst.clear()
+        self.rows = self.matches(app)
+        for s in self.rows:
+            label = Text(s.description or s.action)
+            if not s.editable:
+                label.append("  · read only", style=THEME["muted"])
+            lst.add_row(Text(s.combo, style=f"bold {THEME['primary']}"), label)
+        panel = self.query_one("#list-panel")
+        panel.border_title = f" {app} "
+        panel.border_subtitle = f" {len(self.rows)} shortcut{'' if len(self.rows) == 1 else 's'} "
+        self.update_hints()
+
+    def hints(self) -> list[tuple[str, str]]:
+        if self.app.focused is self.query_one("#list", DataTable):
+            return [("enter", "edit"), ("/", "search"), ("tab", "apps"), ("r", "reload"), ("q", "quit")]
+        if self.app.focused is self.query_one("#search", Input):
+            return [("enter", "go to list"), ("esc", "back")]
+        return [("enter", "show shortcuts"), ("/", "search"), ("tab", "shortcuts"), ("r", "reload"), ("q", "quit")]
+
+    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        if event.data_table.id == "apps":
+            self.refresh_tables()
+
+    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        if event.data_table.id == "apps":
+            self.query_one("#list", DataTable).focus()
+        elif event.data_table.id == "list":
+            self.action_edit()
+
+    @on(Input.Changed, "#search")
+    def _on_search_changed(self) -> None:
+        # Si la app actual no tiene resultados, saltar a la primera que sí
+        if not self.matches(self.active_app()):
+            first = next((i for i, a in enumerate(APP_ORDER) if self.matches(a)), None)
+            if first is not None:
+                self.query_one("#apps", DataTable).move_cursor(row=first)
+        self.refresh_tables()
+
+    @on(Input.Submitted, "#search")
+    def _on_search_submitted(self) -> None:
+        self.query_one("#list", DataTable).focus()
+
+    # ── acciones ──
 
     def action_reload(self) -> None:
         self.shortcuts = load_all()
         if self.is_mounted:
-            self._refresh_all_tables()
-            self.notify(f"{len(self.shortcuts)} shortcuts cargados")
-
-    def _filtered(self, app: str) -> list[Shortcut]:
-        q = self.query_one("#search", Input).value.strip().lower()
-        rows = [s for s in self.shortcuts if s.app == app]
-        if not q:
-            return rows
-        return [s for s in rows if q in s.combo.lower() or q in (s.description or s.action).lower()]
-
-    def _refresh_all_tables(self) -> None:
-        for app in APP_ORDER:
-            table = self.query_one(f"#table-{_slug(app)}", DataTable)
-            table.clear()
-            for s in self._filtered(app):
-                label = s.description or s.action
-                if not s.editable:
-                    label += "  ·  solo-lectura"
-                table.add_row(s.combo, label, key=id(s))
-
-    @on(Input.Changed, "#search")
-    def _on_search_changed(self) -> None:
-        self._refresh_all_tables()
+            self.refresh_tables()
+            self.query_one("#search-panel").border_subtitle = f" {len(self.shortcuts)} shortcuts in total "
 
     def action_focus_search(self) -> None:
         self.query_one("#search", Input).focus()
 
-    def _active_app(self) -> str:
-        tabs = self.query_one(TabbedContent)
-        active_id = tabs.active  # "tab-<slug>"
-        slug = active_id.removeprefix("tab-")
-        return next((a for a in APP_ORDER if _slug(a) == slug), APP_ORDER[0])
+    def action_back(self) -> None:
+        # Desde la búsqueda vuelve a la lista; si no, lo que haga la app
+        # (salir la TUI suelta, volver al menú en Settings)
+        if self.app.focused is self.query_one("#search", Input):
+            self.query_one("#list", DataTable).focus()
+        else:
+            self.app.action_leave()
 
-    def _current_shortcut(self) -> Optional[Shortcut]:
-        app = self._active_app()
-        table = self.query_one(f"#table-{_slug(app)}", DataTable)
-        if table.cursor_row is None:
-            return None
-        rows = self._filtered(app)
-        if 0 <= table.cursor_row < len(rows):
-            return rows[table.cursor_row]
-        return None
+    def action_switch(self) -> None:
+        target = "#apps" if self.app.focused is self.query_one("#list", DataTable) else "#list"
+        self.query_one(target, DataTable).focus()
+
+    def action_down(self) -> None:
+        if isinstance(self.app.focused, DataTable):
+            self.app.focused.action_cursor_down()
+
+    def action_up(self) -> None:
+        if isinstance(self.app.focused, DataTable):
+            self.app.focused.action_cursor_up()
 
     def action_edit(self) -> None:
-        s = self._current_shortcut()
-        if s is None:
+        t = self.query_one("#list", DataTable)
+        if t.cursor_row is None or not (0 <= t.cursor_row < len(self.rows)):
             return
+        s = self.rows[t.cursor_row]
         if not s.editable:
-            self.notify("Este atajo es de solo lectura (editalo a mano)", severity="warning")
+            self.app.notify(f"Read only: {s.reload_hint}", severity="warning")
             return
 
-        def _on_result(new_combo: Optional[str]) -> None:
+        def done(v: Optional[dict]) -> None:
+            new_combo = (v or {}).get("combo", "").strip()
             if not new_combo or new_combo == s.combo:
                 return
             try:
                 save_shortcut(s, new_combo)
             except Exception as exc:  # noqa: BLE001 - mostrar cualquier falla al usuario
-                self.notify(f"Error guardando: {exc}", severity="error")
+                self.app.notify_err(f"Error saving: {exc}")
                 return
-            self.notify(f"Guardado. Para aplicar: {s.reload_hint}")
+            self.app.notify_ok(f"Saved. To apply: {s.reload_hint}")
             self.action_reload()
 
-        self.push_screen(EditModal(s), _on_result)
+        hint = f"Current: {s.combo}  ({s.description or s.action})\n{FORMATS.get(s.app, '')}"
+        self.app.push_screen(FormModal(f"Edit shortcut · {s.app}", [Field("combo", "Combo", s.combo)],
+                                       hint=hint), done)
+
+
+def ShortcutsApp() -> ViewApp:
+    return ViewApp(ShortcutsView, title="Shortcuts")
 
 
 if __name__ == "__main__":

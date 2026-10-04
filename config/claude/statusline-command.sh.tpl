@@ -155,6 +155,18 @@ if [ -n "$SESSION_ID" ]; then
     # proceso tiene mas de una entrada (por ej. hizo /clear y arranco una
     # sesion nueva, con otro session_id, en la misma terminal) quedarse solo
     # con la mas reciente y no mostrar la vieja como una "sesion fantasma".
+    # PID del proceso `claude` dueño de la sesión. $PPID no sirve: es un
+    # intermediario de vida corta (el `sh -c` que lanza este script, o un
+    # wrapper de statusline encadenado), que muere apenas se dibuja — la TUI
+    # de agentes lo veía muerto y descartaba la sesión. Se sube por el árbol
+    # de procesos hasta encontrarlo; si no aparece, queda $PPID.
+    CLAUDE_PID="$PPID"
+    p=$$
+    while [ "${p:-0}" -gt 1 ]; do
+        if [ "$(cat "/proc/$p/comm" 2>/dev/null)" = claude ]; then CLAUDE_PID=$p; break; fi
+        p=$(awk '/^PPid:/ {print $2}' "/proc/$p/status" 2>/dev/null)
+    done
+
     jq -n \
         --arg session_id "$SESSION_ID" \
         --arg ctx "$CTX_PCT" \
@@ -163,7 +175,7 @@ if [ -n "$SESSION_ID" ]; then
         --arg title "$TITLE" \
         --arg updated "$(date '+%Y-%m-%d %H:%M')" \
         --argjson updated_epoch "$NOW_EPOCH" \
-        --argjson pid "$PPID" \
+        --argjson pid "$CLAUDE_PID" \
         '{
             session_id: $session_id,
             context_pct: (if $ctx == "" then null else ($ctx | tonumber) end),

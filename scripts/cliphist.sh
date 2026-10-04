@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Wrapper único de cliphist: el store (wl-paste --watch, en hyprland.conf) y el
-# menú (rofi/scripts/clipboard-menu.sh) tienen que usar la MISMA base.
+# historial (tools/clipboard_tui.py) tienen que usar la MISMA base.
 #
 # La base vive en $XDG_RUNTIME_DIR (tmpfs, 0700): el historial nunca toca el
 # disco y se borra al reiniciar/cerrar sesión. Es a propósito — se copian

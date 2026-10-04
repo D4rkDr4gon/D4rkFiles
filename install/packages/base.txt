@@ -66,6 +66,7 @@ libnotify
 python
 python-pip
 python-textual
+sqlite
 python-gobject
 nodejs
 npm

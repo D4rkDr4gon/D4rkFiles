@@ -31,7 +31,7 @@ Barra: polybar; compositor: picom.
 
 ## waybar y polybar
 
-- **waybar** (`config/waybar/`, Wayland): logo → Settings, workspaces, reloj, brillo,
+- **waybar** (`config/waybar/`, Wayland): logo → Settings ([settings.md](settings.md)), workspaces, reloj, brillo,
   **Agentes IA**, audio (cliamp), **No molestar**, red (impala), **VPN**, bluetooth (bluetui), batería. Los paneles se abren como
   **popups flotantes** con `config/waybar/scripts/float-tui-launch.sh` (abre / enfoca / cierra).
   `config.jsonc` no lleva batería ni interfaz fijas: waybar autodetecta.
@@ -55,17 +55,18 @@ Barra: polybar; compositor: picom.
 
 | Script | Función |
 |---|---|
-| `settings-menu.sh` | Menú principal: THEMES, WORKSPACES, APPS, SEARCH, BACKGROUNDS, NOTIFICATIONS, SHORTCUTS, DISPLAYS, UPDATE |
 | `action-menu.sh` | Bloquear, suspender, reiniciar, apagar, salir |
-| `clipboard-menu.sh` | Historial de portapapeles (cliphist); `Supr` borra una entrada |
 | `emoji.sh` | Selector de emojis (`Mod+E`): busca por nombre y copia al portapapeles |
-| `dnd-menu.sh` | No molestar (global, por tiempo y por app) |
+| `dnd-menu.sh` | No molestar (global, por tiempo y por app); subcomandos `--status`/`--on`/`--off`/`--timer`/`--app-toggle`/`--app-add` para Settings |
 | `notification-center.sh`, `update-menu.sh`, `workspace-switcher.sh`, `web-search.sh` | Historial de notificaciones, updates, workspaces, búsqueda |
 | `spotlight-launch.sh`, `spotlight-fallback.sh` | Buscador combinado (apps + comandos + calculadora + web) |
 
 `Super+Space` abre rofi (`drun`) en ambas sesiones. **walker** (`config/walker/`, solo
-Wayland) usa el backend `elephant` y se abre desde Settings → APPS; queda fuera del atajo
-principal por una condición de carrera conocida entre walker y elephant.
+Wayland) usa el backend `elephant` y queda instalado como alternativa (comando `walker`); queda
+fuera del atajo principal por una condición de carrera conocida entre walker y elephant.
+
+Settings y el historial del portapapeles (`Mod+V`) ya no son menús de rofi: son TUIs
+(`tools/settings/settings_tui.py`, `tools/clipboard_tui.py`), ver [settings.md](settings.md).
 
 ## Notificaciones y OSDs
 
@@ -130,7 +131,8 @@ bluetui no tiene tema propio: usa la paleta ANSI de kitty.
 ## Herramientas y servicios
 
 - **`tools/shortcuts_tui.py`** — cheatsheet (`Super+K`) con los atajos de Hyprland, kitty,
-  herdr, Qtile y los defaults de LazyVim; permite reasignar combinaciones.
+  herdr, Qtile y los defaults de LazyVim; permite reasignar combinaciones. Panel **Buscar**
+  (`/`), **Apps** con la cantidad de atajos y la tabla de la app elegida (`tab` cambia).
 - **wayvnc** — usar una tablet como monitor secundario: `scripts/wayland/wayvnc-toggle.sh`
   (`init`, `on`, `off`, `status`; aliases `vnc-on`/`vnc-off`).
 - **Unidades systemd de usuario** (`system/systemd-user/`): `battery-watch.{service,timer}`

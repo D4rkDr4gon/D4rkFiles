@@ -7,7 +7,7 @@
 #
 # Así funciona con ambos flujos:
 #   - theme-switch.sh → actualiza current_theme.json → wrapper lo lee
-#   - settings-menu.sh (backgrounds) → actualiza current_theme.json → wrapper lo lee
+#   - wallpaper-set.sh (Settings → Backgrounds) → actualiza current_theme.json → wrapper lo lee
 # =============================================================================
 
 MAX_RETRIES=5

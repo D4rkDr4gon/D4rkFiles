@@ -15,17 +15,22 @@
 | `scripts/barupdate.sh` | Reinicia la barra (waybar o polybar según la sesión) |
 | `scripts/welcome.sh` | Notificación de bienvenida con tu nombre |
 | `scripts/webapps.sh` | Webapps con firefoxpwa ([customization.md](customization.md#webapps)) |
-| `scripts/webapp-manager.sh` | Gestor TUI de webapps: Settings → WEBAPPS ([customization.md](customization.md#webapps)) |
 | `scripts/mode-switch.sh` | Aplica un modo de escritorio; sin argumentos, menú rofi ([customization.md](customization.md#modos-de-escritorio)) |
-| `scripts/mode-manager.sh` | Gestor TUI de modos: Settings → MODES → Gestionar modos ([customization.md](customization.md#modos-de-escritorio)) |
 | `scripts/setup-sddm-theme.sh` | Instala el tema de login de SDDM |
 | `scripts/wayland/wayvnc-toggle.sh` | Monitor virtual por VNC |
 | `scripts/bluetooth-status.sh` | Ícono de estado de bluetooth (waybar y polybar) |
 | `scripts/wayland/notif-jump.py` | Click del medio en una notificación → enfoca la app que la mandó ([components.md](components.md#notificaciones-y-osds)) |
 | `scripts/check-docs.sh` | Verifica que la documentación no tenga enlaces ni rutas rotas (lo corre el CI) |
 | `scripts/build-wiki.sh` | Genera la [wiki](https://github.com/D4rkDr4gon/D4rkFiles/wiki) a partir de `docs/` |
+| `tools/dtui.py` | Base común de las TUIs: paneles, tablas, atajos y popups con el estilo del tema ([design-system.md](design-system.md#tuis)) |
 | `tools/shortcuts_tui.py` | Cheatsheet de atajos (`Super+K`) |
 | `tools/vpn_tui.py` | Panel de VPN de waybar ([customization.md](customization.md#vpn)) |
+| `tools/settings/settings_tui.py` | Settings (`Super+Shift+Space`, logo de la barra), con sus secciones en `tools/settings/sections/` ([settings.md](settings.md)) |
+| `tools/modes_tui.py` | Gestor de modos: Settings → Modes ([customization.md](customization.md#modos-de-escritorio)) |
+| `tools/webapps_tui.py` | Gestor de webapps: Settings → Webapps ([customization.md](customization.md#webapps)) |
+| `tools/clipboard_tui.py` | Historial del portapapeles (`Super+V`) con búsqueda y preview de imágenes |
+| `tools/agents_tui.py` | Panel "AI Agents" de waybar y de Settings; proveedores visibles en `~/.config/dotfiles/agents.conf` ([components.md](components.md)) |
+| `scripts/wallpaper-set.sh` | Aplica un wallpaper sin cambiar de tema (Settings → Backgrounds) |
 
 ## dotfiles-doctor
 

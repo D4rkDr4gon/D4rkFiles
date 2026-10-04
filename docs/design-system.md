@@ -7,7 +7,8 @@ escritorio sin tocar ninguna config a mano.
 ## Principios
 
 1. **Sin bordes decorativos.** La jerarquía sale de superficies y espacio, no de marcos.
-   Excepción: el borde de ventana de Hyprland (color de foco).
+   Excepciones: el borde de ventana de Hyprland (color de foco) y los paneles de las TUIs
+   (ver [TUIs](#tuis)).
 2. **Un solo radio.** `radius` del tema se usa en Hyprland, waybar, dunst, rofi, OSDs,
    gtklock, etc. Los contenedores externos usan `radius + 4` (token `@radius_outer@`).
 3. **El acento es un relleno de estado, no decoración.** `primary` marca selección,
@@ -19,8 +20,33 @@ escritorio sin tocar ninguna config a mano.
 5. **Jerarquía de texto derivada.** No hay grises fijos: el texto atenuado se calcula
    mezclando `foreground` y `background` (`@text_muted@` 45%, `@text_dim@` 20%,
    `@text_sub@` 75%).
-6. **Buscador único.** `Mod+Space` abre rofi; walker queda para Settings → APPS
+6. **Buscador único.** `Mod+Space` abre rofi; walker queda como alternativa
    (ver [components.md](components.md#rofi-y-walker)).
+
+## TUIs
+
+Las TUIs del repo (`tools/`: Settings, modos, webapps, VPN, atajos, portapapeles, agentes IA) se
+ven iguales entre sí y como `impala`/`bluetui`. Todas se arman con
+[`tools/dtui.py`](../tools/dtui.py) (Python + Textual), que toma los colores de
+`~/.local/state/dotfiles/current_theme.json`; una TUI nueva usa esas piezas y no define colores
+propios. **Los textos visibles van en inglés** (comentarios y docs, en español).
+
+Cada TUI es una **vista** (`DView`) más un envoltorio de una línea (`ViewApp(XView).run()`):
+la misma vista se abre suelta (waybar, atajos) o como sección de
+[Settings](settings.md). Por eso una vista no busca widgets de la app: publica sus atajos con
+`hints()` + `update_hints()`, usa `self.app.push_screen`/`notify_ok`/`suspend`, declara el widget
+inicial en `FOCUS` y pausa sus timers con `visible_now` cuando su sección no se ve.
+
+| Pieza | Regla |
+|---|---|
+| `Panel` | Borde redondeado con el título sobre el borde y un subtítulo de estado abajo a la derecha. El panel con foco va en `primary`; el resto, borde y título atenuados |
+| `Table` | Selección de fila completa (`chip_audio` + negrita con foco, `chip_battery` sin foco); la fila seleccionada conserva los colores de cada celda |
+| `KeyHints` | Línea fija al pie: tecla en `primary` + acción atenuada; cambia según el panel con foco |
+| Popups | `FormModal`, `ConfirmModal`, `PickModal`, `TextModal`: centrados, borde en `primary`, campos de una línea sin borde |
+| Barras | `meter10` para uso (`▓▓▓░░░░░░░`, verde/amarillo/rojo a 50/80 %), `charge10` para cargas (verde desde 50 %), `bar` para volumen/brillo |
+| Imágenes | `ImagePreview` (protocolo gráfico de kitty vía `python-textual-image`; sin el paquete, un texto) |
+| Navegación | `tab` cambia de panel, `j`/`k` o flechas mueven, `enter` es la acción principal, `q`/`esc` salen; con un popup abierto las teclas de atrás no hacen nada |
+| Estados | `●` activo (`status_ok`), `○` inactivo, `✗` error (`status_error`), `✓` al día |
 
 ## Arquitectura del buscador único
 

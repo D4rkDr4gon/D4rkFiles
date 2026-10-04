@@ -70,6 +70,14 @@ theme mi-tema
 `gen-assets.sh` crea un wallpaper original (degradado con la paleta) y una preview; si
 preferís tu imagen, ponela en `~/.local/share/backgrounds/` y usá su nombre.
 
+## Temas propios
+
+`~/.config/dotfiles/themes/<id>/theme.json` (fuera del repo) tiene prioridad sobre
+`themes/<id>/`: `theme <id>` usa tu copia si existe. Ahí guardan
+[Settings](settings.md) → Theme editor (temas nuevos o editados), Appearance (radio, opacidad,
+blur) y Fonts & cursor (fuente e íconos): si el tema activo es del repo, primero lo copian. Para
+volver al original, borrá tu copia y aplicá el tema de nuevo.
+
 ## Temas incluidos
 
 | Id | Nombre | Primary | Fondo | Fuente | Iconos |
