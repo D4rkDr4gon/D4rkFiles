@@ -23,6 +23,7 @@ declare -A PAGES=(
     [design-system]=Sistema-de-diseño
     [keybindings]=Atajos
     [components]=Componentes
+    [settings]=Settings
     [scripts]=Scripts
     [security]=Seguridad
     [ai-skill]=Skill-de-IA

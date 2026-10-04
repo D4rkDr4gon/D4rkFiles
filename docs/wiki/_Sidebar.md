@@ -7,6 +7,7 @@
 **Uso**
 - [[Atajos]]
 - [[Componentes]]
+- [[Settings]]
 - [[Scripts]]
 
 **Personalizar**

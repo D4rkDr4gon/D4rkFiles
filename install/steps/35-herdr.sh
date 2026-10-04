@@ -34,7 +34,7 @@ _herdr_plugin_root() {
 }
 
 _herdr_install_plugins() {
-    local installed repo id
+    local installed repo
     installed="$(herdr plugin list 2>/dev/null || true)"
     for repo in "${HERDR_PLUGINS[@]}"; do
         if grep -q "github:$repo@" <<<"$installed"; then

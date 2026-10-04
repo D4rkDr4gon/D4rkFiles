@@ -44,6 +44,7 @@ El instalador es idempotente y **no borra nada**: lo que reemplaza queda en
 | Aprender los atajos | [[Atajos]] |
 | Cambiar de tema o crear uno | [[Temas]] · [[Sistema de diseño|Sistema-de-diseño]] |
 | Saber qué hace cada pieza del escritorio | [[Componentes]] |
+| Configurar el sistema desde un menú (temas, red, widgets, energía…) | [[Settings]] |
 | Encontrar dónde está cada archivo | [[Estructura]] |
 | Usar las herramientas (doctor, update, theme…) | [[Scripts]] |
 | Pedirle cambios a Claude Code u opencode | [[Skill de IA|Skill-de-IA]] |
