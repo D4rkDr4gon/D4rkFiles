@@ -148,9 +148,11 @@ apply_theme() {
     render_all_templates
     write_current_theme "$THEME_JSON"
     apply_external_themes
-    apply_sddm_theme
 
     if [[ "$render_only" == false ]]; then
+        # SDDM escribe fuera del HOME (/usr/share/sddm, del usuario tras el setup):
+        # con --render-only (pruebas con HOME falso) pisaría el login real.
+        apply_sddm_theme
         set_wallpaper
         reload_components
         [[ "$restart_ff" == true ]] && restart_firefox

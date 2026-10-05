@@ -6,7 +6,7 @@ El motor de temas es `scripts/theme-switch.sh` (alias `theme`):
 theme                    # lista los temas
 theme nord               # aplica un tema
 theme --current          # tema activo
-theme nord --render-only # solo regenera archivos (sin recargar apps ni wallpaper)
+theme nord --render-only # solo regenera archivos del HOME (sin recargar apps, wallpaper ni el login de SDDM)
 theme nord --restart-firefox
 ```
 
