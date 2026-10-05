@@ -55,6 +55,7 @@ from firewall import FirewallView  # noqa: E402
 from fonts import FontsView  # noqa: E402
 from inputdev import InputView  # noqa: E402
 from logs import LogsView  # noqa: E402
+from maintenance import MaintenanceView  # noqa: E402
 from nettools import NetToolsView  # noqa: E402
 from phone import PhoneView  # noqa: E402
 from screenshots import ScreenshotsView  # noqa: E402
@@ -63,6 +64,7 @@ from startup import StartupView  # noqa: E402
 from power import PowerView  # noqa: E402
 from storage import StorageView  # noqa: E402
 from update import UpdateView  # noqa: E402
+from usbguard import UsbGuardView  # noqa: E402
 from workspaces import WorkspacesView  # noqa: E402
 from themeeditor import ThemeEditorView  # noqa: E402
 from rich.text import Text  # noqa: E402
@@ -1465,10 +1467,11 @@ class SystemView(DView):
 # Menú agrupado por categoría: (categoría, [(id, ícono, nombre)])
 CATEGORIES = [
     ("Connectivity", [("wifi", "󰖩", "Wi-Fi"), ("bluetooth", "󰂯", "Bluetooth"), ("vpn", "󰦝", "VPN"),
-                      ("firewall", "󰒃", "Firewall"), ("phone", "󰏲", "Phone"), ("nettools", "󰛳", "Network tools")]),
+                      ("firewall", "󰒃", "Firewall"), ("usbguard", "󰕓", "USB guard"), ("phone", "󰏲", "Phone"),
+                      ("nettools", "󰛳", "Network tools")]),
     ("System", [("services", "\uf013", "Services"), ("startup", "󰒲", "Startup apps"), ("logs", "󰌱", "Logs"),
                 ("snapshots", "󰄄", "Snapshots"), ("system", "󰌢", "System"),
-                ("update", "󰚰", "Update")]),
+                ("update", "󰚰", "Update"), ("maintenance", "󰣉", "Maintenance")]),
     ("Tools", [("notifications", "\uf0f3", "Notifications"), ("clipboard", "󰅌", "Clipboard"),
                ("screenshots", "󰄀", "Screenshots"), ("colorpicker", "󰴱", "Color picker"),
                ("agents", "󰚩", "AI Agents")]),
@@ -1499,6 +1502,7 @@ def section_views() -> dict:
         "snapshots": SnapshotsView, "screenshots": ScreenshotsView, "colorpicker": ColorPickerView,
         "input": InputView, "battery": BatteryView, "storage": StorageView, "defaultapps": DefaultAppsView,
         "themeeditor": ThemeEditorView, "deskwidgets": DeskWidgetsView, "fonts": FontsView, "firewall": FirewallView,
+        "maintenance": MaintenanceView, "usbguard": UsbGuardView,
         # En Settings, AI Agents suma el panel Providers (mostrar/ocultar cada uno)
         "agents": functools.partial(load_view("agents_tui", "AgentsView"), manage=True),
     }

@@ -323,3 +323,35 @@ def which_any(*names: str) -> Optional[str]:
         if shutil.which(n):
             return n
     return None
+
+
+# ── cambios que necesitan root ────────────────────────────
+
+def sudo_run(app, cmds: list[list[str]], title: str = "") -> bool:
+    """Corre los comandos con sudo en la terminal (Settings se suspende: sudo pide
+    contraseña o huella). Si uno falla frena y espera un enter para leer el error.
+    Devuelve True si todos terminaron bien."""
+    ok = True
+    with app.suspend():
+        os.system("clear")
+        if title:
+            print(title + "\n")
+        for cmd in cmds:
+            print("$ sudo " + " ".join(cmd))
+            if subprocess.run(["sudo", *cmd]).returncode != 0:
+                ok = False
+                break
+        if not ok:
+            input("\nPress enter to go back to Settings...")
+    app.refresh(layout=True)
+    return ok
+
+
+def root_file(content: str) -> str:
+    """Escribe `content` a un temporal del usuario para instalarlo con
+    `sudo install -m644 <tmp> /etc/...` (sudo_run). Devuelve la ruta."""
+    d = Path(os.environ.get("XDG_RUNTIME_DIR", "/tmp")) / "dotfiles-settings"
+    d.mkdir(parents=True, exist_ok=True)
+    f = d / f"root-{os.getpid()}-{time.monotonic_ns()}"
+    f.write_text(content)
+    return str(f)

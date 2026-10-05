@@ -89,6 +89,7 @@ theme_load_tokens() {
     TOK[opacity_tui]=0.97
 
     TOK[radius_outer]=$(( TOK[radius] + 4 ))
+    TOK[radius_half]=$(( TOK[radius] / 2 ))
     # "Hack Nerd Font" y "Hack Nerd Font Mono" son familias distintas (gtklock/SDDM).
     TOK[font_mono_alt]="${TOK[font_mono]}"
     [[ "${TOK[font_mono]}" == "Hack Nerd Font" ]] && TOK[font_mono_alt]="Hack Nerd Font Mono"
@@ -107,7 +108,7 @@ theme_load_tokens() {
     TOK[ansi_bright_cyan]=$(hex_blend "${TOK[foreground]}" "${TOK[ansi_cyan]}" 25)
 
     # Componentes RGB y colores sin "#" (Hyprland usa rgb(rrggbb)).
-    for c in background primary secondary chip_battery; do
+    for c in background foreground primary secondary chip_battery chip_bluetooth; do
         local h="${TOK[$c]#\#}"
         TOK[${c}_r]=$((16#${h:0:2})); TOK[${c}_g]=$((16#${h:2:2})); TOK[${c}_b]=$((16#${h:4:2}))
         TOK[${c}_hex]="$h"

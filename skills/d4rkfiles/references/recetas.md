@@ -115,6 +115,18 @@ Settings → Shortcuts → Settings lista todas las teclas de Settings y sus sec
 sobre una la reasigna (valida formato y choques; vacío = default). Se guardan en `~/.config/dotfiles/keymap.json`
 (`{"FirewallView.add": "n"}`); borrarlo vuelve todo a los defaults.
 
+## Salud del sistema
+
+- **Tope de carga** (Settings → Battery, `l`): 100/90/80/60 % si existe `/sys/class/power_supply/BAT*/charge_control_end_threshold`.
+  Se fija con `/etc/udev/rules.d/90-battery-charge-limit.rules` (sudo); 100 % la borra.
+- **Maintenance**: `paccache.timer` (caché de pacman semanal), earlyoom (memoria), `.pacnew`/`.pacsave` (`pacdiff -o`;
+  `enter` diff, `m` fusionar en `nvim -d`, `k` conservar, `u` usar el nuevo) y unidades caídas (`systemctl --failed`).
+- **USB guard**: `usbguard` con política inicial = lo conectado; los nuevos quedan bloqueados y
+  `scripts/usbguard-notify.py` avisa con botones. Si tras un `fwupd` un dispositivo interno aparece bloqueado, permitirlo
+  siempre (`p`) desde Settings.
+- **Sesión**: `config/hypr/scripts/hypr-session.py save|restore|status` (restore abre apps de verdad: probalo con un
+  `hyprctl` falso).
+
 ## Seguridad y firmware
 
 - `dotfiles-update audit` — CVEs de los paquetes instalados (`arch-audit`): los que se arreglan actualizando y los

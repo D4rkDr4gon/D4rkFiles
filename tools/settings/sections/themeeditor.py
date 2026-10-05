@@ -8,6 +8,11 @@ confirmación) y lo aplica. Nunca se escribe en themes/ del repo: guardar un
 tema del repo crea su copia en ~/.config/dotfiles/themes/, que theme-switch.sh
 usa antes que la original. Aplicar corre theme-switch.sh y reabre Settings
 para tomar los colores.
+
+w arma el borrador desde un wallpaper (wallpalette.py: fondo, rampa de
+superficies, acentos y estados sacados de la imagen, con contraste mínimo),
+conservando la forma del tema base (radio, blur, fuentes…). Al guardarlo con n
+se genera también su preview.png (el wallpaper con la paleta abajo).
 """
 
 from __future__ import annotations
@@ -18,13 +23,15 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
-from common import THEME_SWITCH, USER_THEMES_DIR, active_theme_dir, editable_theme_dir, is_user_theme, resolve_wallpaper, theme_dirs, tilde
+from common import (THEME_SWITCH, USER_THEMES_DIR, active_theme_dir, current_theme, editable_theme_dir,
+                    is_user_theme, resolve_wallpaper, theme_dirs, tilde, wallpaper_dirs)
 from dtui import THEME, ConfirmModal, DView, Field, FormModal, Panel, PickModal, Table, css, swatches
 from rich.text import Text
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.widgets import DataTable, Static
+from wallpalette import theme_from, write_preview
 
 COLOR_KEYS = [("primary", "accent: focus, selection, bars"), ("secondary", "second accent"),
               ("background", "base surface"), ("foreground", "text"),
@@ -32,6 +39,7 @@ COLOR_KEYS = [("primary", "accent: focus, selection, bars"), ("secondary", "seco
               ("chip_wlan", "surface 3"), ("chip_audio", "surface 4 (lightest)"),
               ("status_ok", "success / good"), ("status_warn", "warning"), ("status_error", "error")]
 HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
+IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp")
 
 
 def slug(s: str) -> str:
@@ -45,8 +53,8 @@ class ThemeEditorView(DView):
     #editor-preview { height: auto; }
     #editor-panel { height: 1fr; }
     """)
-    BINDINGS = [Binding("b", "base", "base theme"), Binding("n", "save_new", "save as new"),
-                Binding("s", "save", "save")]
+    BINDINGS = [Binding("b", "base", "base theme"), Binding("w", "wallpaper", "theme from a wallpaper"),
+                Binding("n", "save_new", "save as new"), Binding("s", "save", "save")]
 
     def compose(self) -> ComposeResult:
         yield Panel(Static(id="editor-preview"), title="󰏘  Theme editor", id="editor-preview-panel")
@@ -66,6 +74,7 @@ class ThemeEditorView(DView):
         self.base = d
         self.draft = json.loads((d / "theme.json").read_text())
         self.dirty = False
+        self.from_wallpaper: Optional[str] = None
         self.reload()
 
     def reload(self) -> None:
@@ -92,11 +101,50 @@ class ThemeEditorView(DView):
         p.append("\n\n")
         p.append_text(swatches(d, width=6))
         self.query_one("#editor-preview", Static).update(p)
-        self.query_one("#editor-panel").border_subtitle = (f" based on {self.base.name}"
+        origin = f"wallpaper {Path(self.from_wallpaper).name} + shape of {self.base.name}" if self.from_wallpaper \
+            else self.base.name
+        self.query_one("#editor-panel").border_subtitle = (f" based on {origin}"
                                                            f"{' · unsaved changes' if self.dirty else ''} ")
 
     def hints(self) -> list[tuple[str, str]]:
-        return [("enter", "edit"), ("b", "base theme"), ("n", "save as new"), ("s", "save"), ("q", "quit")]
+        return [("enter", "edit"), ("b", "base theme"), ("w", "from wallpaper"), ("n", "save as new"),
+                ("s", "save"), ("q", "quit")]
+
+    def action_wallpaper(self) -> None:
+        cur = resolve_wallpaper(current_theme().get("wallpaper", "") or "-")
+        current = str(cur) if cur else ""
+        files = sorted({p for d in wallpaper_dirs() if d.is_dir() for p in d.iterdir()
+                        if p.suffix.lower() in IMAGE_EXT}, key=lambda p: p.name.lower())
+        rows = [("other", ["󰉋  Other image…", Text("any file", style=THEME["muted"])])]
+        if current:
+            rows.append((current, [f"\uf03e  {Path(current).name}", Text("current wallpaper", style=THEME["primary"])]))
+        rows += [(str(p), [f"\uf03e  {p.name}", ""]) for p in files if str(p) != current]
+
+        def use(path: str) -> None:
+            try:
+                colors = theme_from(path)
+            except (OSError, ValueError) as e:
+                return self.app.notify_err(f"Could not read the image: {e}")
+            name = re.sub(r"[-_]+", " ", Path(path).stem).strip().upper()
+            p = Path(path)
+            # En una carpeta de wallpapers basta el nombre (como los temas del repo)
+            wall = p.name if resolve_wallpaper(p.name) == p else path
+            self.draft = dict(self.draft, **colors, name=name, icon="󰸉", wallpaper=wall)
+            self.from_wallpaper, self.dirty = path, True
+            self.reload()
+            self.app.notify_ok("Palette taken from the wallpaper: n saves it as a new theme")
+
+        def picked(key: Optional[str]) -> None:
+            if key == "other":
+                self.app.push_screen(FormModal("Theme from an image", [Field("path", "Image", str(Path.home()) + "/",
+                                                                              files=True)],
+                                               validate=lambda v: None if Path(v["path"]).expanduser().is_file()
+                                               else "File not found"),
+                                     lambda v: use(str(Path(v["path"]).expanduser())) if v else None)
+            elif key:
+                use(key)
+
+        self.app.push_screen(PickModal("Theme from a wallpaper", ["Image", ""], rows), picked)
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         if event.data_table.id != "editor":
@@ -149,7 +197,12 @@ class ThemeEditorView(DView):
             d.mkdir(parents=True)
             draft = dict(self.draft, name=v["name"].upper())
             (d / "theme.json").write_text(json.dumps(draft, indent=2, ensure_ascii=False) + "\n")
-            self.base, self.draft, self.dirty = d, draft, False
+            if self.from_wallpaper:
+                try:
+                    write_preview(self.from_wallpaper, draft, d / "preview.png")
+                except (OSError, ValueError):
+                    pass
+            self.base, self.draft, self.dirty, self.from_wallpaper = d, draft, False, None
             self.apply(d.name)
 
         def check(v: dict) -> Optional[str]:
@@ -158,7 +211,10 @@ class ThemeEditorView(DView):
             taken = {d.name for d in theme_dirs()}
             return f"A theme called {slug(v['name'])} already exists" if slug(v["name"]) in taken else None
 
-        self.app.push_screen(FormModal("Save as a new theme", [Field("name", "Theme name", placeholder="e.g. Deep Ocean")],
+        self.app.push_screen(FormModal("Save as a new theme", [Field("name", "Theme name",
+                                                                          self.draft.get("name", "").title()
+                                                                          if self.from_wallpaper else "",
+                                                                          placeholder="e.g. Deep Ocean")],
                                        hint="Created in ~/.config/dotfiles/themes/<name>/ and applied.", validate=check), done)
 
     def action_save(self) -> None:

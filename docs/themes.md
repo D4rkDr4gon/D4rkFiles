@@ -64,9 +64,10 @@ Todo eso llega a Hyprland por `config/hypr/theme.conf.tpl` (que se carga antes q
 
 `@text_muted@`, `@text_dim@`, `@text_sub@` (mezclas de primer plano y fondo),
 `@radius_outer@` (radio + 4), `@opacity_secondary@`, `@opacity_rofi@`, `@opacity_tui@`,
-`@ansi_*` (paleta de 16 colores de kitty), `@primary_hex@`/`@chip_battery_hex@` (sin `#`),
+`@ansi_*` (paleta de 16 colores de kitty), `@primary_hex@`/`@secondary_hex@`/`@background_hex@`/`@foreground_hex@`/`@chip_battery_hex@`/`@chip_bluetooth_hex@`
+(sin `#`; los usan Hyprland y `config/hypr/hyprtoolkit.conf.tpl`, el diálogo de polkit), `@radius_half@` (radio / 2),
 `@background_r/g/b`, `@font_mono_alt@` (variante "Mono" de Hack para gtklock y SDDM),
-`@active_border@` (sólido o gradiente), `@shadow_color@`, `@borderangle_anim@`, `@secondary_hex@`,
+`@active_border@` (sólido o gradiente), `@shadow_color@`, `@borderangle_anim@`,
 `@font_size_m1@` / `@font_size_m3@` (tamaño base −1 / −3), `@gtk_font@` (`font_ui` + tamaño, o `Sans 10`)
 y `@font_ui_or_mono@` (`font_ui`, o `font_mono` si el tema no define una; la usan los widgets de escritorio).
 
@@ -102,6 +103,13 @@ preferís tu imagen, ponela en `~/.local/share/backgrounds/` y usá su nombre.
 [Settings](settings.md) → Theme editor (temas nuevos o editados), Appearance (radio, opacidad,
 blur) y Fonts & cursor (fuente e íconos): si el tema activo es del repo, primero lo copian. Para
 volver al original, borrá tu copia y aplicá el tema de nuevo.
+
+**Desde un wallpaper**: Theme editor → `w` elige una imagen (de tus carpetas de wallpapers o
+cualquier archivo) y arma los colores (`tools/settings/sections/wallpalette.py`): fondo = el oscuro
+más frecuente llevado a ~12 % de luz, rampa `chip_*` mezclando fondo y texto, `primary` = el color
+más vivo y presente con contraste ≥ 4.5 contra el fondo, `secondary` = otro tono a más de 30° y
+verde/ámbar/rojo de estado con la saturación del acento. Conserva la forma del tema base; `n` lo
+guarda en `~/.config/dotfiles/themes/<id>/` con un `preview.png` (el wallpaper con la paleta abajo).
 
 ## Temas incluidos
 

@@ -18,6 +18,7 @@ la documentación del repo; **leela bajo demanda, no la reescribas de memoria**.
 | Overrides de Hyprland (monitores, atajos propios) | `~/.config/dotfiles/hypr/*.conf` |
 | Lo que escribe Settings | `~/.config/dotfiles/hypr/settings.conf` (input, cursor), `autostart.conf`, `workspaces.conf` (cantidad de workspaces), `desktop-widgets.conf` (widgets de escritorio: cuáles, zona de cada uno, clima, agenda `.ics`, pomodoro, teléfono, red) |
 | Teclas reasignadas de Settings y las TUIs | `~/.config/dotfiles/keymap.json` (`{id: teclas}`, solo lo cambiado) |
+| Sesión de Hyprland y bloqueo por proximidad | `~/.config/dotfiles/session.conf`, `~/.config/dotfiles/phone.conf` |
 | Temas propios / copias editadas desde Settings | `~/.config/dotfiles/themes/<tema>/theme.json` |
 | Generados por Settings dentro del repo (en `.gitignore`) | `config/hypr/hypridle.conf`, `config/hypr/hyprsunset.conf` |
 | Alias/funciones propios de zsh | `~/.config/dotfiles/local.zsh` |
@@ -78,6 +79,12 @@ Layout del repo: `config/<app>/` (→ `~/.config/<app>`), `home/zsh/`, `system/`
 - **"Cambiá la tecla X de Settings"** → Settings → Shortcuts → Settings (`references/recetas.md#teclas-de-las-tuis`).
 - **"¿Tengo vulnerabilidades?" / "actualizá el firmware"** → `dotfiles-update audit` / `firmware` (`references/recetas.md#seguridad-y-firmware`).
 - **"Desinstalá X" / "¿qué ocupa más?"** → Settings → Update → `v` (Installed, estilo pacseek) o `references/recetas.md#paquetes`.
+- **"Que la batería no cargue al 100 %"** → Settings → Battery → `l` (`references/recetas.md#salud-del-sistema`).
+- **".pacnew" / "servicios que fallan" / "limpiá la caché" / "se me cuelga sin memoria"** → Settings → Maintenance
+  (`references/recetas.md#salud-del-sistema`). Nunca aceptes un `.pacnew` de `pam.d/sudo` o `mkinitcpio.conf` a ciegas.
+- **"Bloqueá los USB desconocidos"** → Settings → USB guard; **"bloqueá la compu si me alejo con el teléfono"** → Settings → Phone.
+- **"Que reabra mis ventanas al iniciar"** → Settings → Workspaces → Session.
+- **"Un tema con los colores de este wallpaper"** → Settings → Theme editor → `w`, después `n`.
 - **"Configurá Tailscale"** → Settings → VPN, panel Tailscale, `n` (`references/recetas.md#tailscale`).
 - **"Instalá / sacá un paquete"** → `references/recetas.md#paquetes`.
 - **"Actualizá el sistema"** → `dotfiles-update` (snapshot de Timeshift + `pacman -Syu` + AUR + limpieza). Ver `docs/scripts.md`.

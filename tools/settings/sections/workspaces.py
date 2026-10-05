@@ -11,16 +11,22 @@ la vuelta en 1..N) y el switcher de rofi. Sin el archivo rigen los 9 de siempre.
 
 Al bajar la cantidad, si quedan ventanas en workspaces que se deshabilitan, se
 ofrece moverlas al último habilitado. En Qtile los grupos siguen fijos (1–6).
+
+Session: config/hypr/scripts/hypr-session.py guarda las ventanas abiertas (autosave cada
+2 min, desde su daemon exec-once) y las reabre cada una en su workspace (a mano o
+al iniciar sesión). Config en ~/.config/dotfiles/session.conf.
 """
 
 from __future__ import annotations
 
 import json
+import os
 import re
+from pathlib import Path
 from typing import Optional
 
-from common import HYPR_USER_DIR, HYPRLAND, atomic_write, run
-from dtui import THEME, Card, ConfirmModal, DView, Panel, Table, css
+from common import CONF_DIR, DOTFILES, HYPR_USER_DIR, HYPRLAND, atomic_write, detach, run
+from dtui import THEME, Card, ConfirmModal, DView, Panel, Table, ago, css
 from rich.text import Text
 from textual import work
 from textual.app import ComposeResult
@@ -30,6 +36,27 @@ from textual.widgets import DataTable
 WS_CONF = HYPR_USER_DIR / "workspaces.conf"
 MIN_WS, MAX_WS, DEFAULT_WS = 1, 10, 9
 QTILE_WS = 6
+SESSION_PY = DOTFILES / "config" / "hypr" / "scripts" / "hypr-session.py"
+SESSION_CONF = Path(os.environ.get("SESSION_CONF", CONF_DIR / "session.conf"))
+
+
+def session_status() -> dict:
+    try:
+        return json.loads(run(["python3", str(SESSION_PY), "status"]).stdout or "{}")
+    except ValueError:
+        return {}
+
+
+def session_set(key: str, value: str) -> None:
+    """Cambia una clave de session.conf conservando el resto."""
+    lines = SESSION_CONF.read_text().splitlines() if SESSION_CONF.exists() else []
+    for i, line in enumerate(lines):
+        if line.partition("=")[0].strip() == key:
+            lines[i] = f"{key}={value}"
+            break
+    else:
+        lines.append(f"{key}={value}")
+    atomic_write(SESSION_CONF, "\n".join(lines) + "\n")
 
 
 def ws_count() -> int:
@@ -81,6 +108,8 @@ class WorkspacesView(DView):
     #ws-count-panel { height: auto; }
     #ws-count { padding: 1 2; }
     #ws-panel { height: 1fr; }
+    #ws-session-panel { height: auto; }
+    #ws-session { height: auto; }
     """)
     BINDINGS = [
         Binding("tab", "cycle(1)", show=False),
@@ -89,11 +118,12 @@ class WorkspacesView(DView):
         Binding("right,plus,equals_sign", "change(1)", "more workspaces", show=False),
         Binding("enter", "apply", "apply workspace count", show=False),
     ]
-    FOCUSABLE = ["ws-count", "workspaces"]
+    FOCUSABLE = ["ws-count", "workspaces", "ws-session"]
 
     def compose(self) -> ComposeResult:
         yield Panel(Card(id="ws-count"), title="  Workspaces", id="ws-count-panel")
         yield Panel(Table(id="workspaces"), title="Windows", id="ws-panel")
+        yield Panel(Table(id="ws-session", show_header=False), title="Session", id="ws-session-panel")
 
     def on_mount(self) -> None:
         t = self.query_one("#workspaces", Table)
@@ -105,6 +135,10 @@ class WorkspacesView(DView):
         self.info: dict[int, dict] = {}
         self.active: Optional[int] = None
         self.clients: list[dict] = []
+        s = self.query_one("#ws-session", Table)
+        s.add_column("", key="name", width=24)
+        s.add_column("", key="value", width=80)
+        self.session: dict = {}
         self.paint()
         self.reload()
 
@@ -115,10 +149,11 @@ class WorkspacesView(DView):
     @work(thread=True, exclusive=True, group="workspaces")
     def reload(self) -> None:
         state = hypr_state() if HYPRLAND else ({}, None, [])
-        self.app.call_from_thread(self.show_state, *state)
+        session = session_status() if HYPRLAND else {}
+        self.app.call_from_thread(self.show_state, *state, session)
 
-    def show_state(self, info: dict, active: Optional[int], clients: list[dict]) -> None:
-        self.info, self.active, self.clients = info, active, clients
+    def show_state(self, info: dict, active: Optional[int], clients: list[dict], session: dict) -> None:
+        self.info, self.active, self.clients, self.session = info, active, clients, session
         self.paint()
 
     # ── dibujo ──
@@ -166,6 +201,30 @@ class WorkspacesView(DView):
         self.query_one("#workspaces", Table).set_rows(rows)
         self.query_one("#ws-panel").border_subtitle = (
             " enter to go · in yellow: windows left on disabled workspaces " if orphans else " enter to go ")
+        self.paint_session()
+
+    def paint_session(self) -> None:
+        ok, muted = THEME["status_ok"], THEME["muted"]
+        se = self.session
+        conf = se.get("conf", {})
+        if not HYPRLAND:
+            self.query_one("#ws-session", Table).set_rows([("na", ["Session", Text("Hyprland only", style=muted)])])
+            return
+        saved = (Text(f"{se['count']} windows on workspaces {', '.join(map(str, se['workspaces']))} · saved "
+                      f"{ago(se['time'])}", style=muted) if se.get("count") else Text("nothing saved yet", style=muted))
+        mins = max(1, int(conf.get("interval", "120") or 120) // 60)
+
+        def onoff(on: bool, yes: str, no: str) -> Text:
+            return Text(f"●  {yes}", style=ok) if on else Text(f"○  {no}", style=muted)
+
+        self.query_one("#ws-session", Table).set_rows([
+            ("save", ["󰆓  Save now", saved]),
+            ("restore", ["󰑓  Restore", Text("reopen what was saved and is not open, each on its workspace",
+                                             style=muted)]),
+            ("autosave", ["󰁪  Autosave", onoff(conf.get("autosave") == "on", f"every {mins} min, when something "
+                                                "changed", "off")]),
+            ("login", ["󰍂  Restore at login", onoff(conf.get("restore_on_login") == "on",
+                                                    "reopen the last session when you log in", "off")])])
 
     # ── navegación ──
 
@@ -180,6 +239,8 @@ class WorkspacesView(DView):
     def hints(self) -> list[tuple[str, str]]:
         if self.focused() == "ws-count" and HYPRLAND:
             return [("←/→", "how many"), ("enter", "apply"), ("tab", "windows"), ("q", "quit")]
+        if self.focused() == "ws-session":
+            return [("enter", "run / turn on/off"), ("tab", "panel"), ("q", "quit")]
         return [("enter", "go"), ("tab", "panel"), ("q", "quit")]
 
     # ── acciones ──
@@ -228,3 +289,19 @@ class WorkspacesView(DView):
         if event.data_table.id == "workspaces":
             goto_workspace(int(event.row_key.value))
             self.app.exit()
+        elif event.data_table.id == "ws-session" and HYPRLAND:
+            key = str(event.row_key.value)
+            conf = self.session.get("conf", {})
+            if key == "save":
+                out = run(["python3", str(SESSION_PY), "save"]).stdout.strip()
+                self.app.notify_ok(out.capitalize() or "Saved")
+            elif key == "restore":
+                if not self.session.get("count"):
+                    return self.app.notify_err("Nothing saved yet")
+                detach(["python3", str(SESSION_PY), "restore"])   # sigue ubicando ventanas aunque se cierre Settings
+                self.app.notify_ok("Restoring: windows open on their workspaces")
+            elif key == "autosave":
+                session_set("autosave", "off" if conf.get("autosave") == "on" else "on")
+            elif key == "login":
+                session_set("restore_on_login", "off" if conf.get("restore_on_login") == "on" else "on")
+            self.reload()

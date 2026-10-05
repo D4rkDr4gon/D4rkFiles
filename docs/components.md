@@ -174,3 +174,11 @@ bluetui no tiene tema propio: usa la paleta ANSI de kitty.
 - **Unidades systemd de usuario** (`system/systemd-user/`): `battery-watch.{service,timer}`
   (notifica batería baja cada 2 min), `wayvnc.service` (manual), `hyprland-session-init.service`
   y `elephant.service`.
+- **hyprpolkitagent** — agente de polkit (diálogo de contraseña o huella para `pkexec` y las apps que
+  piden permisos). Se tematiza con `config/hypr/hyprtoolkit.conf` (generado desde su `.tpl`).
+- **Sesión de Hyprland** — `config/hypr/scripts/hypr-session.py daemon` (exec-once) guarda cada 2 min
+  las ventanas abiertas (solo si cambiaron) en `~/.local/state/hypr-session/` y, si se activa,
+  las reabre al iniciar sesión. Config en `~/.config/dotfiles/session.conf` (`autosave`,
+  `interval`, `restore_on_login`, `skip` = clases que no se guardan). Settings → Workspaces → Session.
+- **USBGuard y bloqueo por proximidad** — `scripts/usbguard-notify.py` y `scripts/phone-proximity.py`
+  (exec-once): ver [settings.md](settings.md) (USB guard y Phone).

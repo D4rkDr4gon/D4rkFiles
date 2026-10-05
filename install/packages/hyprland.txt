@@ -16,6 +16,7 @@ kdeconnect
 wayvnc
 hypridle            # Settings → Power: bloqueo/apagado/suspensión por inactividad (apagado hasta activarlo)
 hyprsunset          # Settings → Displays: luz nocturna (apagada hasta activarla)
+hyprpolkitagent     # agente de polkit: diálogo de contraseña/huella (tema en config/hypr/hyprtoolkit.conf)
 
 # Login y bloqueo de pantalla
 sddm

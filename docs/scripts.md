@@ -19,6 +19,9 @@
 | `scripts/setup-sddm-theme.sh` | Instala el tema de login de SDDM |
 | `scripts/wayland/wayvnc-toggle.sh` | Monitor virtual por VNC |
 | `scripts/bluetooth-status.sh` | Ícono de estado de bluetooth (waybar y polybar) |
+| `scripts/usbguard-notify.py` | Notificación cuando USBGuard bloquea un USB, con botones para permitirlo (exec-once; sale solo si no hay usbguard) ([settings.md](settings.md)) |
+| `scripts/phone-proximity.py` | Bloquea la sesión cuando el teléfono (KDE Connect) queda fuera de alcance; off por defecto, Settings → Phone |
+| `config/hypr/scripts/hypr-session.py` | Guarda las ventanas abiertas y las reabre cada una en su workspace (`save`, `restore`, `status`, `daemon`); Settings → Workspaces → Session |
 | `scripts/wayland/notif-jump.py` | Click del medio en una notificación → enfoca la app que la mandó ([components.md](components.md#notificaciones-y-osds)) |
 | `scripts/check-docs.sh` | Verifica que la documentación no tenga enlaces ni rutas rotas (lo corre el CI) |
 | `scripts/build-wiki.sh` | Genera la [wiki](https://github.com/D4rkDr4gon/D4rkFiles/wiki) a partir de `docs/` |

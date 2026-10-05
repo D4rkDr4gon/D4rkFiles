@@ -71,6 +71,11 @@ set_wallpaper() {
 reload_components() {
     command -v herdr >/dev/null 2>&1 && { herdr server reload-config >/dev/null 2>&1 || true; }
     command -v dunstctl >/dev/null 2>&1 && { dunstctl reload >/dev/null 2>&1 || true; }
+    # hyprpolkitagent lee config/hypr/hyprtoolkit.conf solo al arrancar (si corre y
+    # no hay un diálogo abierto, reiniciarlo es inocuo)
+    if systemctl --user is-active --quiet hyprpolkitagent 2>/dev/null; then
+        systemctl --user restart hyprpolkitagent >/dev/null 2>&1 || true
+    fi
 
     # swayosd-server no relee su CSS en caliente.
     if pgrep -x swayosd-server >/dev/null 2>&1; then

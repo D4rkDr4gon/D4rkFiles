@@ -3,16 +3,21 @@
 Estado (alcanzable, batería por D-Bus) y acciones: hacer sonar, ping, mandar
 el portapapeles, compartir un archivo o un texto/URL, bloquear y ver las
 notificaciones del teléfono.
+
+"Lock when it leaves": scripts/phone-proximity.py (exec-once) bloquea la sesión
+cuando el teléfono deja de estar al alcance un rato (proximity_grace). Config en
+~/.config/dotfiles/phone.conf; enter lo prende/apaga y pregunta los minutos.
 """
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 from pathlib import Path
 from typing import Optional
 
-from common import run
+from common import CONF_DIR, DOTFILES, atomic_write, detach, run
 from dtui import THEME, DView, Field, FormModal, Panel, Table, TextModal, charge10, css
 from rich.text import Text
 from textual import work
@@ -21,6 +26,35 @@ from textual.binding import Binding
 from textual.widgets import DataTable, Static
 
 DBUS = "org.kde.kdeconnect"
+PHONE_CONF = Path(os.environ.get("PHONE_CONF", CONF_DIR / "phone.conf"))
+PROXIMITY = DOTFILES / "scripts" / "phone-proximity.py"
+
+
+def load_conf() -> dict:
+    conf = {"proximity_lock": "off", "proximity_grace": "120", "proximity_device": ""}
+    try:
+        for line in PHONE_CONF.read_text().splitlines():
+            k, sep, v = line.partition("=")
+            if sep and not k.strip().startswith("#"):
+                conf[k.strip()] = v.strip()
+    except OSError:
+        pass
+    return conf
+
+
+def save_conf(updates: dict) -> None:
+    """Cambia claves conservando comentarios y orden."""
+    try:
+        lines = PHONE_CONF.read_text().splitlines()
+    except OSError:
+        lines = ["# phone.conf — opciones del teléfono (KDE Connect). Lo escribe Settings → Phone."]
+    left = dict(updates)
+    for i, line in enumerate(lines):
+        k = line.partition("=")[0].strip()
+        if k in left and not k.startswith("#"):
+            lines[i] = f"{k}={left.pop(k)}"
+    lines += [f"{k}={v}" for k, v in left.items()]
+    atomic_write(PHONE_CONF, "\n".join(lines) + "\n")
 
 
 def devices() -> list[dict]:
@@ -66,6 +100,7 @@ class PhoneView(DView):
                 ("notif", "  Phone notifications", "list the notifications on the phone"),
                 ("lock", "  Lock the phone", "if the phone allows it")):
             t.add_row(name, Text(desc, style=THEME["muted"]), key=key)
+        t.add_row("󰌾  Lock when it leaves", self.proximity_desc(), key="proximity")
         self.dev: Optional[dict] = None
         self.action_refresh()
         self.set_interval(15, self.tick)
@@ -73,6 +108,43 @@ class PhoneView(DView):
     def tick(self) -> None:
         if self.visible_now:
             self.action_refresh()
+
+    def proximity_desc(self) -> Text:
+        c = load_conf()
+        if c.get("proximity_lock") != "on":
+            return Text("off · lock this computer when the phone is out of reach", style=THEME["muted"])
+        mins = max(1, int(c.get("proximity_grace", "120") or 120) // 60)
+        return Text(f"● on · locks after {mins} min out of reach", style=THEME["status_ok"])
+
+    def toggle_proximity(self) -> None:
+        c = load_conf()
+        t = self.query_one("#phone-actions", Table)
+        if c.get("proximity_lock") == "on":
+            save_conf({"proximity_lock": "off"})
+            t.update_cell("proximity", "desc", self.proximity_desc())
+            return self.app.notify_ok("Proximity lock off")
+
+        def done(v: Optional[dict]) -> None:
+            if not v:
+                return
+            save_conf({"proximity_lock": "on", "proximity_grace": str(int(float(v["mins"]) * 60)),
+                       "proximity_device": self.dev["id"] if self.dev else ""})
+            if run(["pgrep", "-f", "phone-proximity.py"]).returncode != 0:
+                detach([str(PROXIMITY)])
+            t.update_cell("proximity", "desc", self.proximity_desc())
+            self.app.notify_ok("Proximity lock on")
+
+        def check(v: dict) -> Optional[str]:
+            try:
+                return None if 0.5 <= float(v["mins"]) <= 60 else "Between 0.5 and 60 minutes"
+            except ValueError:
+                return "A number of minutes"
+
+        mins = int(c.get("proximity_grace", "120") or 120) / 60
+        self.app.push_screen(FormModal("Lock when the phone leaves", [
+            Field("mins", "Minutes out of reach before locking", f"{mins:g}")],
+            hint="Only after the phone was seen in this session, never without network or with KDE Connect down.",
+            validate=check), done)
 
     def hints(self) -> list[tuple[str, str]]:
         return [("enter", "run"), ("r", "refresh"), ("q", "quit")]
@@ -124,7 +196,9 @@ class PhoneView(DView):
         if event.data_table.id != "phone-actions":
             return
         key = event.row_key.value
-        if key == "ring":
+        if key == "proximity":
+            self.toggle_proximity()
+        elif key == "ring":
             self.cli("--ring", ok="Ringing the phone")
         elif key == "ping":
             self.cli("--ping", ok="Ping sent")
