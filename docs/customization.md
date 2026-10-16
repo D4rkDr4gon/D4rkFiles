@@ -18,7 +18,7 @@ Lo leen los scripts, zsh, Hyprland y Qtile. Todo es opcional: lo que falta se au
 | `DISPLAY_MANAGER` | Login manager a habilitar | `sddm` |
 | `DEFAULT_THEME` | Tema del instalador | `red-dark` |
 | `EXTRA_WALLPAPER_DIRS` | Carpetas extra de wallpapers (separadas por `:`) | — |
-| `EXTRA_REPO_DIRS` | Carpetas extra donde Settings → System busca clones de git (separadas por `:`; `~` siempre) | — |
+| `EXTRA_REPO_DIRS` | Carpetas extra donde Settings → Repositories busca clones de git (separadas por `:`; `~` siempre) | — |
 | `VPN_PROFILE` | Conexión de NetworkManager para los alias `vpnup`/`vpndown` | — |
 | `VNC_RES`, `VNC_PORT` | Monitor virtual de `wayvnc-toggle` | `1920x1080`, `5900` |
 | `EXPENSES_CURRENCY` | Moneda principal del [gestor de gastos](#gestor-de-gastos) | la del locale (`LC_MONETARY`) o `USD` |

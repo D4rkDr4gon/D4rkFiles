@@ -65,6 +65,7 @@ from power import PowerView  # noqa: E402
 from storage import StorageView  # noqa: E402
 from update import UpdateView  # noqa: E402
 from usbguard import UsbGuardView  # noqa: E402
+from repos import ReposView  # noqa: E402
 from workspaces import WorkspacesView  # noqa: E402
 from themeeditor import ThemeEditorView  # noqa: E402
 from rich.text import Text  # noqa: E402
@@ -1291,93 +1292,31 @@ class ServicesView(DView):
 
 # ── System ────────────────────────────────────────────────
 
-# Dónde buscar clones de git (y qué saltear para que el escaneo sea instantáneo)
-def repo_roots() -> list[Path]:
-    """$HOME + EXTRA_REPO_DIRS de user.conf (separadas por ':')."""
-    extra = user_conf().get("EXTRA_REPO_DIRS", "")
-    return [Path.home()] + [Path(os.path.expandvars(d)).expanduser() for d in extra.split(":") if d]
-
-
-
-REPO_SKIP = ("node_modules", ".cache", "SteamLibrary", "VMs", ".local", ".cargo", ".rustup", "go")
-
-
-def scan_repos() -> list[dict]:
-    """Clones locales con remoto en GitHub: [{path, slug (owner/name), url}]."""
-    args = ["find", *map(str, (r for r in repo_roots() if r.exists())), "-maxdepth", "5", "("]
-    for i, name in enumerate(REPO_SKIP):
-        args += (["-o"] if i else []) + ["-name", name]
-    args += [")", "-prune", "-o", "-name", ".git", "-print", "-prune"]
-    try:
-        found = subprocess.run(args, capture_output=True, text=True, timeout=20).stdout.split()
-    except (OSError, subprocess.TimeoutExpired):
-        found = []
-    out = []
-    for g in found:
-        path = Path(g).parent
-        url = run(["git", "-C", str(path), "remote", "get-url", "origin"]).stdout.strip()
-        m = re.search(r"github\.com[:/]([^/]+)/(.+?)(?:\.git)?$", url)
-        if m:
-            out.append({"path": path, "slug": f"{m.group(1)}/{m.group(2)}", "url": url})
-    return out
-
-
-def repo_state(path: Path) -> dict:
-    """Branch, cambios sin commitear y ahead/behind respecto del último fetch."""
-    head = run(["git", "-C", str(path), "status", "--porcelain=v1", "--branch"]).stdout.splitlines()
-    first = head[0][3:] if head else ""
-    return {"branch": first.split("...")[0] or "?", "changes": max(0, len(head) - 1),
-            "ahead": int(m.group(1)) if (m := re.search(r"ahead (\d+)", first)) else 0,
-            "behind": int(m.group(1)) if (m := re.search(r"behind (\d+)", first)) else 0}
-
-
-def disk_mounts() -> list[str]:
-    """Puntos de montaje de discos reales (uno por dispositivo, sin /boot)."""
-    seen, out = set(), []
-    try:
-        lines = Path("/proc/mounts").read_text().splitlines()
-    except OSError:
-        return ["/"]
-    for l in lines:
-        dev, mnt = l.split()[:2]
-        mnt = mnt.replace("\\040", " ")
-        if not dev.startswith("/dev/") or dev.startswith("/dev/loop") or mnt.startswith(("/boot", "/efi")) \
-                or dev in seen:
-            continue
-        seen.add(dev)
-        out.append(mnt)
-    return sorted(out, key=lambda m: (m != "/", m))[:4] or ["/"]
-
-
 class SystemView(DView):
-    """Recursos del sistema (barras estilo statusline), repos de GitHub
-    (clones locales + los de tu cuenta sin clonar, vía gh) y dotfiles-doctor."""
+    """Recursos del sistema (barras estilo statusline) y dotfiles-doctor. Los repos de
+    GitHub se gestionan en la sección Repositories."""
 
-    FOCUS = "#repos"
+    FOCUS = "#sys-actions"
     DEFAULT_CSS = css("""
     #sysinfo-panel { height: auto; }
     #sysinfo { height: auto; }
-    #repos-panel { height: 1fr; }
+    #sys-actions-panel { height: auto; }
     """)
-    BINDINGS = [Binding("f", "fetch", "fetch all"), Binding("r", "rescan", "rescan")]
 
     def compose(self) -> ComposeResult:
         yield Panel(Static(id="sysinfo"), title="󰌢  System", id="sysinfo-panel")
-        yield Panel(Table(id="repos"), title="  GitHub repositories", id="repos-panel")
+        yield Panel(Table(id="sys-actions", show_header=False), title="Checks", id="sys-actions-panel")
 
     def on_mount(self) -> None:
-        t = self.query_one("#repos", Table)
-        t.add_column("Repository", key="name", width=34)
-        t.add_column("State", key="state", width=44)
-        t.add_column("Path", key="path", width=40)
-        self.repos: list[dict] = []
-        self.remote: list[dict] = []
-        self.me = ""
+        t = self.query_one("#sys-actions", Table)
+        t.add_column("", key="name", width=34)
+        t.add_column("", key="desc", width=70)
+        t.add_row(Text("󰓙  Run dotfiles doctor", style=f"bold {THEME['primary']}"),
+                  Text("links, packages, services, configs and repo checks", style=THEME["muted"]), key="doctor")
         self.update_sysinfo()
-        self.action_rescan()
 
     def on_show(self) -> None:
-        if hasattr(self, "repos"):
+        if self.is_mounted:
             self.update_sysinfo()
 
     def update_sysinfo(self) -> None:
@@ -1417,127 +1356,16 @@ class SystemView(DView):
                 row(f"Disk {mount}", m)
         self.query_one("#sysinfo", Static).update(info)
 
-    # ── repos ──
-
-    def action_rescan(self) -> None:
-        self.query_one("#repos-panel").border_subtitle = " scanning… "
-        self.scan()
-
-    @work(thread=True, exclusive=True, group="repos")
-    def scan(self) -> None:
-        repos = scan_repos()
-        for r in repos:
-            r.update(repo_state(r["path"]))
-        me = run(["gh", "api", "user", "-q", ".login"]).stdout.strip() if shutil.which("gh") else ""
-        remote = []
-        if me:
-            try:
-                remote = json.loads(run(["gh", "repo", "list", "--limit", "200", "--json",
-                                         "nameWithOwner,url,isPrivate,description,pushedAt"]).stdout or "[]")
-            except ValueError:
-                remote = []
-        self.app.call_from_thread(self.show_repos, repos, remote, me)
-
-    def show_repos(self, repos: list[dict], remote: list[dict], me: str) -> None:
-        self.repos, self.remote, self.me = repos, remote, me
-        t = self.query_one("#repos", Table)
-        row = t.cursor_row or 0
-        t.clear()
-        ok, warn, muted = THEME["status_ok"], THEME["status_warn"], THEME["muted"]
-        home = str(Path.home())
-        mine = sorted((r for r in repos if r["slug"].split("/")[0].lower() == me.lower()),
-                      key=lambda r: r["slug"].lower())
-        others = sorted((r for r in repos if r not in mine), key=lambda r: r["slug"].lower())
-        cloned = {r["slug"].lower() for r in repos}
-        missing = sorted((g for g in remote if g["nameWithOwner"].lower() not in cloned),
-                         key=lambda g: g["nameWithOwner"].lower())
-
-        def header(label: str) -> None:
-            t.add_row(Text(label, style=f"bold {THEME['primary']}"), "", "", key=f"hdr:{label}")
-
-        def local(r: dict) -> None:
-            st = Text()
-            if r["changes"]:
-                st.append(f"{r['changes']} uncommitted", style=warn)
-            if r["ahead"]:
-                st.append(("" if not st else " · ") + f"{r['ahead']} to push", style=warn)
-            if r["behind"]:
-                st.append(("" if not st else " · ") + f"{r['behind']} to pull", style=THEME["status_error"])
-            if not st:
-                st.append("✓ clean", style=ok)
-            st.append(f"  ({r['branch']})", style=muted)
-            t.add_row(Text(f"  {r['slug'].split('/', 1)[1] if r in mine else r['slug']}"), st,
-                      Text(str(r["path"]).replace(home, "~"), style=muted), key=f"local:{r['path']}")
-
-        if mine:
-            header(f"Mine · {me}")
-            for r in mine:
-                local(r)
-        if missing:
-            header("On GitHub, not cloned")
-            for g in missing:
-                t.add_row(Text(f"  {g['nameWithOwner'].split('/', 1)[1]}", style=muted),
-                          Text(("private · " if g.get("isPrivate") else "") + "not cloned · enter opens it",
-                               style=muted),
-                          Text((g.get("description") or "")[:40], style=muted), key=f"remote:{g['url']}")
-        if others:
-            header("Third-party clones")
-            for r in others:
-                local(r)
-        t.add_row(Text("󰓙  Run dotfiles doctor", style=f"bold {THEME['primary']}"),
-                  Text("links, packages, services, configs and repo checks", style=muted), "", key="doctor")
-        t.move_cursor(row=min(max(row, 1), t.row_count - 1))
-        self.query_one("#repos-panel").border_subtitle = (
-            f" {len(mine)} mine · {len(missing)} not cloned · {len(others)} third-party · "
-            f"ahead/behind as of the last fetch ")
-
-    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
-        # Los encabezados de grupo no se seleccionan
-        if event.data_table.id == "repos" and str(event.row_key.value).startswith("hdr:"):
-            t = event.data_table
-            nxt = event.cursor_row + (1 if event.cursor_row >= getattr(self, "_last_row", 0) else -1)
-            if 0 <= nxt < t.row_count:
-                t.move_cursor(row=nxt)
-            elif t.row_count > 1:
-                t.move_cursor(row=1)
-        self._last_row = event.cursor_row
-
     def hints(self) -> list[tuple[str, str]]:
-        return [("enter", "details / open"), ("f", "fetch all"), ("r", "rescan"), ("q", "quit")]
-
-    def action_fetch(self) -> None:
-        if not self.repos:
-            return
-        self.query_one("#repos-panel").border_subtitle = f" fetching {len(self.repos)} repos… "
-        self.fetch_all()
-
-    @work(thread=True, exclusive=True, group="repos")
-    def fetch_all(self) -> None:
-        for r in self.repos:
-            subprocess.run(["git", "-C", str(r["path"]), "fetch", "--quiet", "--all"],
-                           capture_output=True, timeout=60)
-        self.app.call_from_thread(self.app.notify_ok, "Fetched all repositories")
-        self.app.call_from_thread(self.action_rescan)
+        return [("enter", "run"), ("q", "quit")]
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        if event.data_table.id != "repos":
-            return
-        key = str(event.row_key.value)
-        if key == "doctor":
+        if event.data_table.id == "sys-actions" and event.row_key.value == "doctor":
             with self.app.suspend():
                 os.system("clear")
                 subprocess.run(["bash", str(DOTFILES / "scripts" / "dotfiles-doctor.sh")])
                 input("\nPress enter to go back to Settings...")
             self.update_sysinfo()
-        elif key.startswith("remote:"):
-            detach(["xdg-open", key[7:].removesuffix(".git")])
-            self.app.notify_ok("Opened in the browser")
-        elif key.startswith("local:"):
-            path = key[6:]
-            r = run(["git", "-C", path, "status", "--short", "--branch"])
-            log = run(["git", "-C", path, "log", "--oneline", "-10"])
-            self.app.push_screen(TextModal(f"{Path(path).name} · git status",
-                                           f"{path}\n\n{r.stdout}\nRecent commits:\n{log.stdout}", end=False))
 
 
 # ── App ───────────────────────────────────────────────────
@@ -1552,7 +1380,8 @@ CATEGORIES = [
                 ("update", "󰚰", "Update"), ("maintenance", "󰣉", "Maintenance")]),
     ("Tools", [("notifications", "\uf0f3", "Notifications"), ("clipboard", "󰅌", "Clipboard"),
                ("screenshots", "󰄀", "Screenshots"), ("colorpicker", "󰴱", "Color picker"),
-               ("agents", "󰚩", "AI Agents"), ("finances", "\uf0d6", "Finances")]),
+               ("agents", "󰚩", "AI Agents"), ("finances", "\uf0d6", "Finances"),
+               ("repos", "", "Repositories")]),
     ("Hardware", [("displays", "󰍹", "Displays"), ("audio", "󰕾", "Audio"), ("input", "󰌌", "Input"),
                   ("power", "󰂄", "Power"), ("battery", "󰁹", "Battery"), ("storage", "󰋊", "Storage")]),
     ("Desktop", [("modes", "󰕮", "Modes"), ("workspaces", "\uf009", "Workspaces"),
@@ -1580,7 +1409,7 @@ def section_views() -> dict:
         "snapshots": SnapshotsView, "screenshots": ScreenshotsView, "colorpicker": ColorPickerView,
         "input": InputView, "battery": BatteryView, "storage": StorageView, "defaultapps": DefaultAppsView,
         "themeeditor": ThemeEditorView, "deskwidgets": DeskWidgetsView, "fonts": FontsView, "firewall": FirewallView,
-        "maintenance": MaintenanceView, "usbguard": UsbGuardView,
+        "maintenance": MaintenanceView, "usbguard": UsbGuardView, "repos": ReposView,
         # En Settings, AI Agents suma el panel Providers (mostrar/ocultar cada uno)
         "agents": functools.partial(load_view("agents_tui", "AgentsView"), manage=True),
         "finances": load_view("expenses_tui", "FinancesView"),
