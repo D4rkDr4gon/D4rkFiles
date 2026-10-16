@@ -21,6 +21,8 @@ Lo leen los scripts, zsh, Hyprland y Qtile. Todo es opcional: lo que falta se au
 | `EXTRA_REPO_DIRS` | Carpetas extra donde Settings → System busca clones de git (separadas por `:`; `~` siempre) | — |
 | `VPN_PROFILE` | Conexión de NetworkManager para los alias `vpnup`/`vpndown` | — |
 | `VNC_RES`, `VNC_PORT` | Monitor virtual de `wayvnc-toggle` | `1920x1080`, `5900` |
+| `EXPENSES_CURRENCY` | Moneda principal del [gestor de gastos](#gestor-de-gastos) | la del locale (`LC_MONETARY`) o `USD` |
+| `EXPENSES_RATES` | Monedas que el gestor de gastos cotiza de internet (separadas por `,`) | `USD,EUR` |
 
 Después de cambiar algo: `theme <tema-actual>` (o `./install.sh --configure`) regenera los archivos.
 
@@ -133,6 +135,38 @@ forman parte del modo no se tocan (no cierra nada). Termina en el workspace 1.
 Los modos viven en `~/.config/dotfiles/modes.conf`, fuera del repo (formato en
 [`modes.conf.example`](../modes.conf.example)); el último aplicado queda en
 `~/.local/state/dotfiles/desktop-mode`. Requiere Hyprland.
+
+## Gestor de gastos
+
+`Super+G` abre `tools/expenses_tui.py` (también el widget de escritorio **Money** y Settings → **Finances**, que
+concentra la gestión: cuentas, categorías, cotizaciones, import y export). Guarda lo mismo que una app de finanzas
+como Money Manager: cuentas (efectivo, banco, tarjeta de crédito con día de cierre y vencimiento, inversiones…),
+categorías de gasto e ingreso con presupuesto mensual (y uno distinto por mes), gastos, ingresos, transferencias
+(también entre monedas) y ajustes de saldo, **compras en cuotas** (cada cuota es un movimiento con fecha futura),
+**gastos fijos** que se generan solos al llegar la fecha, y el resumen de cada tarjeta (cerrado, ciclo en curso,
+cuotas que vienen y deuda; `s` lo carga como lo muestra el banco y `p` registra el pago).
+
+| Página | Qué muestra |
+|---|---|
+| `1` Overview | Mes en curso (`h`/`l` cambia de mes): patrimonio, cuentas, presupuesto por categoría y movimientos |
+| `2` Installments | Compras en cuotas: avance, cuota, lo que falta |
+| `3` Recurring | Gastos/ingresos fijos (`space` pausa, `p` genera los vencidos) |
+| `4` Cards | Tarjetas de crédito: resumen, ciclo, cuotas futuras y deuda |
+
+- **Datos**: `~/.local/state/dotfiles/expenses/expenses.db` (SQLite; otra ruta con `EXPENSES_DB`). Esquema en
+  `tools/expenses_db.py`.
+- **Moneda y cotizaciones**: la principal sale de `EXPENSES_CURRENCY` (o del locale). Al abrir la TUI se cotizan
+  las de `EXPENSES_RATES` en un hilo aparte (`tools/expenses_rates.py`): por defecto
+  [open.er-api.com](https://open.er-api.com) (gratis, sin clave, una vez por día); si la principal es ARS, el
+  dólar y el euro van con [DolarAPI](https://dolarapi.com) (oficial por defecto; en `$` se elige MEP, blue,
+  tarjeta, CCL…). Sin red quedan las últimas. Un gasto en otra moneda guarda el monto original y el convertido.
+- **Montos y fechas** se escriben como uno quiera: `15999,50`, `15.999,50`, `$ 1,500.00`; `11/10/2026`,
+  `11/10`, `hoy`, `2026-10-11`.
+- **Importar de Money Manager** (Realbyte): en la app, backup como `.sqlite`; en la TUI o en Settings → Finances,
+  `i`. Muestra antes de aplicar lo nuevo, lo que parece un duplicado de algo cargado a mano (no se marca y se
+  vincula) y lo que cambió en la app desde el último import (no se marca: la TUI manda). Lo desmarcado no se
+  vuelve a ofrecer y antes de aplicar se guarda `expenses.db.bak-…`. También por línea de comandos:
+  `python3 tools/expenses_import.py backup.sqlite [--apply]`.
 
 ## Teclas de las TUIs
 

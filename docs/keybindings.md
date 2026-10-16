@@ -18,6 +18,7 @@ todos los atajos (y permite reasignar su combinación).
 | `Super+K` | Cheatsheet de atajos |
 | `Super+Shift+M` | Hyprland: modos de escritorio ([customization.md](customization.md#modos-de-escritorio)) |
 | `Super+V` | Historial del portapapeles (Hyprland: cliphist + `tools/clipboard_tui.py` · Qtile: CopyQ) |
+| `Super+G` | Gestor de gastos (`tools/expenses_tui.py`, [customization.md](customization.md#gestor-de-gastos)) |
 | `Super+L` | Menú de acciones: bloquear, suspender, reiniciar, apagar, salir |
 | `Print` / `Super+Shift+S` | Captura de pantalla (región; Wayland: guarda y copia) |
 | `Super+Ctrl+R` | Recargar barra (y la config del WM) |

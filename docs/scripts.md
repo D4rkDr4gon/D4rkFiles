@@ -32,6 +32,7 @@
 | `tools/modes_tui.py` | Gestor de modos: Settings → Modes ([customization.md](customization.md#modos-de-escritorio)) |
 | `tools/webapps_tui.py` | Gestor de webapps: Settings → Webapps ([customization.md](customization.md#webapps)) |
 | `tools/clipboard_tui.py` | Historial del portapapeles (`Super+V`) con búsqueda y preview de imágenes |
+| `tools/expenses_tui.py` | Gestor de gastos (`Super+G`) y la sección Settings → Finances; base en `tools/expenses_db.py`, cotizaciones en `tools/expenses_rates.py`, import de Money Manager en `tools/expenses_import.py` ([customization.md](customization.md#gestor-de-gastos)) |
 | `tools/agents_tui.py` | Panel "AI Agents" de waybar y de Settings; proveedores visibles en `~/.config/dotfiles/agents.conf` ([components.md](components.md)) |
 | `scripts/wallpaper-set.sh` | Aplica un wallpaper sin cambiar de tema (Settings → Backgrounds) |
 

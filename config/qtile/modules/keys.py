@@ -56,6 +56,7 @@ keys = [
   
     #Clipboard control
     Key([mod], "v", lazy.spawn("copyq toggle"), desc = "clipboard History"),
+    Key([mod], "g", lazy.spawn(f"{HOME}/.config/waybar/scripts/expenses-launch.sh"), desc="expenses TUI"),
 
     # ============= Navigating Shortcuts =============
 

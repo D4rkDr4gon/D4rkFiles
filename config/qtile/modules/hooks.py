@@ -48,6 +48,7 @@ FLOAT_GEOMETRY = {
     "shortcuts": (900, 620, 16, 40),
     "settings": (1560, 960, None, None),   # None: centrada
     "clipboard": (1200, 680, None, None),
+    "expenses": (1560, 960, None, None),
 }
 
 
