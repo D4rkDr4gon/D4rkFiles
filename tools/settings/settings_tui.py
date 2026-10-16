@@ -1474,7 +1474,7 @@ CATEGORIES = [
                 ("update", "󰚰", "Update"), ("maintenance", "󰣉", "Maintenance")]),
     ("Tools", [("notifications", "\uf0f3", "Notifications"), ("clipboard", "󰅌", "Clipboard"),
                ("screenshots", "󰄀", "Screenshots"), ("colorpicker", "󰴱", "Color picker"),
-               ("agents", "󰚩", "AI Agents")]),
+               ("agents", "󰚩", "AI Agents"), ("finances", "\uf0d6", "Finances")]),
     ("Hardware", [("displays", "󰍹", "Displays"), ("audio", "󰕾", "Audio"), ("input", "󰌌", "Input"),
                   ("power", "󰂄", "Power"), ("battery", "󰁹", "Battery"), ("storage", "󰋊", "Storage")]),
     ("Desktop", [("modes", "󰕮", "Modes"), ("workspaces", "\uf009", "Workspaces"),
@@ -1505,6 +1505,7 @@ def section_views() -> dict:
         "maintenance": MaintenanceView, "usbguard": UsbGuardView,
         # En Settings, AI Agents suma el panel Providers (mostrar/ocultar cada uno)
         "agents": functools.partial(load_view("agents_tui", "AgentsView"), manage=True),
+        "finances": load_view("expenses_tui", "FinancesView"),
     }
 
 
@@ -1519,6 +1520,8 @@ def binding_catalog() -> list[tuple[str, Binding]]:
             if c is DView or not (isinstance(c, type) and issubclass(c, DView)):
                 break
             out += [(name, b) for b in bindings_of(c)]
+    # TUIs sueltas que no son secciones (usan el mismo keymap de dtui)
+    out += [("Expenses TUI", b) for b in bindings_of(load_view("expenses_tui", "ExpensesApp"))]
     seen, uniq = set(), []
     for sec, b in out:
         if b.id not in seen:

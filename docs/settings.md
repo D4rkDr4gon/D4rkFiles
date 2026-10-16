@@ -68,6 +68,7 @@ Dentro de una sección rigen sus propias teclas (al pie); las que tienen varios 
 | Screenshots | Capturar región / ventana / pantalla (Settings se esconde mientras) y galería con preview; grabar con `wf-recorder` si está | `grim`, `slurp`; carpeta `$(xdg-user-dir PICTURES)/Screenshots` |
 | Color picker | Color de un píxel con historial; `enter` copia en hex/rgb/hsl | `slurp -p` + `grim` |
 | AI Agents | Uso y contexto de Claude Code, opencode, Codex y Antigravity; panel **Providers** para mostrar u ocultar cada uno (también en waybar) | Vista de `tools/agents_tui.py`; config en `~/.config/dotfiles/agents.conf` |
+| Finances | Gestión del gestor de gastos: **Accounts** (alta; al editar se muestra el saldo de hoy y cambiarlo guarda un ajuste; tarjetas con cierre/vencimiento; ocultar), **Categories** (gasto/ingreso, presupuesto mensual) y **Exchange rates** (fuente o manual; `u` actualiza). `i` importa un backup de Money Manager, `c` exporta CSV, `o` abre la TUI (`Super+G`) | Vista `FinancesView` de `tools/expenses_tui.py` (comparte los formularios con la TUI) ([customization.md](customization.md#gestor-de-gastos)) |
 | Displays | Tarjetas (`tab`): **Monitors** (mapa con los monitores según su posición, `enter` abre `hyprmon`), **Night light** (barras de temperatura y brillo nocturno —`←/→`, `-/+` en vivo—, franja de 24 h con la hora actual, `enter` on/off, `s` horario, `l` al iniciar sesión) y **Tablet as monitor** (VNC) | `tools/settings/sections/displays.py` + `nightlight.py`: `hyprctl monitors -j`; hyprsunset (`hyprsunset.service`, IPC `hyprctl hyprsunset`) con `config/hypr/hyprsunset.conf` generado (en `.gitignore`); `scripts/wayland/wayvnc-toggle.sh` (la primera vez: `init`) |
 | Audio | Salidas y entradas: `enter` predeterminada, `←/→` volumen, `m` silenciar | `pw-dump`, `wpctl` |
 | Input | Teclado, mouse y touchpad, en vivo y guardado | `hyprctl keyword` + `settings.conf` |
@@ -102,7 +103,9 @@ imagen. Cada sección usa la herramienta de su fila y, si falta, lo avisa en vez
 ## Teclas reasignables
 
 Cada tecla de Settings y de sus secciones (y de las TUIs sueltas: VPN, Modes, Webapps,
-Clipboard, AI Agents, Shortcuts) se puede cambiar en **Shortcuts → Settings** (`enter` sobre la
+Clipboard, AI Agents, Shortcuts) se puede cambiar en **Shortcuts → Settings**, y las de finanzas (sección
+Finances y la TUI de gastos, *Expenses TUI*) en **Shortcuts → Finances**. La pestaña Settings va agrupada con las categorías del menú
+(General, Connectivity, System…) y la de Finances, por sección (`enter` sobre la
 fila): se valida el formato (`a`, `ctrl+s`, `f5`, `slash`, `left`; varias con coma) y que no
 choque con otra de la misma sección o con las globales; vacío vuelve al default.
 

@@ -4,7 +4,8 @@ shortcuts_tui.py — Cheatsheet de shortcuts, ver + editar.
 
 Junta los atajos de Hyprland, kitty, herdr, Qtile (X11), los defaults de
 LazyVim y las teclas de las propias TUIs (Settings y sus secciones: keymap
-de dtui en ~/.config/dotfiles/keymap.json) en una tab por app (no una lista
+de dtui en ~/.config/dotfiles/keymap.json; lo de finanzas — Settings →
+Finances y la TUI de gastos — en su propia tab) en una tab por app (no una lista
 única — con 140+ atajos mezclados se hacía ilegible), y permite reasignar
 el combo de cualquiera de los editables (reescribe el archivo real de
 config; LazyVim queda solo-lectura, son defaults del plugin instalado, no
@@ -74,6 +75,7 @@ class Shortcut:
     editable: bool = True
     default: str = ""   # Settings: tecla por defecto del binding
     section: str = ""   # Settings: sección a la que pertenece
+    category: str = ""  # Settings: categoría del menú (encabezado de grupo en la lista)
 
 
 # ── Parsers ──────────────────────────────────────────────────────────────
@@ -302,6 +304,10 @@ ACTION_DESC = {"cycle(1)": "next panel", "cycle(-1)": "previous panel", "toggle_
                "focus_search": "search", "refresh": "refresh", "reload": "reload"}
 KEY_RE = re.compile(r"^((ctrl|shift|alt|super|meta)\+)*([a-z0-9]|f\d{1,2}|[a-z_]{2,}|[^\w\s,])$")
 SETTINGS_GLOBAL = ("Settings menu", "Every TUI")
+# Apps de la lista que salen del keymap de dtui; las secciones de FINANCE_SECTIONS
+# (gestión en Settings + TUI de gastos) van aparte, como app "Finances".
+KEYMAP_APPS = ("Settings", "Finances")
+FINANCE_SECTIONS = ("Finances", "Expenses TUI")
 
 
 def binding_desc(b) -> str:
@@ -310,32 +316,36 @@ def binding_desc(b) -> str:
     return ACTION_DESC.get(b.action, re.sub(r"[_()]", " ", b.action).strip())
 
 
-def settings_catalog() -> list:
-    """(sección, binding) de Settings. Dentro de Settings usa su propio módulo
-    (__main__); suelto, lo importa."""
+def settings_catalog() -> tuple[list, list]:
+    """([(sección, binding)], CATEGORIES del menú) de Settings. Dentro de
+    Settings usa su propio módulo (__main__); suelto, lo importa."""
     cat = getattr(sys.modules.get("__main__"), "binding_catalog", None)
     if cat is None:
         sys.path.insert(0, str(Path(__file__).resolve().parent / "settings"))
         import settings_tui  # noqa: PLC0415 - pesado: solo al abrir la pestaña
         cat = settings_tui.binding_catalog
-    return cat()
+    return cat(), getattr(sys.modules[cat.__module__], "CATEGORIES", [])
 
 
 def parse_settings() -> list[Shortcut]:
     try:
-        catalog = settings_catalog()
+        catalog, categories = settings_catalog()
     except Exception:  # noqa: BLE001 - sin Settings importable, la pestaña queda vacía
         return []
     km = load_keymap()
+    cat_of = {name: cat for cat, secs in categories for _sid, _icon, name in secs}
     out = []
     for section, b in catalog:
         keys = km.get(b.id, b.key)
         desc = f"{section} · {binding_desc(b)}" + ("  (changed)" if b.id in km else "")
-        out.append(Shortcut(app="Settings", combo=", ".join(key_display(k) for k in keys.split(",")),
+        app = "Finances" if section in FINANCE_SECTIONS else "Settings"
+        out.append(Shortcut(app=app, combo=", ".join(key_display(k) for k in keys.split(",")),
                             action=b.id, description=desc, file=KEYMAP_FILE, line_no=0,
                             rewrite=lambda line, combo: line,
                             reload_hint="applied now in Settings; standalone TUIs on next launch",
-                            default=b.key, section=section))
+                            default=b.key, section=section,
+                            category=section if app == "Finances"
+                            else "General" if section in SETTINGS_GLOBAL else cat_of.get(section, "Other")))
     return out
 
 
@@ -354,7 +364,7 @@ def save_settings_key(s: Shortcut, combo: str, all_rows: list[Shortcut]) -> Opti
         return f"Not a key: {', '.join(bad)} (examples: a, ctrl+s, f5, slash, left)"
     mine = {key_display(k) for k in keys}
     for o in all_rows:
-        if o is s or o.app != "Settings":
+        if o is s or o.app not in KEYMAP_APPS:
             continue
         same_scope = o.section == s.section or o.section in SETTINGS_GLOBAL or s.section in SETTINGS_GLOBAL
         if same_scope and mine & {k.strip() for k in o.combo.split(",")}:
@@ -367,7 +377,7 @@ def save_settings_key(s: Shortcut, combo: str, all_rows: list[Shortcut]) -> Opti
     return None
 
 
-APP_ORDER = ["Hyprland", "kitty", "herdr", "Qtile", "LazyVim", "Settings"]
+APP_ORDER = ["Hyprland", "kitty", "herdr", "Qtile", "LazyVim", "Settings", "Finances"]
 
 
 def load_all() -> list[Shortcut]:
@@ -393,6 +403,7 @@ FORMATS = {
     "Qtile": 'format: mod, shift, f   (quotes for mods other than "mod" are added automatically)',
     "Settings": "format: a · ctrl+s · f5 · slash · left — several: left,minus · empty = back to default",
 }
+FORMATS["Finances"] = FORMATS["Settings"]
 
 
 class ShortcutsView(DView):
@@ -448,7 +459,8 @@ class ShortcutsView(DView):
     def matches(self, app: str) -> list[Shortcut]:
         q = self.query_text()
         rows = [s for s in self.shortcuts if s.app == app]
-        return [s for s in rows if not q or q in s.combo.lower() or q in (s.description or s.action).lower()]
+        return [s for s in rows if not q or q in s.combo.lower() or q in (s.description or s.action).lower()
+                or q in s.category.lower()]
 
     def active_app(self) -> str:
         t = self.query_one("#apps", DataTable)
@@ -462,11 +474,20 @@ class ShortcutsView(DView):
         lst = self.query_one("#list", DataTable)
         lst.clear()
         self.rows = self.matches(app)
-        for s in self.rows:
+        if app in KEYMAP_APPS:
+            # agrupadas por categoría del menú (Finances: por sección), en el orden en que aparecen
+            order = list(dict.fromkeys(s.category for s in self.rows))
+            self.rows.sort(key=lambda s: order.index(s.category))
+        group = None
+        for i, s in enumerate(self.rows):
+            if app in KEYMAP_APPS and s.category != group:
+                group = s.category
+                lst.add_row(Text(group.upper(), style=f"bold {THEME['primary']}"), "", key=f"hdr:{group}")
             label = Text(s.description or s.action)
             if not s.editable:
                 label.append("  · read only", style=THEME["muted"])
-            lst.add_row(Text(s.combo, style=f"bold {THEME['primary']}"), label)
+            lst.add_row(Text(s.combo, style=f"bold {THEME['primary']}"), label, key=str(i))
+        lst.first_selectable()
         panel = self.query_one("#list-panel")
         panel.border_title = f" {app} "
         panel.border_subtitle = f" {len(self.rows)} shortcut{'' if len(self.rows) == 1 else 's'} "
@@ -535,14 +556,15 @@ class ShortcutsView(DView):
 
     def action_edit(self) -> None:
         t = self.query_one("#list", DataTable)
-        if t.cursor_row is None or not (0 <= t.cursor_row < len(self.rows)):
+        key = t.selected_key()
+        if key is None or key.startswith(Table.SKIP):
             return
-        s = self.rows[t.cursor_row]
+        s = self.rows[int(key)]
         if not s.editable:
             self.app.notify(f"Read only: {s.reload_hint}", severity="warning")
             return
 
-        if s.app == "Settings":
+        if s.app in KEYMAP_APPS:
             return self.edit_settings_key(s)
 
         def done(v: Optional[dict]) -> None:
