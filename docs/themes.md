@@ -75,6 +75,12 @@ También hay tokens del usuario (de `user.conf` y autodetección): `@user_displa
 `@user_title@`, `@terminal@`, `@browser@`, `@file_manager@`, `@editor_gui@`, `@kb_layout@`,
 `@dotfiles@`, `@home@`, `@banner_xml@`, `@banner_qml@`, `@hw_cursor_env@`.
 
+## Vista previa en vivo
+
+Settings → Themes pinta el tema bajo el cursor (tras 0,35 s) con `scripts/theme-preview.sh`: solo el borde de las ventanas de
+Hyprland (`hyprctl keyword`) y los colores de kitty (`kitty @ set-colors`). No escribe a disco; el resto cambia al aplicar con
+`enter`. Volver al tema aplicado, `v`, salir de la sección o cerrar Settings lo revierte (`hyprctl reload` + el `colors.conf` actual).
+
 ## Plantillas
 
 Un archivo `algo.ext.tpl` con `@token@` dentro se renderiza a `algo.ext`. Para tematizar

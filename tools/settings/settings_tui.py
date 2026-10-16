@@ -89,16 +89,26 @@ def load_view(module: str, attr: str):
 
 # ── Themes ────────────────────────────────────────────────
 
+THEME_PREVIEW = DOTFILES / "scripts" / "theme-preview.sh"
+
+
 class ThemesView(DView):
-    """Temas (~/.config/dotfiles/themes y themes/ del repo) con preview; enter aplica."""
+    """Temas (~/.config/dotfiles/themes y themes/ del repo) con preview; enter aplica. Al moverse por la lista se
+    previsualiza en vivo lo liviano (borde de Hyprland y colores de kitty, scripts/theme-preview.sh,
+    nada a disco); al salir de la sección o cerrar se vuelve al tema aplicado. `v` lo apaga."""
 
     FOCUS = "#themes"
+    BINDINGS = [Binding("v", "toggle_live", "live preview")]
     DEFAULT_CSS = css("""
     #themes-panel { width: 42; }
     #theme-preview-panel { width: 1fr; }
     #theme-preview { height: 1fr; }
     #theme-info { height: auto; margin-top: 1; }
     """)
+
+    live = True                    # vista previa en vivo (tecla v)
+    previewing: Optional[str] = None   # tema que está pintado en vivo, si hay
+    _pv_timer = None
 
     def compose(self) -> ComposeResult:
         with Horizontal():
@@ -133,6 +143,64 @@ class ThemesView(DView):
 
     def on_data_table_row_highlighted(self, _event) -> None:
         self.show_preview()
+        self.schedule_live()
+
+    # ── vista previa en vivo ──
+
+    def schedule_live(self) -> None:
+        """Con la lista quieta 0.35 s, pinta el tema resaltado (si no es el aplicado)."""
+        if self._pv_timer:
+            self._pv_timer.stop()
+        self._pv_timer = self.set_timer(0.35, self.live_preview) if self.live else None
+
+    def live_preview(self) -> None:
+        sel = self.selected()
+        if not sel or not self.live:
+            return
+        d, th = sel
+        if th.get("name") == current_theme().get("name"):
+            return self.live_revert()   # volvió al aplicado
+        if self.previewing != d.name:
+            self.previewing = d.name
+            self.run_preview(d.name)
+        self.query_one("#themes-panel").border_subtitle = f" previewing {th.get('name', d.name)} · enter applies "
+
+    @work(thread=True, exclusive=True, group="theme-preview")
+    def run_preview(self, name: str) -> None:
+        subprocess.run(["bash", str(THEME_PREVIEW), name], stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL, timeout=15)
+
+    def live_revert(self) -> None:
+        if self._pv_timer:
+            self._pv_timer.stop()
+            self._pv_timer = None
+        if self.previewing:
+            self.previewing = None
+            self.run_preview_revert()
+            active = current_theme().get("name")
+            self.query_one("#themes-panel").border_subtitle = f" active: {active} " if active else ""
+
+    @work(thread=True, exclusive=True, group="theme-preview")
+    def run_preview_revert(self) -> None:
+        subprocess.run(["bash", str(THEME_PREVIEW), "--revert"], stdout=subprocess.DEVNULL,
+                       stderr=subprocess.DEVNULL, timeout=15)
+
+    def action_toggle_live(self) -> None:
+        self.live = not self.live
+        if self.live:
+            self.schedule_live()
+        else:
+            self.live_revert()
+        self.app.notify_ok("Live preview on" if self.live else "Live preview off")
+
+    def on_hide(self) -> None:
+        self.live_revert()
+
+    def on_unmount(self) -> None:
+        # El hilo del worker no sobrevive al cierre: se revierte en sincrónico
+        if self.previewing:
+            subprocess.run(["bash", str(THEME_PREVIEW), "--revert"], stdout=subprocess.DEVNULL,
+                           stderr=subprocess.DEVNULL, timeout=15)
 
     def selected(self):
         key = self.query_one("#themes", Table).selected_key()
@@ -153,10 +221,11 @@ class ThemesView(DView):
         self.query_one("#theme-info", Static).update(info)
 
     def hints(self) -> list[tuple[str, str]]:
-        return [("enter", "apply"), ("q", "quit")]
+        return [("enter", "apply"), ("v", "live preview " + ("on" if self.live else "off")), ("q", "quit")]
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         if event.data_table.id == "themes" and (sel := self.selected()):
+            self.previewing = None   # theme-switch repinta todo; no hace falta revertir
             self.query_one("#themes-panel").border_subtitle = f" applying {sel[1].get('name')}… "
             self.apply(sel[0].name)
 
