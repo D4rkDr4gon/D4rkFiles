@@ -6,14 +6,18 @@
 # nada. Sin argumentos muestra un menú rofi con los modos y la entrada
 # para gestionarlos (scripts/mode-manager.sh). Requiere Hyprland y jq.
 #
-# Uso: mode-switch.sh [modo]
+# El modo activo vive en $XDG_RUNTIME_DIR (se borra al reiniciar): al arrancar no hay
+# ninguno. `--none` (o "Sin modo" en el menú) lo desactiva sin tocar las ventanas.
+#
+# Uso: mode-switch.sh [modo | --none]
 # ──────────────────────────────────────────────────────────
 set -uo pipefail
 
 # shellcheck source=/dev/null
 source "$(dirname "$(readlink -f "$0")")/lib/env.sh"
 CONF="$DOTFILES_CONF_DIR/modes.conf"
-STATE="$DOTFILES_STATE_DIR/desktop-mode"
+STATE="${XDG_RUNTIME_DIR:-/tmp}/desktop-mode"
+NONE="󰜺  Sin modo"
 MANAGER_LAUNCH="$HOME/.config/waybar/scripts/modes-launch.sh"
 ROFI_THEME="$HOME/.config/rofi/theme.rasi"
 MANAGE="󰒓  Gestionar modos..."
@@ -32,18 +36,26 @@ find_window() {
 }
 
 choose_mode() {
-    local current menu
+    local current menu none
     current="$(cat "$STATE" 2>/dev/null)"
     menu="$(entries | awk -F'|' -v cur="$current" '
         !($1 in icon) { order[++n] = $1; icon[$1] = "" }
         $2 != "" && icon[$1] == "" { icon[$1] = $2 }
         END { for (i = 1; i <= n; i++) { m = order[i]
             printf "%s  %s%s\n", (icon[m] == "" ? "󰕮" : icon[m]), m, (m == cur ? "  (activo)" : "") } }')"
-    menu="${menu:+$menu$'\n'}$MANAGE"
+    none="$NONE"
+    [[ -z "$current" ]] && none+="  (activo)"
+    menu="$none${menu:+$'\n'$menu}"$'\n'"$MANAGE"
     printf '%s\n' "$menu" \
         | rofi -dmenu -i -p "Modo" -theme "$ROFI_THEME" \
             -theme-str "listview { lines: $(wc -l <<<"$menu"); }" \
             -theme-str 'entry { placeholder: "Elegí un modo..."; }'
+}
+
+clear_mode() {
+    rm -f "$STATE"
+    notify-send "Sin modo" "Ningún modo activo (las ventanas quedan como están)" -t 2500
+    exit 0
 }
 
 place() {
@@ -67,12 +79,15 @@ place() {
     ) &
 }
 
-if [[ $# -gt 0 ]]; then
+if [[ "${1:-}" == "--none" ]]; then
+    clear_mode
+elif [[ $# -gt 0 ]]; then
     MODE="$1"
 else
     choice="$(choose_mode)"
     [[ -n "$choice" ]] || exit 0
     [[ "$choice" == "$MANAGE" ]] && exec bash "$MANAGER_LAUNCH"
+    [[ "$choice" == "$NONE"* ]] && clear_mode
     MODE="$(sed -E 's/^[^ ]+  //; s/  \(activo\)$//' <<<"$choice")"
 fi
 
@@ -86,7 +101,7 @@ done < <(entries)
 
 [[ "$found" -eq 1 ]] || { notify-send "Modos" "No existe el modo $MODE" -t 3000; exit 1; }
 
-mkdir -p "$(dirname "$STATE")"
+rm -f "$DOTFILES_STATE_DIR/desktop-mode"   # estado viejo (persistía entre reinicios)
 echo "$MODE" > "$STATE"
 hyprctl dispatch workspace 1 >/dev/null
 notify-send "Modo $MODE" "Apps ubicadas en sus workspaces" -t 2500

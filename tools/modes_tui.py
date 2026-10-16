@@ -35,11 +35,10 @@ from textual.widgets import DataTable  # noqa: E402
 # Raíz del repo: DOTFILES_DIR si está exportado; si no, un nivel arriba de tools/
 DOTFILES = Path(os.environ.get("DOTFILES_DIR") or Path(__file__).resolve().parents[1])
 CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
-STATE_HOME = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state")
 CONF = Path(os.environ.get("MODES_CONF") or CONFIG_HOME / "dotfiles" / "modes.conf")
 EXAMPLE = DOTFILES / "modes.conf.example"
 MODE_SWITCH = DOTFILES / "scripts" / "mode-switch.sh"
-STATE = STATE_HOME / "dotfiles" / "desktop-mode"   # último modo aplicado (lo escribe mode-switch.sh)
+STATE = Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "desktop-mode"   # modo activo (lo escribe mode-switch.sh; se borra al reiniciar)
 MANAGER_CLASS = "modes"                             # clase de la kitty flotante de esta TUI
 DEFAULT_ICON = "󰕮"
 # Terminales: todas comparten clase, así que se identifican por título
@@ -176,6 +175,7 @@ class ModesView(DView):
         Binding("a", "add_app", "add app"),
         Binding("e", "edit", "edit"),
         Binding("d", "delete", "delete"),
+        Binding("x", "deactivate", "no mode"),
         Binding("j", "down", show=False),
         Binding("k", "up", show=False),
     ]
@@ -214,7 +214,9 @@ class ModesView(DView):
             m.add_row(name, str(len(apps)), Text(summary or "no apps", style=THEME["muted"]), key=mode)
         if cur in self.mode_names:
             m.move_cursor(row=self.mode_names.index(cur))
-        self.query_one("#modes-panel").border_subtitle = "" if self.mode_names else " no modes: press n to create one "
+        self.query_one("#modes-panel").border_subtitle = (
+            " no modes: press n to create one " if not self.mode_names
+            else "" if active in self.mode_names else " no mode active · enter applies one ")
         self.fill_apps(select_line)
 
     def current_mode(self) -> Optional[str]:
@@ -264,7 +266,7 @@ class ModesView(DView):
         if self.in_apps():
             return [("enter", "edit"), ("a", "add app"), ("d", "remove"), ("tab", "modes"), ("q", "quit")]
         return [("enter", "apply"), ("n", "new"), ("r", "rename"), ("a", "add app"),
-                ("d", "delete"), ("tab", "apps"), ("q", "quit")]
+                ("d", "delete"), ("x", "no mode"), ("tab", "apps"), ("q", "quit")]
 
     # ── acciones ──
 
@@ -279,6 +281,17 @@ class ModesView(DView):
     def action_up(self) -> None:
         if isinstance(self.app.focused, DataTable):
             self.app.focused.action_cursor_up()
+
+    def action_deactivate(self) -> None:
+        """Deja el escritorio sin modo (no toca las ventanas)."""
+        if self.in_apps():
+            return
+        try:
+            STATE.unlink()
+        except FileNotFoundError:
+            return self.app.notify_ok("No mode was active")
+        self.reload()
+        self.app.notify_ok("No mode active")
 
     def apply(self) -> None:
         mode = self.current_mode()
