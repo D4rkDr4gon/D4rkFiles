@@ -123,6 +123,7 @@ Settings y el historial del portapapeles (`Mod+V`) ya no son menús de rofi: son
 
 ## Pantalla de bloqueo y login
 
+  El **modo Focus** (`Super+Shift+D`, `scripts/focus-mode.sh`) prende No Molestar y oculta música, clima, teléfono y dinero.
 - **gtklock** (`config/gtklock/`) — bloqueo en Wayland (`scripts/lock-screen.sh`). Muestra el
   banner del proyecto con tu nombre y título; en X11 se usa `betterlockscreen` o `i3lock`.
 - **SDDM** (`system/sddm/dotfiles-ascii/`) — tema de login (fondo negro + el mismo banner). Se instala

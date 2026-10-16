@@ -17,6 +17,7 @@ todos los atajos (y permite reasignar su combinación).
 | `Super+S` | Editor (`EDITOR_GUI`) |
 | `Super+K` | Cheatsheet de atajos |
 | `Super+Shift+M` | Hyprland: modos de escritorio ([customization.md](customization.md#modos-de-escritorio)) |
+| `Super+Shift+D` | Modo Focus: No Molestar + oculta los widgets que distraen (música, clima, teléfono, dinero); `scripts/focus-mode.sh` |
 | `Super+V` | Historial del portapapeles (Hyprland: cliphist + `tools/clipboard_tui.py` · Qtile: CopyQ) |
 | `Super+G` | Gestor de gastos (`tools/expenses_tui.py`, [customization.md](customization.md#gestor-de-gastos)) |
 | `Super+L` | Menú de acciones: bloquear, suspender, reiniciar, apagar, salir |

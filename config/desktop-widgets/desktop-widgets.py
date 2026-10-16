@@ -95,7 +95,7 @@ class Hub:
         self.data: dict = {}
         self.subs: dict[str, list] = {}
         self.active = False
-        self.conf = dwlib.load_conf()
+        self.conf = dwlib.load_conf(apply_focus=True)
         self._busy: set[str] = set()
         self._cpu_prev = dwlib.cpu_times()
         self._music_pos = (0.0, 0.0)          # (posición en s, time.monotonic())
@@ -1595,7 +1595,8 @@ class DesktopWidgets:
         self.provider = None
         self.load_style()
         self.monitors = []
-        for path, fn in ((STYLE_PATH, self.load_style), (dwlib.CONF, self.schedule_rebuild)):
+        for path, fn in ((STYLE_PATH, self.load_style), (dwlib.CONF, self.schedule_rebuild),
+                         (dwlib.FOCUS, self.schedule_rebuild)):
             mon = Gio.File.new_for_path(str(path)).monitor_file(Gio.FileMonitorFlags.WATCH_MOVES, None)
             mon.connect("changed", lambda *_a, f=fn: f())
             self.monitors.append(mon)
@@ -1629,7 +1630,7 @@ class DesktopWidgets:
         self.windows = []
         self.hub.clear_subs()
         old_music = dwlib.enabled(self.hub.conf, "music")
-        self.hub.conf = dwlib.load_conf()
+        self.hub.conf = dwlib.load_conf(apply_focus=True)
         if dwlib.enabled(self.hub.conf, "music") and not old_music:
             self.hub.start_music()
         elif not dwlib.enabled(self.hub.conf, "music"):

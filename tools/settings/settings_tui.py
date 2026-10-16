@@ -78,6 +78,7 @@ from textual.widgets import ContentSwitcher, DataTable, Static  # noqa: E402
 LOGO = DOTFILES / "config" / "waybar" / "logo.png"
 WALLPAPER_SET = DOTFILES / "scripts" / "wallpaper-set.sh"
 DND = DOTFILES / "config" / "rofi" / "scripts" / "dnd-menu.sh"
+FOCUS = DOTFILES / "scripts" / "focus-mode.sh"
 IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp")
 
 
@@ -306,6 +307,11 @@ class NotificationsView(DView):
         else:
             d.add_row(Text("○  Do Not Disturb is off", style=muted), Text("enter to turn on", style=muted),
                       key="toggle")
+        focus = subprocess.run(["bash", str(FOCUS), "status"], capture_output=True).returncode == 0
+        d.add_row(Text("●  Focus mode is on" if focus else "○  Focus mode is off",
+                       style=f"bold {ok}" if focus else muted),
+                  Text("Do Not Disturb + hides music, weather, phone and money widgets · enter to "
+                       + ("turn off" if focus else "turn on"), style=muted), key="focus")
         for key, label in (("t3600", "On for 1 hour"), ("t7200", "On for 2 hours"),
                            ("tmorning", "On until tomorrow 08:00"), ("tcustom", "On for a custom time…")):
             d.add_row(f"⏱  {label}", "", key=key)
@@ -360,6 +366,9 @@ class NotificationsView(DView):
         if key == "toggle":
             on = not self.dnd["active"]
             self.dnd_cmd("--on" if on else "--off", msg="Do Not Disturb on" if on else "Do Not Disturb off")
+        elif key == "focus":
+            subprocess.run(["bash", str(FOCUS), "toggle"], capture_output=True)
+            self.reload_dnd()
         elif key in ("t3600", "t7200"):
             self.dnd_cmd("--timer", key[1:], msg=f"Do Not Disturb for {int(key[1:]) // 3600} h")
         elif key == "tmorning":

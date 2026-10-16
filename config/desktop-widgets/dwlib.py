@@ -121,7 +121,13 @@ def write_atomic_bytes(path: Path, data: bytes) -> None:
 
 # ── Config ────────────────────────────────────────────────
 
-def load_conf(path: Path = CONF) -> dict:
+# Modo Focus (scripts/focus-mode.sh): mientras existe este archivo, el daemon oculta estos widgets
+FOCUS = Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "focus-mode"
+FOCUS_HIDDEN = ("music", "weather", "phone", "money")
+
+
+def load_conf(path: Path = CONF, apply_focus: bool = False) -> dict:
+    """apply_focus: solo el daemon (Settings edita la config real, sin el filtro de Focus)."""
     conf = dict(DEFAULTS)
     try:
         for line in path.read_text().splitlines():
@@ -138,6 +144,9 @@ def load_conf(path: Path = CONF) -> dict:
     for w, _, _ in WIDGETS:
         if conf.get(f"pos_{w}") not in POS_IDS:
             conf[f"pos_{w}"] = base.get(w, "center")
+    if apply_focus and FOCUS.exists():
+        for w in FOCUS_HIDDEN:
+            conf[w] = "off"
     return conf
 
 
