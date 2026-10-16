@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from common import hypr_get, hypr_set, run, user_conf_set
+from common import hypr_get, hypr_set, run, sudo_run, user_conf_set
 from dtui import THEME, DView, Field, FormModal, Panel, Table, css
 from rich.text import Text
 from textual.app import ComposeResult
@@ -32,6 +32,19 @@ SETTINGS = [
     ("input:touchpad", "scroll_factor", "Touchpad scroll speed", "float:0.1:3", "1.0", "1 = default"),
     ("input:touchpad", "drag_lock", "Drag lock", "bool", "false", "lift the finger without dropping"),
 ]
+
+
+# Caps/Num/Scroll lock en el OSD: lo da el backend de libinput de SwayOSD, un servicio de
+# sistema (lee /dev/input como root), así que se prende con sudo y no vive en hyprland.conf.
+OSD_UNIT = "swayosd-libinput-backend.service"
+OSD_KEY = "svc|lockosd"
+
+
+def osd_state() -> str:
+    """"on" / "off" / "missing" (swayosd sin el backend)."""
+    if run(["systemctl", "cat", OSD_UNIT]).returncode != 0:
+        return "missing"
+    return "on" if run(["systemctl", "is-active", OSD_UNIT]).stdout.strip() == "active" else "off"
 
 
 class InputView(DView):
@@ -65,6 +78,13 @@ class InputView(DView):
             else:
                 v = Text(shown or "—", style="bold" if val not in (None, "") else THEME["muted"])
             t.add_row(f"  {name}", v, Text(desc, style=THEME["muted"]), key=f"{block}|{key}")
+        st = osd_state()
+        t.add_row(Text("LOCK KEYS", style=f"bold {THEME['primary']}"), "", "", key="hdr:lock")
+        t.add_row("  Caps/Num lock OSD",
+                  Text({"on": "● on", "off": "○ off", "missing": "✗ not installed"}[st],
+                       style=THEME["status_ok"] if st == "on" else THEME["muted"]),
+                  Text("swayosd-libinput-backend (system service, asks for sudo)", style=THEME["muted"]),
+                  key=OSD_KEY)
         t.first_selectable(row or 1)
         self.query_one("#input-panel").border_subtitle = " applied live · saved in ~/.config/dotfiles/hypr/settings.conf "
 
@@ -81,9 +101,21 @@ class InputView(DView):
         self.app.notify_ok(f"{key} = {value or '(empty)'}")
         self.reload()
 
+    def toggle_lock_osd(self) -> None:
+        st = osd_state()
+        if st == "missing":
+            return self.app.notify_err("swayosd has no libinput backend unit (needs swayosd >= 0.1)")
+        verb = "disable" if st == "on" else "enable"
+        if sudo_run(self.app, [["systemctl", verb, "--now", OSD_UNIT]],
+                    f"Caps/Num lock OSD: {verb} {OSD_UNIT}"):
+            self.app.notify_ok(f"Caps/Num lock OSD {'off' if st == 'on' else 'on'}")
+        self.reload()
+
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         if event.data_table.id != "input":
             return
+        if event.row_key.value == OSD_KEY:
+            return self.toggle_lock_osd()
         block, key = str(event.row_key.value).split("|")
         _b, _k, name, kind, default, desc = next(s for s in SETTINGS if s[0] == block and s[1] == key)
         cur = hypr_get(f"{block}:{key}")

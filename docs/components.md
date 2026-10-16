@@ -85,7 +85,8 @@ Settings y el historial del portapapeles (`Mod+V`) ya no son menús de rofi: son
   si no, por nombre de app con el log de `config/dunst/scripts/notif-record.sh` (regla `[notif_jump_record]`).
   Solo sirve con notificaciones que traen acción (navegadores, Discord, Telegram...); un `notify-send` pelado solo se cierra.
 - **swayosd** — OSD de volumen y brillo (Wayland). No relee su CSS en caliente: el motor de
-  temas reinicia el servidor.
+  temas reinicia el servidor. El OSD de Caps/Num lock es opcional: lo da `swayosd-libinput-backend` (servicio de
+  sistema), que se prende desde Settings → Input → *Caps/Num lock OSD* (pide `sudo`).
 - **fprint-osd** — OSD de huella para `sudo`/lock vía `fprintd`. Solo arranca si `fprintd` está instalado.
 - **Widgets de escritorio** (`config/desktop-widgets/`, solo Hyprland) — cuando el workspace activo de un
   monitor no tiene ventanas aparecen: reloj y fecha, lo que suena (MPRIS con `playerctl`, portada y botones, con
