@@ -40,6 +40,8 @@ EXAMPLE = DOTFILES / "modes.conf.example"
 MODE_SWITCH = DOTFILES / "scripts" / "mode-switch.sh"
 STATE = Path(os.environ.get("XDG_RUNTIME_DIR") or "/tmp") / "desktop-mode"   # modo activo (lo escribe mode-switch.sh; se borra al reiniciar)
 MANAGER_CLASS = "modes"                             # clase de la kitty flotante de esta TUI
+NONE_KEY = "__none__"
+NONE_ICON = "󰜺"
 DEFAULT_ICON = "󰕮"
 # Terminales: todas comparten clase, así que se identifican por título
 TERMINALS = re.compile(r"^(kitty|foot|Alacritty|org\.wezfurlong\.wezterm|com\.mitchellh\.ghostty)$")
@@ -205,6 +207,11 @@ class ModesView(DView):
         active = STATE.read_text().strip() if STATE.exists() else ""
         m.clear()
         self.mode_names = self.conf.modes()
+        # Primera fila: "sin modo" (activa cuando no hay ningún modo aplicado)
+        none = Text(f"{NONE_ICON}  No mode")
+        if active not in self.mode_names:
+            none.append("  active", style=THEME["status_ok"])
+        m.add_row(none, "", Text("no mode applied; windows stay where they are", style=THEME["muted"]), key=NONE_KEY)
         for mode in self.mode_names:
             apps = self.conf.apps(mode)
             name = Text(f"{self.conf.icon(mode)}  {mode}")
@@ -213,7 +220,7 @@ class ModesView(DView):
             summary = "  ".join(f"{a.ws}:{a.name or Path(a.cmd.split()[0]).name}" for a in apps) if apps else ""
             m.add_row(name, str(len(apps)), Text(summary or "no apps", style=THEME["muted"]), key=mode)
         if cur in self.mode_names:
-            m.move_cursor(row=self.mode_names.index(cur))
+            m.move_cursor(row=self.mode_names.index(cur) + 1)
         self.query_one("#modes-panel").border_subtitle = (
             " no modes: press n to create one " if not self.mode_names
             else "" if active in self.mode_names else " no mode active · enter applies one ")
@@ -222,9 +229,10 @@ class ModesView(DView):
     def current_mode(self) -> Optional[str]:
         m = self.query_one("#modes", DataTable)
         names = getattr(self, "mode_names", [])
-        if not names or m.cursor_row is None or m.cursor_row >= len(names):
+        row = m.cursor_row
+        if not names or row is None or row < 1 or row > len(names):   # fila 0 = "sin modo"
             return None
-        return names[m.cursor_row]
+        return names[row - 1]
 
     def fill_apps(self, select_line: Optional[int] = None) -> None:
         a = self.query_one("#apps", DataTable)
@@ -255,7 +263,7 @@ class ModesView(DView):
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         if event.data_table.id == "modes":
-            self.apply()
+            self.action_deactivate() if self.current_mode() is None else self.apply()
         elif event.data_table.id == "apps":
             self.action_edit()
 

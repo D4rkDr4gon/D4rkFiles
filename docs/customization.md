@@ -135,7 +135,7 @@ forman parte del modo no se tocan (no cierra nada). Termina en el workspace 1.
 Los modos viven en `~/.config/dotfiles/modes.conf`, fuera del repo (formato en
 [`modes.conf.example`](../modes.conf.example)); el modo activo queda en
 `$XDG_RUNTIME_DIR/desktop-mode`, así que tras un reinicio **no hay ninguno activo**. "Sin modo" (primera entrada del menú,
-`mode-switch.sh --none` o `x` en el gestor) lo desactiva sin tocar ninguna ventana. Requiere Hyprland.
+`mode-switch.sh --none`, la fila *No mode* del gestor o `x`) lo desactiva sin tocar ninguna ventana. Requiere Hyprland.
 
 ## Gestor de gastos
 
