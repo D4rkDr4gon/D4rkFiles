@@ -59,7 +59,7 @@ class LogsView(DView):
                 e = json.loads(line)
             except ValueError:
                 continue
-            msg = e.get("MESSAGE", "")
+            msg = e.get("MESSAGE") or ""   # puede venir null (entradas sin MESSAGE)
             if isinstance(msg, list):   # mensajes binarios vienen como lista de bytes
                 msg = bytes(msg).decode(errors="replace")
             ts = int(e.get("__REALTIME_TIMESTAMP", 0)) / 1e6
