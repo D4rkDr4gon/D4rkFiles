@@ -29,6 +29,17 @@ DBUS = "org.kde.kdeconnect"
 PHONE_CONF = Path(os.environ.get("PHONE_CONF", CONF_DIR / "phone.conf"))
 PROXIMITY = DOTFILES / "scripts" / "phone-proximity.py"
 
+# (clave, nombre, descripción, plugin de KDE Connect que el teléfono tiene que soportar)
+ACTIONS = (
+    ("ring", "󰂞  Find my phone", "make it ring at full volume", "findmyphone"),
+    ("ping", "󰘬  Ping", "send a ping notification", "ping"),
+    ("clip", "󰅌  Send clipboard", "copy this computer's clipboard to the phone", "clipboard"),
+    ("file", "󰈔  Share a file", "send a file to the phone", "share"),
+    ("text", "󰉿  Share text or URL", "open it on the phone", "share"),
+    ("notif", "  Phone notifications", "list the notifications on the phone", "notifications"),
+    ("lock", "  Lock the phone", "lock its screen", "lockdevice"),
+)
+
 
 def load_conf() -> dict:
     conf = {"proximity_lock": "off", "proximity_grace": "120", "proximity_device": ""}
@@ -69,6 +80,15 @@ def devices() -> list[dict]:
     return out
 
 
+def supported_plugins(dev: str) -> Optional[set[str]]:
+    """Plugins que el teléfono declara soportar (sin el prefijo kdeconnect_); None si no se sabe."""
+    r = run(["busctl", "--user", "get-property", DBUS, f"/modules/kdeconnect/devices/{dev}",
+             "org.kde.kdeconnect.device", "supportedPlugins"])
+    if r.returncode != 0:
+        return None
+    return {p.removeprefix("kdeconnect_") for p in re.findall(r'"([^"]+)"', r.stdout)}
+
+
 def prop(dev: str, path: str, iface: str, name: str) -> Optional[str]:
     r = run(["busctl", "--user", "get-property", DBUS, f"/modules/kdeconnect/devices/{dev}{path}", iface, name])
     return r.stdout.split(" ", 1)[1].strip().strip('"') if r.returncode == 0 and " " in r.stdout else None
@@ -91,23 +111,22 @@ class PhoneView(DView):
         t = self.query_one("#phone-actions", Table)
         t.add_column("", key="name", width=36)
         t.add_column("", key="desc", width=70)
-        for key, name, desc in (
-                ("ring", "󰂞  Find my phone", "make it ring at full volume"),
-                ("ping", "󰘬  Ping", "send a ping notification"),
-                ("clip", "󰅌  Send clipboard", "copy this computer's clipboard to the phone"),
-                ("file", "󰈔  Share a file", "send a file to the phone"),
-                ("text", "󰉿  Share text or URL", "open it on the phone"),
-                ("notif", "  Phone notifications", "list the notifications on the phone"),
-                ("lock", "  Lock the phone", "if the phone allows it")):
-            t.add_row(name, Text(desc, style=THEME["muted"]), key=key)
-        t.add_row("󰌾  Lock when it leaves", self.proximity_desc(), key="proximity")
         self.dev: Optional[dict] = None
+        self.plugins: Optional[set[str]] = None
+        self.render_actions()
         self.action_refresh()
         self.set_interval(15, self.tick)
 
     def tick(self) -> None:
         if self.visible_now:
             self.action_refresh()
+
+    def render_actions(self) -> None:
+        """Acciones que el teléfono soporta (todas mientras no se sepa) + el bloqueo por proximidad."""
+        rows = [(key, [name, Text(desc, style=THEME["muted"])]) for key, name, desc, plugin in ACTIONS
+                if self.plugins is None or plugin in self.plugins]
+        rows.append(("proximity", ["󰌾  Lock when it leaves", self.proximity_desc()]))
+        self.query_one("#phone-actions", Table).set_rows(rows)
 
     def proximity_desc(self) -> Text:
         c = load_conf()
@@ -118,10 +137,9 @@ class PhoneView(DView):
 
     def toggle_proximity(self) -> None:
         c = load_conf()
-        t = self.query_one("#phone-actions", Table)
         if c.get("proximity_lock") == "on":
             save_conf({"proximity_lock": "off"})
-            t.update_cell("proximity", "desc", self.proximity_desc())
+            self.render_actions()
             return self.app.notify_ok("Proximity lock off")
 
         def done(v: Optional[dict]) -> None:
@@ -131,7 +149,7 @@ class PhoneView(DView):
                        "proximity_device": self.dev["id"] if self.dev else ""})
             if run(["pgrep", "-f", "phone-proximity.py"]).returncode != 0:
                 detach([str(PROXIMITY)])
-            t.update_cell("proximity", "desc", self.proximity_desc())
+            self.render_actions()
             self.app.notify_ok("Proximity lock on")
 
         def check(v: dict) -> Optional[str]:
@@ -155,15 +173,18 @@ class PhoneView(DView):
         dev = next((d for d in devs if d["paired"] and d["reachable"]), None) or \
             next((d for d in devs if d["paired"]), None)
         info = {}
+        plugins = supported_plugins(dev["id"]) if dev else None
         if dev and dev["reachable"]:
             charge = prop(dev["id"], "/battery", "org.kde.kdeconnect.device.battery", "charge")
             charging = prop(dev["id"], "/battery", "org.kde.kdeconnect.device.battery", "isCharging")
             info = {"charge": int(charge) if charge and charge.lstrip("-").isdigit() else None,
                     "charging": charging == "true"}
-        self.app.call_from_thread(self.show, dev, info, len(devs))
+        self.app.call_from_thread(self.show, dev, info, len(devs), plugins)
 
-    def show(self, dev: Optional[dict], info: dict, total: int) -> None:
+    def show(self, dev: Optional[dict], info: dict, total: int, plugins: Optional[set[str]]) -> None:
         self.dev = dev
+        self.plugins = plugins
+        self.render_actions()
         ok, muted, warn = THEME["status_ok"], THEME["muted"], THEME["status_warn"]
         st = Text()
         if not shutil.which("kdeconnect-cli"):
