@@ -327,6 +327,19 @@ def which_any(*names: str) -> Optional[str]:
 
 # ── cambios que necesitan root ────────────────────────────
 
+
+def timeshift_snap_dir() -> Path:
+    """Carpeta de snapshots de Timeshift (modo rsync): la del disco que tiene configurado en
+    /etc/timeshift/timeshift.json si está montado (p. ej. /files/timeshift/snapshots), o
+    /timeshift/snapshots, que es donde queda cuando el destino es el disco del sistema."""
+    try:
+        uuid = json.loads(Path("/etc/timeshift/timeshift.json").read_text()).get("backup_device_uuid", "")
+        mnt = run(["findmnt", "-rno", "TARGET", "-S", f"UUID={uuid}"]).stdout.split("\n")[0].strip() if uuid else ""
+    except (OSError, ValueError):
+        mnt = ""
+    return Path(mnt if mnt not in ("", "/") else "") / "timeshift" / "snapshots"
+
+
 def sudo_run(app, cmds: list[list[str]], title: str = "") -> bool:
     """Corre los comandos con sudo en la terminal (Settings se suspende: sudo pide
     contraseña o huella). Si uno falla frena y espera un enter para leer el error.

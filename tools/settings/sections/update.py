@@ -32,7 +32,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-from common import DOTFILES, STATE, run
+from common import DOTFILES, STATE, run, timeshift_snap_dir
 from dtui import THEME, Card, ConfirmModal, DView, Panel, Table, ago, css
 from rich.text import Text
 from textual import work
@@ -45,7 +45,7 @@ UPDATE_SH = DOTFILES / "scripts" / "dotfiles-update.sh"
 CACHE = STATE / "update.json"
 PENDING_MAX_AGE = 15 * 60
 PACMAN_LOG = Path("/var/log/pacman.log")
-SNAP_DIR = Path("/timeshift/snapshots")
+SNAP_DIR = timeshift_snap_dir()
 # Los que conviene ver primero (y que suelen pedir reinicio)
 IMPORTANT = re.compile(r"^(linux|linux-[a-z]+|systemd|glibc|mesa|nvidia.*|hyprland.*|pacman|grub|"
                        r"systemd-.*|pipewire|wireplumber|networkmanager|firefox)$")

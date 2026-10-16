@@ -13,14 +13,14 @@ import subprocess
 from pathlib import Path
 from typing import Optional
 
-from common import run
+from common import run, timeshift_snap_dir
 from dtui import THEME, ConfirmModal, DView, Field, FormModal, Panel, Table, css
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.widgets import DataTable
 
-SNAP_DIR = Path("/timeshift/snapshots")
+SNAP_DIR = timeshift_snap_dir()
 
 
 def snapshots() -> list[dict]:
