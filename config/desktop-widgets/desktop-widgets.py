@@ -146,6 +146,7 @@ class Hub:
         GLib.timeout_add_seconds(2, self.tick_net_rate)
         GLib.timeout_add_seconds(15, self.tick_net_info)
         GLib.timeout_add_seconds(15, self.tick_phone)
+        GLib.timeout_add_seconds(60, self.tick_money)
         self.start_music()
         self.watch_todo()
         self.refresh_todo()
@@ -166,6 +167,7 @@ class Hub:
         self.tick_agenda()
         self.tick_net_info()
         self.tick_phone()
+        self.tick_money()
         self.resync_music()
 
     def tick_clock(self) -> bool:
@@ -211,6 +213,12 @@ class Hub:
             want_ip = self.conf.get("net_public_ip") == "on"
             self.background("net_info", lambda: {**dwlib.net_info(),
                                                  "public": dwlib.public_ip() if want_ip else None})
+        return True
+
+    # Money: lee la base del gestor de gastos en solo lectura (dwlib.money_summary)
+    def tick_money(self) -> bool:
+        if self.active and dwlib.enabled(self.conf, "money"):
+            self.background("money", dwlib.money_summary)
         return True
 
     def tick_phone(self) -> bool:
@@ -1302,7 +1310,74 @@ def build_network(hub: Hub) -> Gtk.Widget:
     return outer
 
 
-BUILDERS = {"agenda": build_agenda, "pomodoro": build_pomodoro, "phone": build_phone, "network": build_network,
+EXPENSES_LAUNCH = Path.home() / ".config" / "waybar" / "scripts" / "expenses-launch.sh"
+SYMBOLS = {"USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "BRL": "R$", "ARS": "$", "MXN": "$", "CLP": "$"}
+
+
+def fmt_money(v: float, cur: str) -> str:
+    """Monto sin centavos con el símbolo de la moneda principal: -$4,159,247."""
+    return ("-" if v < -0.5 else "") + SYMBOLS.get(cur, "") + f"{abs(v):,.0f}"
+
+
+def build_money(hub: Hub) -> Gtk.Widget:
+    outer, body = card("\uf0d6  Money")
+    net = label("…", "big")
+    split = label("", "muted")
+    month = label("", "text")
+    bud = Meter("Budget")
+    cards = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+    btn = Gtk.Button(label="\uf0d6  Open expenses")
+    btn.set_tooltip_text("Mod+G")
+    btn.get_style_context().add_class("small-btn")
+    btn.set_halign(Gtk.Align.START)
+    btn.connect("clicked", lambda _b: subprocess.Popen(
+        ["bash", str(EXPENSES_LAUNCH)], start_new_session=True,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+    for w in (net, split, month, bud, cards, btn):
+        body.pack_start(w, False, False, 0)
+
+    def upd(m):
+        for c in cards.get_children():
+            cards.remove(c)
+        ok = bool(m) and "error" not in m
+        for w in (split, month, bud):
+            set_shown(w, ok)
+        if not m:
+            net.set_text("No data yet")
+            return
+        if "error" in m:
+            net.set_text("—")
+            cards.pack_start(label("Open the expenses TUI once to update its database", "muted"), False, False, 0)
+            cards.show_all()
+            return
+        cur = m["currency"]
+        net.set_text(fmt_money(m["net"], cur))
+        set_classes(net, "ok" if m["net"] >= 0 else "error")
+        split.set_text(f"assets {fmt_money(m['assets'], cur)} · owed {fmt_money(m['debt'], cur)}")
+        month.set_text(f"{datetime.now():%B}: ▲ {fmt_money(m['income'], cur)}   ▼ {fmt_money(m['expenses'], cur)}")
+        if m["budget"]:
+            pct = m["budget_spent"] / m["budget"] * 100
+            bud.update(pct, f"{pct:.0f}%", "error" if pct >= 100 else "warn" if pct >= 80 else "ok")
+        else:
+            set_shown(bud, False)
+        today = datetime.now().date().isoformat()
+        for c in m["cards"]:
+            r = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            late = c["closed_left"] > 0.5 and c["last_due"] < today
+            r.pack_start(label("󰆛", "text mono" + (" error" if late else "")), False, False, 0)
+            r.pack_start(label(c["name"], "text", ellipsize=True, width=14), True, True, 0)
+            r.pack_start(label(fmt_money(c["debt"], cur), "text mono"), False, False, 0)
+            due = c["last_due"] if c["closed_left"] > 0.5 else c["due"]
+            r.pack_start(label(f"due {due[8:10]}/{due[5:7]}", "muted mono" + (" error" if late else "")),
+                         False, False, 0)
+            cards.pack_start(r, False, False, 0)
+        cards.show_all()
+
+    hub.on("money", upd)
+    return outer
+
+
+BUILDERS = {"money": build_money, "agenda": build_agenda, "pomodoro": build_pomodoro, "phone": build_phone, "network": build_network,
             "music": build_music, "weather": build_weather, "system": build_system,
             "agents": build_agents, "status": build_status, "todo": build_todo}
 

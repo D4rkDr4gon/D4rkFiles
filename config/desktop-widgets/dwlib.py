@@ -13,6 +13,7 @@ import json
 import os
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.parse
@@ -43,9 +44,10 @@ WIDGETS = [
     ("pomodoro", "󱎫", "Pomodoro"),
     ("phone", "󰏲", "Phone"),
     ("network", "󰛳", "Network"),
+    ("money", "\uf0d6", "Money"),
 ]
 # Arrancan apagados (se prenden en Settings → Desktop widgets)
-OFF_BY_DEFAULT = {"agenda", "pomodoro", "phone", "network"}
+OFF_BY_DEFAULT = {"agenda", "pomodoro", "phone", "network", "money"}
 # Posiciones en la pantalla: grilla de 3×3 (fila arriba/medio/abajo × columna
 # izquierda/centro/derecha). Varios widgets en la misma zona se apilan en el
 # orden de la clave `order`.
@@ -63,7 +65,7 @@ PRESETS = {
     "spread": ("Spread (corners)", {"clock": "center", "music": "bottom-left", "weather": "top-right",
                                     "system": "bottom-right", "agents": "right", "status": "left",
                                     "todo": "top-left", "agenda": "top-left", "pomodoro": "bottom",
-                                    "phone": "bottom-right", "network": "right"}),
+                                    "phone": "bottom-right", "network": "right", "money": "left"}),
 }
 LAYOUTS = [(k, v[0]) for k, v in PRESETS.items()]
 DEFAULTS = {"layout": "dashboard", **{w: "off" if w in OFF_BY_DEFAULT else "on" for w, _, _ in WIDGETS},
@@ -706,3 +708,24 @@ def geocode(city: str, count: int = 5) -> list[dict]:
         out.append({"name": g.get("name", city), "label": label,
                     "lat": f"{g['latitude']:.4f}", "lon": f"{g['longitude']:.4f}"})
     return out
+
+
+# ── Money ─────────────────────────────────────────────────
+# Balance general del gestor de gastos (tools/expenses_db.py), en solo
+# lectura: None si todavía no hay base; {"error": …} si no se puede leer.
+
+def money_summary() -> dict | None:
+    try:
+        tools = str(REPO / "tools")
+        if tools not in sys.path:
+            sys.path.insert(0, tools)
+        import expenses_db  # noqa: PLC0415 - solo si el widget está prendido
+        if not expenses_db.DB_FILE.exists():
+            return None
+        db = expenses_db.Database.readonly()
+        try:
+            return db.summary()
+        finally:
+            db.con.close()
+    except Exception as e:  # noqa: BLE001
+        return {"error": str(e)}

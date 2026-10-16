@@ -101,7 +101,9 @@ Settings y el historial del portapapeles (`Mod+V`) ya no son menús de rofi: son
   dependencias en `config/desktop-widgets/agenda.py`: RRULE, zonas horarias —también las de Windows de Outlook—,
   excepciones), **Pomodoro** (foco/pausas con notificación, opcionalmente No molestar de dunst durante el foco),
   **Phone** (KDE Connect por D-Bus: batería, señal, notificaciones del teléfono, botón para hacerlo sonar) y
-  **Network** (SSID y señal, IP, gráfico de tráfico; IP pública opcional vía api.ipify.org).
+  **Network** (SSID y señal, IP, gráfico de tráfico; IP pública opcional vía api.ipify.org) y **Money**
+  (balance general del [gestor de gastos](customization.md#gestor-de-gastos): patrimonio, mes, presupuesto y
+  tarjetas, leyendo su base en solo lectura; botón para abrir la TUI).
   - `desktop-widgets.py`: daemon GTK3 + `gtk-layer-shell`, una capa `BOTTOM` por monitor (namespace
     `desktop-widgets`, con `blur on`/`ignore_alpha` por `layerrule`). Escucha el socket2 de Hyprland y consulta
     `j/monitors`/`j/workspaces` por el socket (sin lanzar `hyprctl`); muestra la capa del monitor cuyo

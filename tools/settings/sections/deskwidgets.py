@@ -89,7 +89,8 @@ class DeskWidgetsView(DView):
              "weather": "now + 3 days", "system": "CPU, RAM, disk, battery",
              "agents": "Claude / opencode usage", "status": "updates, VPN, todos",
              "todo": "quick task list", "agenda": "upcoming events", "pomodoro": "focus timer",
-             "phone": "KDE Connect: battery, notifications", "network": "SSID, IP, traffic graph"}
+             "phone": "KDE Connect: battery, notifications", "network": "SSID, IP, traffic graph",
+             "money": "net worth, month, budget, cards (expenses TUI)"}
 
     def reload(self) -> None:
         conf = dwlib.load_conf()
