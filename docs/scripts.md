@@ -14,6 +14,7 @@
 | `scripts/battery-watch.sh` | Notificaciones de batería (15/10/5 %) |
 | `scripts/barupdate.sh` | Reinicia la barra (waybar o polybar según la sesión) |
 | `scripts/welcome.sh` | Notificación de bienvenida con tu nombre |
+| `scripts/proton-backup.sh` | Backup incremental en Proton Drive: Settings → Backup ([customization.md](customization.md#backup-en-proton-drive)) |
 | `scripts/webapps.sh` | Webapps con firefoxpwa ([customization.md](customization.md#webapps)) |
 | `scripts/mode-switch.sh` | Aplica un modo de escritorio; sin argumentos, menú rofi ([customization.md](customization.md#modos-de-escritorio)) |
 | `scripts/setup-sddm-theme.sh` | Instala el tema de login de SDDM |
@@ -31,6 +32,7 @@
 | `tools/settings/settings_tui.py` | Settings (`Super+Shift+Space`, logo de la barra), con sus secciones en `tools/settings/sections/` ([settings.md](settings.md)) |
 | `tools/modes_tui.py` | Gestor de modos: Settings → Modes ([customization.md](customization.md#modos-de-escritorio)) |
 | `tools/webapps_tui.py` | Gestor de webapps: Settings → Webapps ([customization.md](customization.md#webapps)) |
+| `tools/backup_tui.py` | Backup en Proton Drive: Settings → Backup ([customization.md](customization.md#backup-en-proton-drive)) |
 | `tools/clipboard_tui.py` | Historial del portapapeles (`Super+V`) con búsqueda y preview de imágenes |
 | `tools/expenses_tui.py` | Gestor de gastos (`Super+G`) y la sección Settings → Finances; base en `tools/expenses_db.py`, cotizaciones en `tools/expenses_rates.py`, import de Money Manager en `tools/expenses_import.py` ([customization.md](customization.md#gestor-de-gastos)) |
 | `tools/agents_tui.py` | Panel "AI Agents" de waybar y de Settings; proveedores visibles en `~/.config/dotfiles/agents.conf` ([components.md](components.md)) |

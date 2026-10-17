@@ -1,0 +1,14 @@
+# ~/.config/dotfiles/proton-backup.conf — carpetas que respalda scripts/proton-backup.sh en Proton Drive.
+#
+# Lo crea Settings → Backup al agregar la primera carpeta (o copiá este archivo). Vive FUERA del repo.
+# Requiere el CLI oficial de Proton Drive (`proton-drive-cli-bin` del AUR) con sesión iniciada:
+#   proton-drive auth login
+#
+# Formato: id|ícono|nombre|ruta local|ruta remota|exclusiones
+#   id           identificador fijo (nombra el manifiesto en ~/.local/state/dotfiles/proton-backup)
+#   ícono        Nerd Font, opcional
+#   exclusiones  separadas por espacio; un patrón con / es relativo a la raíz de la carpeta,
+#                si no se compara contra el nombre (ej. .git, node_modules)
+#
+# Ejemplo:
+# docs|󰈙|Documentos|/home/tu-usuario/Documents|/my-files/Backups/Documents|.git node_modules

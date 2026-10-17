@@ -1299,7 +1299,7 @@ CATEGORIES = [
                       ("firewall", "󰒃", "Firewall"), ("usbguard", "󰕓", "USB guard"), ("phone", "󰏲", "Phone"),
                       ("nettools", "󰛳", "Network tools")]),
     ("System", [("services", "\uf013", "Services"), ("startup", "󰒲", "Startup apps"), ("logs", "󰌱", "Logs"),
-                ("snapshots", "󰄄", "Snapshots"), ("system", "󰌢", "System"),
+                ("snapshots", "󰄄", "Snapshots"), ("backup", "󰅧", "Backup"), ("system", "󰌢", "System"),
                 ("update", "󰚰", "Update"), ("maintenance", "󰣉", "Maintenance")]),
     ("Tools", [("notifications", "\uf0f3", "Notifications"), ("clipboard", "󰅌", "Clipboard"),
                ("screenshots", "󰄀", "Screenshots"), ("colorpicker", "󰴱", "Color picker"),
@@ -1332,7 +1332,7 @@ def section_views() -> dict:
         "snapshots": SnapshotsView, "screenshots": ScreenshotsView, "colorpicker": ColorPickerView,
         "input": InputView, "battery": BatteryView, "storage": StorageView, "defaultapps": DefaultAppsView,
         "themeeditor": ThemeEditorView, "deskwidgets": DeskWidgetsView, "fonts": FontsView, "firewall": FirewallView,
-        "maintenance": MaintenanceView, "usbguard": UsbGuardView, "repos": ReposView,
+        "backup": load_view("backup_tui", "BackupView"), "maintenance": MaintenanceView, "usbguard": UsbGuardView, "repos": ReposView,
         # En Settings, AI Agents suma el panel Providers (mostrar/ocultar cada uno)
         "agents": functools.partial(load_view("agents_tui", "AgentsView"), manage=True),
         "finances": load_view("expenses_tui", "FinancesView"),

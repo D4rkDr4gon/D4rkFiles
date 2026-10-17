@@ -169,6 +169,36 @@ cuotas que vienen y deuda; `s` lo carga como lo muestra el banco y `p` registra 
   vuelve a ofrecer y antes de aplicar se guarda `expenses.db.bak-…`. También por línea de comandos:
   `python3 tools/expenses_import.py backup.sqlite [--apply]`.
 
+## Backup en Proton Drive
+
+Respaldo incremental de carpetas locales en Proton Drive con el CLI oficial (`proton-drive`, paquete AUR
+`proton-drive-cli-bin`; también `gawk` y `script` de util-linux). Se maneja desde **Settings → Backup** (una TUI en una
+ventana flotante, clase `proton-backup`). Inicia sesión una vez con `proton-drive auth login` (guarda la sesión en el keyring
+vía Secret Service) o con `L` desde la TUI si venció.
+
+Las carpetas viven en `~/.config/dotfiles/proton-backup.conf`, fuera del repo (formato en
+[`proton-backup.conf.example`](../proton-backup.conf.example)): `id|ícono|nombre|ruta local|ruta remota|exclusiones`. Se
+agregan con `a` en la TUI. Por defecto no hay ninguna.
+
+- **Cómo sube**: compara contra el manifiesto de la última subida (`<id>.files`: ruta, tamaño, mtime), copia **solo lo nuevo o
+  modificado** a un stage y lo sube con `-d merge -f create-new-revision` (un archivo modificado queda como nueva revisión). Lo
+  que borraste en local va a la **papelera** de Proton (30 días). Las exclusiones se aplican en el stage (el CLI no las tiene);
+  un patrón con `/` es relativo a la raíz de la carpeta, si no se compara contra el nombre (`.git`). Los symlinks no se suben.
+- **Segundo plano**: corre con `setsid`, sigue aunque cierres la TUI y avisa con `notify-send`. Hay un lock: una subida a la vez.
+- **Avance**: el CLI solo dibuja su barra con una terminal, así que corre bajo `script` y un parser en `gawk` calcula bytes,
+  velocidad y tiempo restante.
+- **Estado**: `~/.local/state/dotfiles/proton-backup/` (manifiestos, avance, logs). `PROTON_BACKUP_CONF` / `PROTON_BACKUP_STATE`
+  apuntan a otras rutas.
+
+| Tecla (en la TUI) | Acción |
+|---|---|
+| `enter` / `u` | Sube la carpeta seleccionada / todas |
+| `x` | Cancela la subida en curso (lo ya subido queda) |
+| `a` / `e` / `d` | Agrega / edita / deja de respaldar una carpeta (no borra nada en Proton) |
+| `l` / `L` | Log de la última subida / `proton-drive auth login` |
+
+Desde la terminal: `scripts/proton-backup.sh start|run [id...]|cancel|running`.
+
 ## Teclas de las TUIs
 
 `~/.config/dotfiles/keymap.json` guarda las teclas de Settings y de las TUIs que reasignaste en
