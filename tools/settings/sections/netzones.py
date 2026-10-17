@@ -26,8 +26,8 @@ import time
 from pathlib import Path
 from typing import Optional
 
-from common import DOTFILES, detach, run, sudo_run
-from dtui import THEME, ConfirmModal, Panel, PickModal, Table
+from common import DOTFILES, detach, run, sudo_run, tilde
+from dtui import THEME, ConfirmModal, Panel, PickModal, Table, TextModal
 from rich.text import Text
 from textual import work
 from textual.app import ComposeResult
@@ -130,6 +130,7 @@ class NetZonesMixin:
                       "forti": forti_profiles(), "citrix": citrix_configured(), "daemon": daemon_running(),
                       "agent": Path("/usr/lib/systemd/user/hyprpolkitagent.service").exists()})
         d.update({"conf": conf, "state": st, "nets": ng.networks(), "installed": ng.installed(),
+                  "helper": ng.helper_version(),
                   "fresh": time.time() - st.get("time", 0) < 15})
         if not full:
             d["daemon"] = d["fresh"] or daemon_running()
@@ -146,6 +147,10 @@ class NetZonesMixin:
             rows.append(("setup", ["󰒃  Set up", Text("○  not installed", style=warn),
                                    Text("polkit agent (fingerprint), root helper, firewalld · asks for sudo once",
                                         style=muted)]))
+        elif d["helper"] < ng.HELPER_VERSION:
+            rows.append(("setup", ["󰒃  Set up again", Text("◐  helper outdated", style=warn),
+                                   Text("the installed root helper cannot report the real kill switch state and "
+                                        "may rearm after a bypass · enter (sudo)", style=muted)]))
         rows.append(("enabled", ["󰖂  Network zones",
                                  Text("●  on", style=ok) if enabled else Text("○  off", style=muted),
                                  Text("safe/unsafe per network, applied by the netguard daemon", style=muted)]))
@@ -157,23 +162,40 @@ class NetZonesMixin:
             rows.append(("mode", ["󰀂  Mode", label, Text(f"{how} · {st.get('reason', '')}", style=muted)]))
             ks_on = conf.get("killswitch") == "on"
             bypass = st.get("bypass_until", 0) - time.time()
+            up = st.get("vpn_up", []) if d["fresh"] else []
+            unsafe = mode == "insecure"
+            lost = st.get("vpn_lost_at", 0) if d["fresh"] else 0
             if bypass > 0:
-                ks = Text(f"◐  bypass {int(bypass)} s", style=warn)
+                ks, why = Text(f"◐  bypass {int(bypass)} s", style=warn), "nothing blocked until it ends"
+            elif st.get("killswitch") and lost:
+                ks, why = (Text("◐  VPN dropped", style=warn),
+                           f"still blocking while it reconnects ({int(time.time() - lost)} s); lifted after "
+                           f"{ng.VPN_GRACE} s without VPN")
             elif st.get("killswitch"):
-                ks = Text("●  armed", style=ok)
+                ks, why = Text("●  armed", style=ok), "only the VPN goes out" + (f" · {', '.join(up)}" if up else "")
+            elif unsafe and ks_on and not up:
+                ks, why = (Text("○  not blocking", style=err),
+                           "no VPN connected: traffic is NOT protected (never blocks without a VPN)")
+            elif unsafe and not ks_on:
+                ks, why = Text("○  off", style=warn), "unsafe networks are NOT blocked" + (
+                    f" · protected by {', '.join(up)}" if up else "")
             else:
-                ks = Text("○  " + ("ready (safe network)" if ks_on else "off"), style=muted if ks_on else warn)
-            up = st.get("vpn_up", [])
-            rows.append(("killswitch", ["󰌾  Kill switch", ks,
-                                        Text(("on unsafe networks only tunnels go out" if ks_on else
-                                              "unsafe networks are NOT blocked without VPN") +
-                                             (f" · protected by {', '.join(up)}" if up else ""), style=muted)]))
+                ks, why = (Text("○  ready" if ks_on else "○  off", style=muted),
+                           "arms on unsafe networks once the VPN is up" if ks_on else "unsafe networks are NOT blocked")
+            rows.append(("killswitch", ["󰌾  Kill switch", ks, Text(why, style=muted)]))
+            if unsafe and d["fresh"] and not st.get("firewalld", True):
+                rows.append(("firewalld", ["  firewalld", Text("○  stopped", style=err),
+                                           Text("incoming connections are not blocked · start it in the Rules tab (v)",
+                                                style=muted)]))
             rows.append(("captive", ["󰖟  Captive portal", Text("enter", style=primary),
                                      Text(f"opens {conf.get('bypass_secs', '120')} s without kill switch and a login "
                                           "page (hotel, airport) · asks for fingerprint", style=muted)]))
             rows.append(("bypass", ["󰒄  Bypass", Text("enter", style=primary),
                                     Text("same, without opening the browser (SAML login of Forti/Citrix)",
                                          style=muted)]))
+            if st.get("last_error"):
+                rows.append(("error", ["  Last error", Text(st["last_error"][:40], style=err),
+                                       Text(f"log: {tilde(ng.LOG)}", style=muted)]))
             if not d["daemon"]:
                 rows.append(("daemon", ["  Daemon", Text("○  stopped", style=err),
                                         Text("netguard.py is not running · enter to start it", style=muted)]))
@@ -254,6 +276,14 @@ class NetZonesMixin:
         conf = self.zd.get("conf", {})
         if key == "setup":
             return self.setup_zones()
+        if key == "error":
+            try:
+                text = "\n".join(ng.LOG.read_text().splitlines()[-120:])
+            except OSError:
+                text = "(no log yet)"
+            return self.app.push_screen(TextModal("netguard log", text))
+        if key == "firewalld":
+            return self.action_switch()     # pestaña Rules: ahí se prende firewalld
         if key == "daemon":
             detach([str(NG_PY), "daemon"])
             self.app.notify_ok("netguard started")
@@ -390,14 +420,18 @@ class NetZonesMixin:
         self.load_zones()
 
     def setup_zones(self) -> None:
+        # Repetir el Setup (helper desactualizado) solo reinstala: no marca como de confianza la
+        # red de ese momento, que puede ser un bar
+        first = not self.zd.get("installed")
+
         def done(yes: bool) -> None:
             if not yes:
                 return
             if not sudo_run(self.app, setup_cmds(), "Network zones setup"):
                 return self.load_zones()
             run(["systemctl", "--user", "start", "hyprpolkitagent"])
-            # Las redes de ahora quedan como de confianza (el setup ya pidió sudo)
-            active = run(["nmcli", "-t", "-f", "UUID,TYPE,NAME", "connection", "show", "--active"]).stdout
+            # La primera vez, las redes de ahora quedan como de confianza (el setup ya pidió sudo)
+            active = run(["nmcli", "-t", "-f", "UUID,TYPE,NAME", "connection", "show", "--active"]).stdout if first else ""
             for line in active.splitlines():
                 uuid, typ, name = (line.split(":", 2) + ["", ""])[:3]
                 if typ in ng.PHYSICAL:
@@ -412,9 +446,16 @@ class NetZonesMixin:
             ng.write_kv(ng.CONF, upd)
             if not daemon_running():
                 detach([str(NG_PY), "daemon"])
-            self.app.notify_ok("Network zones on · current networks trusted")
+            self.app.notify_ok("Network zones on · current networks trusted" if first else
+                               "Root helper updated · restart netguard to use it")
             self.load_zones()
 
+        if not first:
+            return self.app.push_screen(ConfirmModal(
+                "Update the network zones helper",
+                "Reinstalls (sudo) the root helper and polkit policy from the repo.\n"
+                "Nothing else changes: your trusted networks and VPN pool stay as they are.\n\n"
+                "Then restart netguard (the daemon row) so it reads the real kill switch state."), done)
         self.app.push_screen(ConfirmModal(
             "Set up network zones",
             "This installs (sudo, once):\n"

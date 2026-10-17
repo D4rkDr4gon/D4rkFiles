@@ -8,7 +8,7 @@ anda como siempre; en un bar o un aeropuerto la VPN es obligatoria y nada sale p
 
 | | Seguro (redes de confianza) | Inseguro (cualquier otra) |
 |---|---|---|
-| VPN | Opcional | **Obligatoria**: kill switch + conexión automática a la primera WireGuard del pool que levante (failover a la siguiente; reintenta cada 60 s) |
+| VPN | Opcional | **Obligatoria**: se conecta sola la primera WireGuard del pool que levante (failover a la siguiente; reintenta cada 60 s) y **recién con la VPN arriba** se arma el kill switch |
 | Tráfico sin VPN | Normal | Bloqueado. Solo salen túneles (WireGuard, tun, ppp), loopback, DHCP, descubrimiento IPv6 y los endpoints del pool para poder conectar |
 | firewalld | Zona `home` en la conexión (KDE Connect, mDNS, VNC 5900) | Zona `drop`: nada entrante |
 | Descubrimiento | Avahi, mDNS/LLMNR, kdeconnectd | Avahi parado, mDNS/LLMNR off en la conexión, kdeconnectd y wayvnc parados |
@@ -17,7 +17,14 @@ anda como siempre; en un bar o un aeropuerto la VPN es obligatoria y nada sale p
 | Bluetooth | Libre | No emparejable ni visible; conectar o emparejar desde Settings (o abrir bluetui) pide huella o contraseña |
 | USB (USBGuard) | Se permite desde la notificación | Permitir pide huella o contraseña |
 
-**Nunca deja sin red**: el kill switch solo se arma si hay al menos una WireGuard en el pool (con sus endpoints); si no, avisa "Kill switch NOT armed" y no bloquea. El estado del kill switch lo lleva el daemon (no consulta a root en cada vuelta).
+**Nunca deja sin red**: primero la VPN, después el bloqueo.
+- El kill switch se arma **solo con una VPN del pool conectada**. Si ninguna levanta (o el pool está vacío), **no bloquea**:
+  avisa "No VPN could connect" / "no VPN in the pool" (el tráfico NO está protegido) y reintenta cada minuto.
+- Si la VPN se cae con el kill switch puesto, sigue bloqueando mientras reconecta (sin fuga) hasta **45 s**
+  (`VPN_GRACE`); si no vuelve, lo suelta y avisa "VPN down: traffic NOT protected".
+- Armar y desarmar se verifican: si `pkexec` falla, el estado sigue siendo el real, se reintenta y se avisa una vez.
+- El estado real sale de `/run/netguard/armed` (la escribe el helper, se lee sin root): el daemon y Settings no
+  adivinan ni consultan a root en cada vuelta. En una red segura, si por lo que sea quedó armado, se desarma.
 
 **Regla de autenticación**: lo que **sube** la protección no pide nada y es automático. Lo que la
 **baja** a mano pide huella o contraseña (agente de polkit):
@@ -55,6 +62,15 @@ Viene **apagado** (`enabled=off`): hasta correr el Setup (fila *Set up*, con sud
 todo funciona como en modo seguro. Después de instalarlo, empezá con `auto=off`, `manual_mode=safe` y `killswitch=off` y
 probalo con una VPN ya cargada en el pool antes de pasar a modo automático.
 
+## Estado y diagnóstico
+
+- Settings → Firewall → Zones muestra el modo, el kill switch real (armado, VPN reconectando, **no bloqueando** porque no
+  hay VPN, bypass), firewalld parado (en red insegura sin firewalld no se bloquea lo entrante) y el **último error**
+  (`enter` abre el log).
+- Log: `~/.local/state/dotfiles/netguard/netguard.log` (cambios de modo, VPN, armado/desarmado, errores). Se recorta solo.
+- **Helper desactualizado**: el helper v2 (marca de armado, bypass que se cancela al desarmar) se instala repitiendo el
+  Setup (fila *Set up again*). Repetirlo no toca las redes de confianza ni el pool. Después, reiniciar el daemon.
+
 ## Cambiar de VPN (pool)
 
 Panel **VPN pool**:
@@ -79,7 +95,9 @@ de Forti/Citrix necesita web antes del túnel:
 - **Captive portal** desarma el kill switch `bypass_secs` (120 s por defecto) y abre `http://neverssl.com`.
 - **Bypass** hace lo mismo sin abrir el navegador.
 
-Los dos piden huella. Al vencer se rearma solo: un timer de systemd que deja programado el helper.
+Los dos piden huella. Al vencer se rearma solo: un timer de systemd que deja programado el helper. Desarmar (volver a
+una red segura, apagar las zonas o el kill switch) **cancela el bypass y su timer**: antes, volver a casa durante un
+bypass dejaba el rearmado pendiente y bloqueaba la red de casa.
 
 ## Piezas
 
@@ -122,7 +140,10 @@ malware local.
 - **Kill switch**: `ruleset()` de `netguard-root` cargado en un namespace sin privilegios (`unshare -rn`),
   con una dummy `eth0` y una tun `wg0`. Se compara el contador de drop antes y después de cada ping:
   pasan endpoints, túnel y loopback; internet, LAN e IPv6, no.
-- **Daemon**: `Guard.tick()` con un `NM` falso (conexiones en memoria), `root_apply`/`notify`/`nmcli`
-  reemplazados y `NETGUARD_CONF_DIR`/`NETGUARD_STATE` en el scratchpad. Escenarios: casa → red nueva →
-  failover de VPN → cambio de VPN → vuelta a casa.
+- **Daemon**: `Guard.tick()` con un `NM` falso (conexiones en memoria), `root_apply`/`notify`/`nmcli` y el reloj
+  reemplazados, `ARMED_FLAG` en un temporal y `NETGUARD_CONF_DIR`/`NETGUARD_STATE` en el scratchpad. Escenarios: casa →
+  red nueva (conecta la VPN y recién después arma) → VPN caída (gracia y suelta) → vuelve → casa (desarma) → rearmado
+  tardío en casa (lo quita) → desarmar/armar que fallan → pool vacío → apagar tras reiniciar el daemon (restaura todo).
+- **Helper**: `killswitch_on`/`bypass`/`killswitch_off`/`rearm` en `unshare -rn` con `RUN` en un temporal y
+  `systemctl` reemplazado.
 - **Settings**: `ViewApp(FirewallView).run_test()` con las mismas variables y un `state.json` armado a mano.

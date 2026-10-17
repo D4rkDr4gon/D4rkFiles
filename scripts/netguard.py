@@ -24,8 +24,7 @@ Modo seguro: zona `home`, descubrimiento de vuelta, kill switch desarmado.
 Uso: netguard.py daemon | status | off | request vpn <entrada> | bypass [seg] | captive
   off = apagado de emergencia (sin huella): desarma todo y deja enabled=off
 Config (fuera del repo): ~/.config/dotfiles/netguard/netguard.conf y networks.conf;
-estado en ~/.local/state/dotfiles/netguard/
-(NETGUARD_CONF_DIR / NETGUARD_STATE para copias).
+estado en ~/.local/state/dotfiles/netguard/ (NETGUARD_CONF_DIR / NETGUARD_STATE para copias).
 Helper root: system/netguard/ (lo instala Settings → Firewall → Setup).
 """
 
@@ -54,8 +53,13 @@ NETWORKS = CONF_DIR / "networks.conf"
 STATE_DIR = Path(os.environ.get("NETGUARD_STATE") or STATE_HOME / "dotfiles" / "netguard")
 STATE = STATE_DIR / "state.json"
 REQUEST = STATE_DIR / "request.json"
+LOG = STATE_DIR / "netguard.log"
 LIB = Path("/usr/local/lib/netguard")
 APPLY, AUTH = LIB / "apply", LIB / "auth"
+HELPER = LIB / "netguard-root"
+HELPER_VERSION = 2              # el que trae este repo (system/netguard)
+ARMED_FLAG = Path("/run/netguard/armed")   # la escribe el helper v2 mientras el kill switch está puesto
+VPN_GRACE = 45                  # s con el kill switch puesto esperando que vuelva la VPN antes de soltarlo
 PHYSICAL = ("802-11-wireless", "802-3-ethernet", "gsm", "cdma", "bond", "vlan", "bridge", "pppoe")
 DEFAULTS = {"enabled": "off", "auto": "on", "manual_mode": "insecure", "killswitch": "on",
             "pool": "", "bypass_secs": "120"}
@@ -165,6 +169,27 @@ def write_state(st: dict) -> None:
 
 def installed() -> bool:
     return APPLY.exists() and AUTH.exists() and Path("/usr/share/polkit-1/actions/org.dotfiles.netguard.policy").exists()
+
+
+def helper_version() -> int:
+    """Versión del helper instalado (0 = no hay; 1 = anterior, sin marca de armado)."""
+    try:
+        m = re.search(r"^HELPER_VERSION = (\d+)", HELPER.read_text(), re.M)
+    except OSError:
+        return 0
+    return int(m.group(1)) if m else 1
+
+
+def log(msg: str) -> None:
+    """Log propio (el stderr de un exec-once no lo lee nadie). Se recorta solo."""
+    try:
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        if LOG.exists() and LOG.stat().st_size > 200_000:
+            LOG.write_text("\n".join(LOG.read_text().splitlines()[-1000:]) + "\n")
+        with LOG.open("a") as f:
+            f.write(time.strftime("%Y-%m-%d %H:%M:%S ") + msg + "\n")
+    except OSError:
+        pass
 
 
 # ── root (pkexec) ─────────────────────────────────────────
@@ -355,14 +380,22 @@ class Guard:
         prev = read_state()
         self.stopped_kdeconnect = bool(prev.get("stopped_kdeconnect"))   # sobrevive a reiniciar el daemon
         self.stopped_avahi = bool(prev.get("stopped_avahi"))
-        self.vpn_fail_notified = False
         self.next_vpn_try = 0.0
         self.last_forti = (0.0, None)
+        self.stopped_bt = bool(prev.get("stopped_bt"))
+        self.modified: set[str] = set(prev.get("modified", []))   # conexiones a restaurar al apagar
         self.st: dict = {}
-        self.warned_no_pool = False
+        self.warned: set[str] = set()   # avisos que ya se mostraron (uno por situación)
         self.next_arm_try = 0.0
-        rs = root_status() if installed() else {}     # una sola vez, al arrancar
-        self.armed = bool(rs.get("killswitch"))
+        self.next_disarm_try = 0.0
+        self.vpn_lost_at = 0.0
+        self.last_error = prev.get("last_error", "")
+        self.helper_v = helper_version()
+        if self.helper_v >= 2:
+            self.armed = ARMED_FLAG.exists()
+        else:   # helper viejo: una sola consulta con root, al arrancar
+            self.armed = bool((root_status() if installed() else {}).get("killswitch"))
+        log(f"daemon started (helper v{self.helper_v}, kill switch {'armed' if self.armed else 'off'})")
 
     # decisiones
     def decide(self, conf: dict, conns: list[dict], nets: dict) -> tuple[str, str]:
@@ -412,6 +445,7 @@ class Guard:
         for d in c["devs"]:
             self.nmcli("device", "reapply", d)
         self.applied[c["uuid"]] = mode
+        self.modified.add(c["uuid"])
 
     def set_discovery(self, on: bool, avahi_was_on: bool) -> None:
         if not on:
@@ -423,7 +457,11 @@ class Guard:
             subprocess.run(["pkill", "-x", "wayvnc"], capture_output=True)
             subprocess.run(["bluetoothctl", "pairable", "off"], capture_output=True, timeout=5)
             subprocess.run(["bluetoothctl", "discoverable", "off"], capture_output=True, timeout=5)
+            self.stopped_bt = True
             return
+        if self.stopped_bt:
+            subprocess.run(["bluetoothctl", "pairable", "on"], capture_output=True, timeout=5)
+            self.stopped_bt = False
         if self.stopped_avahi:
             root_apply("discovery", "on")
             self.stopped_avahi = False
@@ -437,32 +475,64 @@ class Guard:
         el pool (las únicas que se conectan solas) o sin sus endpoints, armarlo deja
         la máquina sin red. En ese caso se avisa una vez y no se bloquea."""
         ok = any(entry_kind(e) == "wg" for e in pool(conf)) and bool(self.endpoints)
-        if not ok and not self.warned_no_pool:
-            self.warned_no_pool = True
-            notify("Kill switch NOT armed", "There is no WireGuard VPN in the pool to connect to. "
-                   "Add one in Settings → Firewall → Zones.", "critical")
-        if ok:
-            self.warned_no_pool = False
+        if not ok:
+            self.warn_once("nopool", "Kill switch NOT armed", "There is no WireGuard VPN in the pool (or its "
+                           "server could not be resolved). Add one in Settings → Firewall → Zones.")
+        else:
+            self.warned.discard("nopool")
         return ok
+
+    def warn_once(self, key: str, title: str, body: str, urgency: str = "critical") -> None:
+        if key not in self.warned:
+            self.warned.add(key)
+            log(f"{title}: {body}")
+            notify(title, body, urgency)
+
+    def error(self, msg: str) -> None:
+        self.last_error = f"{time.strftime('%H:%M')} {msg}"
+        log("ERROR " + msg)
 
     def restore_conns(self) -> None:
         """Al apagar las zonas: las conexiones vuelven a como estaban (zona por
         defecto, nombre por DHCP, mDNS/LLMNR según resolved)."""
-        for uuid in list(self.applied):
+        for uuid in sorted(self.modified | set(self.applied)):
             self.nmcli("connection", "modify", "uuid", uuid, "connection.zone", "",
                        "ipv4.dhcp-send-hostname", "yes", "ipv6.dhcp-send-hostname", "yes",
                        "connection.mdns", "default", "connection.llmnr", "default")
+        if self.modified:
+            log(f"restored {len(self.modified)} connection(s)")
         self.applied.clear()
+        self.modified.clear()
 
-    def arm(self, conf: dict) -> None:
+    def arm(self, conf: dict) -> bool:
+        """Arma solo si el helper confirma (código 0). Devuelve si quedó armado."""
         self.refresh_endpoints(conf, arm=False, push=False)
-        if self.can_arm(conf):
-            root_apply("killswitch", "on", *self.endpoints)
-            self.armed = True
+        if not self.can_arm(conf):
+            return False
+        r = root_apply("killswitch", "on", *self.endpoints)
+        if r.returncode != 0:
+            self.error(f"could not arm the kill switch: {(r.stderr or r.stdout).strip()[:160]}")
+            self.warn_once("armfail", "Kill switch could not be armed", "Traffic is NOT blocked. "
+                           "Settings → Firewall → Zones shows the error.")
+            return False
+        self.warned.discard("armfail")
+        self.armed = True
+        log(f"kill switch armed ({len(self.endpoints)} endpoint(s))")
+        return True
 
-    def disarm(self) -> None:
-        root_apply("killswitch", "off")
+    def disarm(self) -> bool:
+        """Desarma y verifica. Si falla, sigue figurando armado (es la verdad) y se reintenta."""
+        r = root_apply("killswitch", "off")
+        if r.returncode != 0 and not (self.helper_v >= 2 and not ARMED_FLAG.exists()):
+            self.error(f"could not disarm the kill switch: {(r.stderr or r.stdout).strip()[:160]}")
+            self.next_disarm_try = time.time() + 10
+            self.warn_once("disarmfail", "Kill switch still on", "Could not lift it. Emergency: "
+                           "`netguard.py off`, or `sudo nft delete table inet netguard`.")
+            return False
+        self.warned.discard("disarmfail")
         self.armed = False
+        log("kill switch disarmed")
+        return True
 
     def refresh_endpoints(self, conf: dict, arm: bool, push: bool = True) -> None:
         ips = []
@@ -495,23 +565,26 @@ class Guard:
         r = subprocess.run(["nmcli", "connection", "up", "id", name], capture_output=True, text=True, timeout=40)
         return r.returncode == 0
 
-    def ensure_vpn(self, conf: dict, up: list[str], bypassing: bool) -> None:
-        if up or bypassing or time.time() < self.next_vpn_try:
-            if up:
-                self.vpn_fail_notified = False
-            return
+    def ensure_vpn(self, conf: dict, retry_secs: int = 60) -> bool:
+        """Intenta las WireGuard del pool (la preferida primero). True si alguna levantó."""
+        if time.time() < self.next_vpn_try:
+            return False
         wg = [e for e in pool(conf) if entry_kind(e) == "wg"]
+        if not wg:
+            self.warn_once("nopool", "Untrusted network: no VPN in the pool",
+                           "Traffic is NOT protected. Add a WireGuard VPN in Settings → Firewall → Zones.")
+            return False
         pref = read_state().get("vpn_pref")
         order = ([pref] if pref in wg else []) + [e for e in wg if e != pref]
         for e in order:
             if self.connect_wg(e):
-                notify(f"VPN connected: {e}", "Untrusted network: traffic only goes through the VPN.")
-                return
-        self.next_vpn_try = time.time() + 60
-        if not self.vpn_fail_notified:
-            self.vpn_fail_notified = True
-            notify("No VPN could connect", "Untrusted network: traffic stays blocked. Settings → Firewall to pick "
-                   "another VPN or open a bypass.", "critical")
+                log(f"VPN connected: {e}")
+                self.warned.discard("novpn")
+                notify(f"VPN connected: {e}", "Untrusted network: traffic goes through the VPN.")
+                return True
+            log(f"VPN {e} did not connect")
+        self.next_vpn_try = time.time() + retry_secs
+        return False
 
     def switch_vpn(self, conf: dict, target: str, active: list[dict]) -> None:
         """Cambia de VPN con el kill switch armado (no hay hueco sin cifrar)."""
@@ -548,47 +621,80 @@ class Guard:
         self.handle_request(conf, active)
         until = bypass_until()
         bypassing = until > time.time()
-        if bypassing:
-            self.armed = False       # el bypass lo desarmó (y un timer root lo rearma)
+        now = time.time()
+        if self.helper_v >= 2:
+            self.armed = ARMED_FLAG.exists()     # estado real (el helper borra la marca en un bypass)
+        elif bypassing:
+            self.armed = False
         rs = {"avahi": run_ok(["systemctl", "is-active", "--quiet", "avahi-daemon"])}
 
         if mode != self.mode:
+            log(f"mode {self.mode or '-'} → {mode} ({reason})")
             if mode == "insecure":
                 self.set_discovery(False, bool(rs.get("avahi")))
-                if conf.get("killswitch") == "on":
-                    self.arm(conf)
-            else:       # safe u off: nada bloqueado, descubrimiento de vuelta
-                if self.armed:
-                    self.disarm()
+            else:       # safe u off: descubrimiento de vuelta
                 self.set_discovery(True, False)
                 if mode == "off":
                     self.restore_conns()
             prev, self.mode = self.mode, mode
+            self.vpn_lost_at = 0.0
+            self.warned -= {"novpn", "vpndown", "firewalld"}
             if prev and mode != "off":
                 notify("Untrusted network: protection on" if mode == "insecure" else "Trusted network",
                        reason if mode == "insecure" else "VPN optional, discovery back on.")
         if mode in ("safe", "insecure"):
             for c in conns:
                 self.apply_conn(c, mode)
+
+        fw = run_ok(["systemctl", "is-active", "--quiet", "firewalld"])
         up = self.vpn_state(conf, active) if mode == "insecure" else []
         if mode == "insecure":
-            if conf.get("killswitch") == "on" and not bypassing and not self.armed and \
-                    time.time() >= self.next_arm_try:
-                self.arm(conf)          # tras un bypass, o si recién se pudo (VPN agregada al pool)
-                if not self.armed:
-                    self.next_arm_try = time.time() + 30
-            elif conf.get("killswitch") != "on" and self.armed:
-                self.disarm()
-            self.ensure_vpn(conf, up, bypassing)
-            if up and int(time.time()) % 300 < POLL:
+            if not fw:
+                self.warn_once("firewalld", "firewalld is stopped", "Incoming connections are not blocked on "
+                               "this untrusted network. Start it in Settings → Firewall → Rules.")
+            ks = conf.get("killswitch") == "on"
+            if bypassing:
+                pass                                    # el bypass manda: ni armar ni conectar
+            elif up:
+                # Con la VPN arriba recién se bloquea lo demás (nunca antes: sin VPN quedaría sin red)
+                self.vpn_lost_at = 0.0
+                self.warned -= {"novpn", "vpndown"}
+                if ks and not self.armed and now >= self.next_arm_try and not self.arm(conf):
+                    self.next_arm_try = now + 30
+                elif not ks and self.armed and now >= self.next_disarm_try:
+                    self.disarm()
+            elif self.armed:
+                # La VPN se cayó con el kill switch puesto: no hay fuga mientras reconecta. Si en
+                # VPN_GRACE segundos no vuelve, se suelta (sin VPN no se bloquea) y se avisa.
+                if not self.vpn_lost_at:
+                    self.vpn_lost_at = now
+                    log("VPN dropped with the kill switch armed: reconnecting")
+                if not self.ensure_vpn(conf, retry_secs=10) and now - self.vpn_lost_at > VPN_GRACE:
+                    if self.disarm():
+                        self.warn_once("vpndown", "VPN down: traffic NOT protected",
+                                       "No VPN of the pool came back, so nothing is blocked. "
+                                       "Retrying every minute.")
+            else:
+                # Sin VPN y sin bloqueo: primero conectar; con la VPN arriba, el próximo tick arma
+                if not self.ensure_vpn(conf) and any(entry_kind(e) == "wg" for e in pool(conf)) \
+                        and "vpndown" not in self.warned:
+                    self.warn_once("novpn", "No VPN could connect", "Untrusted network: traffic is NOT "
+                                   "blocked and NOT protected. Retrying every minute; Settings → Firewall "
+                                   "to pick another VPN.")
+            if up and int(now) % 300 < POLL:
                 self.refresh_endpoints(conf, arm=False)     # con túnel hay DNS: actualizar IPs de los endpoints
+        elif self.armed and now >= self.next_disarm_try:
+            # Seguro o apagado: nada bloqueado (cubre también un rearmado que quedó de antes)
+            self.disarm()
         self.st = {"mode": mode, "reason": reason, "auto": conf.get("auto") == "on",
                    "conns": [{"uuid": c["uuid"], "name": c["name"], "type": c["type"], "devs": c["devs"],
                               "trust": trust_of(c, nets)} for c in conns],
                    "vpn_up": up, "killswitch": self.armed, "bypass_until": until,
                    "endpoints": self.endpoints, "vpn_pref": read_state().get("vpn_pref"), "time": time.time(),
                    "pid": os.getpid(), "stopped_kdeconnect": self.stopped_kdeconnect,
-                   "stopped_avahi": self.stopped_avahi}
+                   "stopped_avahi": self.stopped_avahi, "stopped_bt": self.stopped_bt,
+                   "modified": sorted(self.modified), "firewalld": fw, "helper_version": self.helper_v,
+                   "vpn_lost_at": self.vpn_lost_at, "last_error": self.last_error}
         write_state(self.st)
 
     def run(self) -> None:
@@ -625,9 +731,13 @@ def main() -> None:
         # Desarma el kill switch, devuelve Avahi y deja las zonas apagadas (el daemon,
         # si corre, restaura las conexiones en su próximo tick).
         write_kv(CONF, {"enabled": "off"})
+        log("emergency off")
         if APPLY.exists():
-            root_apply("killswitch", "off")
+            r = root_apply("killswitch", "off")
             root_apply("discovery", "on")
+            if r.returncode != 0:
+                print("could not disarm through polkit; run: sudo nft delete table inet netguard", file=sys.stderr)
+                sys.exit(1)
         print("network zones off: kill switch disarmed, nothing blocked")
     elif cmd[0] == "status":
         print(json.dumps(read_state(), indent=1))
