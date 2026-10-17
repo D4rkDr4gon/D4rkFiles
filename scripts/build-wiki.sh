@@ -26,6 +26,7 @@ declare -A PAGES=(
     [settings]=Settings
     [scripts]=Scripts
     [security]=Seguridad
+    [netguard]=Zonas-de-red
     [ai-skill]=Skill-de-IA
     [troubleshooting]=Problemas-frecuentes
 )

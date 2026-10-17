@@ -368,3 +368,33 @@ def root_file(content: str) -> str:
     f = d / f"root-{os.getpid()}-{time.monotonic_ns()}"
     f.write_text(content)
     return str(f)
+
+
+# ── zonas de red (scripts/netguard.py) ────────────────────
+
+NETGUARD_STATE = Path(os.environ.get("NETGUARD_STATE") or
+                      Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "dotfiles" / "netguard")
+
+
+def network_unsafe() -> bool:
+    """True si netguard está en modo inseguro (estado de hace menos de 15 s)."""
+    try:
+        st = json.loads((NETGUARD_STATE / "state.json").read_text())
+    except (OSError, ValueError):
+        return False
+    return st.get("mode") == "insecure" and time.time() - st.get("time", 0) < 15
+
+
+def unsafe_gate() -> bool:
+    """En una red insegura, pide huella o contraseña (agente de polkit) antes de
+    conectar algo (Bluetooth, USB). En una segura, o sin netguard, deja pasar.
+    Bloquea: llamarla desde un worker."""
+    if not network_unsafe():
+        return True
+    auth = Path("/usr/local/lib/netguard/auth")
+    if not auth.exists():
+        return True
+    try:
+        return subprocess.run(["pkexec", str(auth), "check"], capture_output=True, timeout=120).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False

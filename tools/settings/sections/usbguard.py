@@ -21,7 +21,7 @@ import getpass
 import re
 import shutil
 
-from common import DOTFILES, detach, run, sudo_run
+from common import DOTFILES, detach, run, sudo_run, unsafe_gate
 from dtui import THEME, ConfirmModal, DView, Panel, Table, css
 from rich.text import Text
 from textual import work
@@ -170,6 +170,8 @@ class UsbGuardView(DView):
             if not d:
                 return
             verb = "block-device" if d["target"] == "allow" else "allow-device"
+            if verb == "allow-device" and not unsafe_gate():
+                return self.app.notify_err("Unsafe network: authentication needed to allow USB devices")
             if verb == "block-device" and d["hub"]:
                 return self.app.notify_err("Blocking a hub cuts everything behind it: not from here")
             r = run(["usbguard", verb, d["id"]])
@@ -185,6 +187,8 @@ class UsbGuardView(DView):
             return
         key = self.query_one("#usb-devices", Table).selected_key()
         d = next((x for x in self.st.get("devices", []) if x["id"] == key), None)
+        if d and not unsafe_gate():
+            return self.app.notify_err("Unsafe network: authentication needed to allow USB devices")
         if d:
             r = run(["usbguard", "allow-device", "-p", d["id"]])
             if r.returncode:

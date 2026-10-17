@@ -19,6 +19,10 @@ Para que pasar por la sección sea instantáneo:
 
 La zona de cada conexión la guarda NetworkManager (`connection.zone`, vacía =
 zona por defecto): casa en `home`, Wi-Fi pública en `public`/`drop`.
+
+Dos pestañas (v alterna): Zones (modo seguro/inseguro por red, kill switch y pool
+de VPN: netzones.py + scripts/netguard.py) y Rules (lo de arriba). Con las zonas
+prendidas, la zona de cada conexión la pone netguard (home / drop).
 """
 
 from __future__ import annotations
@@ -37,7 +41,9 @@ from rich.text import Text
 from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.widgets import DataTable
+from textual.containers import Vertical
+from textual.widgets import ContentSwitcher, DataTable
+from netzones import ZONE_TABLES, NetZonesMixin
 
 NM_TYPES = ("802-11-wireless", "802-3-ethernet", "wireguard", "vpn", "gsm")
 PORT_RE = re.compile(r"^\d{1,5}(-\d{1,5})?/(tcp|udp|sctp|dccp)$")
@@ -133,26 +139,45 @@ def target_text(target: str) -> str:
             "DROP": "drops the rest silently", "ACCEPT": "accepts everything"}.get(target, target or "?")
 
 
-class FirewallView(DView):
-    FOCUS = "#fw-state"
+class FirewallView(NetZonesMixin, DView):
+    FOCUS = "#nz-state"
     DEFAULT_CSS = css("""
     #fw-state-panel, #fw-conns-panel { height: auto; }
     #fw-state, #fw-conns { height: auto; }
     #fw-rules-panel { height: 1fr; }
+    #nz-state-panel { height: auto; }
+    #nz-state { height: auto; }
+    #nz-bottom { height: 1fr; }
+    #nz-nets-panel { width: 1fr; }
+    #nz-pool-panel { width: 1fr; }
     """)
     BINDINGS = [
         Binding("tab", "cycle(1)", show=False),
         Binding("shift+tab", "cycle(-1)", show=False),
         Binding("a", "add", "allow"),
-        Binding("d", "remove", "remove"),
+        Binding("d", "remove", "remove rule / forget network"),
         Binding("r", "refresh", "refresh"),
+        Binding("v", "switch", "zones / rules"),
+        Binding("p", "pool", "VPN in/out of the pool", show=False),
+        Binding("K", "move(-1)", "move VPN up", show=False),
+        Binding("J", "move(1)", "move VPN down", show=False),
     ]
-    TABLES = ["fw-state", "fw-rules", "fw-conns"]
+    RULE_TABLES = ["fw-state", "fw-rules", "fw-conns"]
+
+    @property
+    def TABLES(self) -> list[str]:
+        return ZONE_TABLES if self.on_zones() else self.RULE_TABLES
+
+    def on_zones(self) -> bool:
+        return self.query_one("#fw-switch", ContentSwitcher).current == "fw-zones-box"
 
     def compose(self) -> ComposeResult:
-        yield Panel(Table(id="fw-state", show_header=False), title="󰒃  Firewall", id="fw-state-panel")
-        yield Panel(Table(id="fw-rules"), title="Allowed incoming", id="fw-rules-panel")
-        yield Panel(Table(id="fw-conns"), title="Connections", id="fw-conns-panel")
+        with ContentSwitcher(initial="fw-zones-box", id="fw-switch"):
+            yield from self.compose_zones()
+            with Vertical(id="fw-rules-box"):
+                yield Panel(Table(id="fw-state", show_header=False), title="󰒃  Firewall", id="fw-state-panel")
+                yield Panel(Table(id="fw-rules"), title="Allowed incoming", id="fw-rules-panel")
+                yield Panel(Table(id="fw-conns"), title="Connections", id="fw-conns-panel")
 
     def on_mount(self) -> None:
         s = self.query_one("#fw-state", Table)
@@ -171,6 +196,7 @@ class FirewallView(DView):
         self.loaded_at = 0.0
         self._busy = False
         self.query_one("#fw-state-panel").border_subtitle = " loading… "
+        self.mount_zones()
         self.reload()
         self.set_interval(POLL, self.tick)
 
@@ -178,9 +204,12 @@ class FirewallView(DView):
         # Lo último cargado ya está en pantalla; solo se refresca por detrás
         if self.is_mounted:
             self.reload()
+            self.load_zones()
 
     def tick(self) -> None:
-        if self.visible_now and not self._busy:
+        if self.visible_now and self.on_zones():
+            self.load_zones(full=False)
+        elif self.visible_now and not self._busy:
             self.probe()
 
     @work(thread=True, exclusive=True, group="firewall-probe")
@@ -261,24 +290,38 @@ class FirewallView(DView):
 
     def focused_table(self) -> str:
         f = self.app.focused
-        return f.id if isinstance(f, Table) and f.id in self.TABLES else "fw-state"
+        return f.id if isinstance(f, Table) and f.id in self.TABLES else self.TABLES[0]
 
     def action_cycle(self, step: int) -> None:
         i = self.TABLES.index(self.focused_table())
         self.query_one(f"#{self.TABLES[(i + step) % len(self.TABLES)]}", Table).focus()
+        self.update_hints()
+
+    def action_switch(self) -> None:
+        sw = self.query_one("#fw-switch", ContentSwitcher)
+        sw.current = "fw-rules-box" if self.on_zones() else "fw-zones-box"
+        self.query_one(f"#{self.TABLES[0]}", Table).focus()
+        if self.on_zones():
+            self.load_zones()
+        else:
+            self.reload()
+        self.update_hints()
 
     def hints(self) -> list[tuple[str, str]]:
         tid = self.focused_table()
+        if self.on_zones():
+            return self.zones_hints(tid) + [("tab", "panel"), ("v", "rules"), ("q", "quit")]
         if tid == "fw-rules":
             h = [("a", "allow"), ("d", "remove")]
         elif tid == "fw-conns":
             h = [("enter", "change zone")]
         else:
             h = [("enter", "select"), ("a", "allow")]
-        return h + [("tab", "panel"), ("r", "refresh"), ("q", "quit")]
+        return h + [("tab", "panel"), ("r", "refresh"), ("v", "zones"), ("q", "quit")]
 
     def action_refresh(self) -> None:
         self.reload()
+        self.load_zones()
         self.app.notify_ok("refreshing…")
 
     # ── cambios (sudo) ──
@@ -304,6 +347,8 @@ class FirewallView(DView):
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         tid, key = event.data_table.id, str(event.row_key.value)
+        if tid in ZONE_TABLES:
+            return self.zones_row_selected(tid, key)
         if tid == "fw-state":
             if key == "toggle":
                 self.toggle()
@@ -360,6 +405,8 @@ class FirewallView(DView):
         self.app.push_screen(PickModal(f"Zone · {conn}", ["Zone", ""], rows + self.zone_rows()), done)
 
     def action_add(self) -> None:
+        if self.on_zones():
+            return
         if not self.running:
             return self.app.notify_err("turn the firewall on first")
         services = set(xml_names("services"))
@@ -383,6 +430,8 @@ class FirewallView(DView):
                                        validate=check), done)
 
     def action_remove(self) -> None:
+        if self.focused_table() == "nz-nets":
+            return self.action_forget()
         if self.focused_table() != "fw-rules":
             return
         key = self.query_one("#fw-rules", Table).selected_key()

@@ -44,6 +44,7 @@ from dtui import (THEME, ConfirmModal, DApp, DView, bindings_of, Field, FormModa
                   Panel, PickModal, Table, TextModal, css, load_theme, swatches)
 
 from battery import BatteryView  # noqa: E402
+from common import unsafe_gate  # noqa: E402
 from common import (CURRENT_THEME, DOTFILES, HYPRLAND, THEME_SWITCH, active_theme_dir, current_theme,  # noqa: E402
                     detach, display_name, editable_theme_dir, is_user_theme, resolve_wallpaper, run, theme_dirs,
                     tilde, user_conf, wallpaper_dirs)
@@ -1133,6 +1134,10 @@ class BluetoothView(DView):
             r = run(["bluetoothctl", "disconnect", d["mac"]])
             ok_msg = f"{d['name']} disconnected"
         else:
+            # Red insegura: conectar o emparejar pide huella/contraseña (Settings → Firewall → Zones)
+            if not unsafe_gate():
+                call(self.app.notify_err, "Unsafe network: authentication needed to connect Bluetooth devices")
+                return call(self.set_busy, "")
             if not d["paired"]:
                 call(self.set_busy, f"pairing {d['name']}…")
                 r = subprocess.run(["bluetoothctl", "--timeout", "20", "pair", d["mac"]],

@@ -21,6 +21,23 @@ import time
 ICON = "drive-removable-media-usb"
 
 
+def unsafe_ok() -> bool:
+    """En una red insegura (scripts/netguard.py) permitir un USB pide huella o
+    contraseña (agente de polkit); en una segura pasa directo."""
+    import json
+    import os
+    from pathlib import Path
+    state = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "dotfiles" / "netguard" / "state.json"
+    try:
+        st = json.loads(state.read_text())
+    except (OSError, ValueError):
+        return True
+    auth = Path("/usr/local/lib/netguard/auth")
+    if st.get("mode") != "insecure" or time.time() - st.get("time", 0) > 15 or not auth.exists():
+        return True
+    return subprocess.run(["pkexec", str(auth), "check"], capture_output=True).returncode == 0
+
+
 def notify(dev_id: str, rule: str) -> None:
     name = m.group(1) if (m := re.search(r'name "([^"]*)"', rule)) else ""
     vid = m.group(1) if (m := re.search(r"\bid (\S+)", rule)) else ""
@@ -35,6 +52,10 @@ def notify(dev_id: str, rule: str) -> None:
     except (OSError, subprocess.TimeoutExpired):
         return
     choice = r.stdout.strip()
+    if choice in ("once", "always") and not unsafe_ok():
+        subprocess.run(["notify-send", "-a", "USB guard", "-i", ICON,
+                        f"{name or vid}: still blocked", "Unsafe network: authentication failed or cancelled."])
+        return
     if choice in ("once", "always"):
         args = ["usbguard", "allow-device", dev_id] + (["-p"] if choice == "always" else [])
         ok = subprocess.run(args, capture_output=True).returncode == 0

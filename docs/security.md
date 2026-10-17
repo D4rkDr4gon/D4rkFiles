@@ -38,4 +38,5 @@ rutas de usuario, nombres ni datos de una máquina concreta.
 
 `/etc/pam.d/*` (el PAM de huella de SDDM es opt-in: `setup-sddm-theme.sh --with-fingerprint-pam`),
 `/etc/sddm.conf.d`, `/usr/share/wayland-sessions`, tu shell por defecto y los servicios
-opcionales (Ollama, webapps).
+opcionales (Ollama, webapps). Las zonas de red ([netguard.md](netguard.md)) solo instalan su helper con root
+(`/usr/local/lib/netguard`, polkit y, si hay `fprintd`, el PAM del agente) cuando corrés el Setup desde Settings → Firewall, con sudo.
