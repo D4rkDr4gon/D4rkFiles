@@ -1,3 +1,0 @@
-#!/bin/sh
-# Wrapper de pkexec (acción org.dotfiles.netguard.apply: sin contraseña para la sesión activa).
-exec /usr/bin/python3 -I /usr/local/lib/netguard/netguard-root --via=apply "$@"

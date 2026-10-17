@@ -22,20 +22,15 @@ ICON = "drive-removable-media-usb"
 
 
 def unsafe_ok() -> bool:
-    """En una red insegura (scripts/netguard.py) permitir un USB pide huella o
-    contraseña (agente de polkit); en una segura pasa directo."""
-    import json
-    import os
-    from pathlib import Path
-    state = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "dotfiles" / "netguard" / "state.json"
+    """En una red insegura (netguard, opcional) permitir un USB pide huella o contraseña con `netguard gate`;
+    en una segura, o sin netguard, pasa directo."""
+    ng = shutil.which("netguard")
+    if not ng:
+        return True
     try:
-        st = json.loads(state.read_text())
-    except (OSError, ValueError):
-        return True
-    auth = Path("/usr/local/lib/netguard/auth")
-    if st.get("mode") != "insecure" or time.time() - st.get("time", 0) > 15 or not auth.exists():
-        return True
-    return subprocess.run(["pkexec", str(auth), "check"], capture_output=True).returncode == 0
+        return subprocess.run([ng, "gate"], capture_output=True, timeout=130).returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        return False
 
 
 def notify(dev_id: str, rule: str) -> None:

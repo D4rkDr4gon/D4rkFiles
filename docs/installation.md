@@ -36,6 +36,7 @@ El repo puede estar en **cualquier ruta**: el instalador crea el symlink estable
 | `--no-aur` | No usa el AUR (ni instala `yay`) |
 | `--no-upgrade` | No ofrece `pacman -Syu` antes de instalar |
 | `--with-ollama` | Instala Ollama sin preguntar |
+| `--with-netguard` | Instala [netguard](netguard.md) (zonas de red, kill switch con VPN) sin preguntar |
 | `--no-skills` | No instala la skill `d4rkfiles` de Claude Code y opencode |
 | `--list-stages` | Lista las etapas |
 
@@ -59,7 +60,7 @@ Se ejecutan en este orden (`./install.sh --list-stages`):
 7. **shell** — powerlevel10k, shell por defecto (pregunta) y plugins de Neovim (pregunta).
 8. **system** — servicios, login manager, sesión "Hyprland (dotfiles)", unidades de
    usuario y grupos. Todo lo que toca `/etc` o `/usr` pregunta antes.
-9. **optional** — Ollama y webapps (siempre opcionales).
+9. **optional** — Ollama, [netguard](netguard.md) y webapps (siempre opcionales).
 10. **summary** — próximos pasos.
 
 `configure` va antes de `links` porque renderiza las plantillas que luego se enlazan.

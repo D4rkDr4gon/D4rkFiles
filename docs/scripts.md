@@ -14,6 +14,7 @@
 | `scripts/battery-watch.sh` | Notificaciones de batería (15/10/5 %) |
 | `scripts/barupdate.sh` | Reinicia la barra (waybar o polybar según la sesión) |
 | `scripts/welcome.sh` | Notificación de bienvenida con tu nombre |
+| `scripts/install-netguard.sh` | Instala [netguard](netguard.md) (opcional) en su versión fijada: `git` + `makepkg`; `--setup` lo configura |
 | `scripts/proton-backup.sh` | Backup incremental en Proton Drive: Settings → Backup ([customization.md](customization.md#backup-en-proton-drive)) |
 | `scripts/webapps.sh` | Webapps con firefoxpwa ([customization.md](customization.md#webapps)) |
 | `scripts/mode-switch.sh` | Aplica un modo de escritorio; sin argumentos, menú rofi ([customization.md](customization.md#modos-de-escritorio)) |

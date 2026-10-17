@@ -21,8 +21,8 @@ La zona de cada conexión la guarda NetworkManager (`connection.zone`, vacía =
 zona por defecto): casa en `home`, Wi-Fi pública en `public`/`drop`.
 
 Dos pestañas (v alterna): Zones (modo seguro/inseguro por red, kill switch y pool
-de VPN: netzones.py + scripts/netguard.py) y Rules (lo de arriba). Con las zonas
-prendidas, la zona de cada conexión la pone netguard (home / drop).
+de VPN: netzones.py sobre netguard, un proyecto aparte y opcional) y Rules (lo de
+arriba). Con las zonas prendidas, la zona de cada conexión la pone netguard (home / drop).
 """
 
 from __future__ import annotations

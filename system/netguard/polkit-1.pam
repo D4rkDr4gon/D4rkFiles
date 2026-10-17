@@ -1,8 +1,0 @@
-#%PAM-1.0
-# Generado por Settings → Firewall (este repo): el agente de polkit acepta la
-# huella (fprintd) o, si no, la contraseña. Pisa a /usr/lib/pam.d/polkit-1.
-auth       sufficient   pam_fprintd.so
-auth       include      system-auth
-account    include      system-auth
-password   include      system-auth
-session    include      system-auth

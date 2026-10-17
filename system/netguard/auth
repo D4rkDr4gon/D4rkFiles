@@ -1,3 +1,0 @@
-#!/bin/sh
-# Wrapper de pkexec (acción org.dotfiles.netguard.auth: pide huella o contraseña).
-exec /usr/bin/python3 -I /usr/local/lib/netguard/netguard-root --via=auth "$@"

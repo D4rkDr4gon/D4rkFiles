@@ -114,7 +114,7 @@ Toda la documentación está en la **[wiki](https://github.com/D4rkDr4gon/D4rkFi
 | [Atajos](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Atajos) | Atajos de Hyprland, Qtile, kitty y herdr |
 | [Componentes](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Componentes) | Qué hace cada pieza |
 | [Scripts](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Scripts) | Herramientas: doctor, update, theme, gen-assets… |
-| [Zonas de red](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Zonas-de-red) | Opcional: modo seguro/inseguro por red, VPN obligatoria con kill switch, pool de VPNs, huella para Bluetooth/USB |
+| [Zonas de red](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Zonas-de-red) | Opcional ([netguard](https://github.com/D4rkDr4gon/netguard)): modo seguro/inseguro por red, VPN obligatoria con kill switch, pool de VPNs, huella para Bluetooth/USB |
 | [Seguridad](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Seguridad) | Qué no se versiona y dónde van tus credenciales |
 | [Skill de IA](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Skill-de-IA) | La skill `d4rkfiles` para Claude Code y opencode |
 | [Problemas frecuentes](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Problemas-frecuentes) | Problemas frecuentes |
