@@ -66,6 +66,7 @@ from storage import StorageView  # noqa: E402
 from update import UpdateView  # noqa: E402
 from usbguard import UsbGuardView  # noqa: E402
 from repos import ReposView  # noqa: E402
+from system import SystemView  # noqa: E402
 from workspaces import WorkspacesView  # noqa: E402
 from themeeditor import ThemeEditorView  # noqa: E402
 from rich.text import Text  # noqa: E402
@@ -1288,84 +1289,6 @@ class ServicesView(DView):
         if unit:
             r = run(["journalctl", "--user", "-u", unit, "-n", "200", "--no-pager"])
             self.app.push_screen(TextModal(f"Logs · {unit}", r.stdout or r.stderr or "(empty)"))
-
-
-# ── System ────────────────────────────────────────────────
-
-class SystemView(DView):
-    """Recursos del sistema (barras estilo statusline) y dotfiles-doctor. Los repos de
-    GitHub se gestionan en la sección Repositories."""
-
-    FOCUS = "#sys-actions"
-    DEFAULT_CSS = css("""
-    #sysinfo-panel { height: auto; }
-    #sysinfo { height: auto; }
-    #sys-actions-panel { height: auto; }
-    """)
-
-    def compose(self) -> ComposeResult:
-        yield Panel(Static(id="sysinfo"), title="󰌢  System", id="sysinfo-panel")
-        yield Panel(Table(id="sys-actions", show_header=False), title="Checks", id="sys-actions-panel")
-
-    def on_mount(self) -> None:
-        t = self.query_one("#sys-actions", Table)
-        t.add_column("", key="name", width=34)
-        t.add_column("", key="desc", width=70)
-        t.add_row(Text("󰓙  Run dotfiles doctor", style=f"bold {THEME['primary']}"),
-                  Text("links, packages, services, configs and repo checks", style=THEME["muted"]), key="doctor")
-        self.update_sysinfo()
-
-    def on_show(self) -> None:
-        if self.is_mounted:
-            self.update_sysinfo()
-
-    def update_sysinfo(self) -> None:
-        import platform
-        info = Text()
-
-        def row(label: str, value: Text | str) -> None:
-            info.append(f"{label:<13}", style=f"bold {THEME['muted']}")
-            info.append(value if isinstance(value, Text) else Text(value))
-            info.append("\n")
-
-        up = int(float(Path("/proc/uptime").read_text().split()[0]))
-        row("Host", f"{platform.node()} · kernel {platform.release()} · "
-                    f"up {up // 86400} d {up % 86400 // 3600} h {up % 3600 // 60} min")
-        load = os.getloadavg()[0]
-        cpus = os.cpu_count() or 1
-        m = meter10(min(100.0, load * 100 / cpus))
-        m.append(f"  load {load:.2f} on {cpus} cores", style=THEME["muted"])
-        row("CPU", m)
-        mem = {l.split(":")[0]: int(l.split()[1]) for l in Path("/proc/meminfo").read_text().splitlines()
-               if l.split(":")[0] in ("MemTotal", "MemAvailable", "SwapTotal", "SwapFree")}
-        used = mem["MemTotal"] - mem["MemAvailable"]
-        m = meter10(used * 100 / mem["MemTotal"])
-        m.append(f"  {used / 2**20:.1f} of {mem['MemTotal'] / 2**20:.1f} GB", style=THEME["muted"])
-        row("Memory", m)
-        if mem.get("SwapTotal"):
-            su = mem["SwapTotal"] - mem["SwapFree"]
-            m = meter10(su * 100 / mem["SwapTotal"])
-            m.append(f"  {su / 2**20:.1f} of {mem['SwapTotal'] / 2**20:.1f} GB", style=THEME["muted"])
-            row("Swap", m)
-        for mount in disk_mounts():
-            if Path(mount).exists():
-                du = shutil.disk_usage(mount)
-                m = meter10(du.used * 100 / du.total)
-                m.append(f"  {du.used / 2**30:.0f} of {du.total / 2**30:.0f} GB · {du.free / 2**30:.0f} GB free",
-                         style=THEME["muted"])
-                row(f"Disk {mount}", m)
-        self.query_one("#sysinfo", Static).update(info)
-
-    def hints(self) -> list[tuple[str, str]]:
-        return [("enter", "run"), ("q", "quit")]
-
-    def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
-        if event.data_table.id == "sys-actions" and event.row_key.value == "doctor":
-            with self.app.suspend():
-                os.system("clear")
-                subprocess.run(["bash", str(DOTFILES / "scripts" / "dotfiles-doctor.sh")])
-                input("\nPress enter to go back to Settings...")
-            self.update_sysinfo()
 
 
 # ── App ───────────────────────────────────────────────────
