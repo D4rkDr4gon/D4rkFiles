@@ -154,7 +154,7 @@ Settings y el historial del portapapeles (`Mod+V`) ya no son menús de rofi: son
 
 - **Neovim** (`config/nvim/`) — LazyVim con el mismo banner en el dashboard; `lua/config/colors.lua` es generado.
 - **Sublime Text** (`config/sublime-text/`) — solo `Preferences`, esquema de color (generado) y
-  la lista de Package Control; los paquetes se descargan solos.
+  la lista de Package Control; la etapa `sublime` del instalador baja Package Control y al abrir Sublime se descargan solos los paquetes.
 - **opencode** (`config/opencode/opencode.jsonc`, generado) — colores de agentes y tema; sin
   MCPs ni credenciales (agregá los tuyos con `{env:VAR}`).
 

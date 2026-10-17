@@ -54,11 +54,13 @@ Se ejecutan en este orden (`./install.sh --list-stages`):
 5. **herdr** — si herdr está instalado: plugins herdr-pet, herdr-plugin-manager y herdr-agent-usage
    (este último se compila con `cargo`; si falta, ofrece instalar `rust`) e integraciones con Claude Code y
    opencode. Si herdr no está, se omite.
-6. **shell** — powerlevel10k, shell por defecto (pregunta) y plugins de Neovim (pregunta).
-7. **system** — servicios, login manager, sesión "Hyprland (dotfiles)", unidades de
+6. **sublime** — si Sublime Text está instalado, baja Package Control desde su sitio oficial (una vez) para que al abrirlo
+   instale solo los paquetes de la lista (Terminus, esquemas de color). Si no está instalado, se omite.
+7. **shell** — powerlevel10k, shell por defecto (pregunta) y plugins de Neovim (pregunta).
+8. **system** — servicios, login manager, sesión "Hyprland (dotfiles)", unidades de
    usuario y grupos. Todo lo que toca `/etc` o `/usr` pregunta antes.
-8. **optional** — Ollama y webapps (siempre opcionales).
-9. **summary** — próximos pasos.
+9. **optional** — Ollama y webapps (siempre opcionales).
+10. **summary** — próximos pasos.
 
 `configure` va antes de `links` porque renderiza las plantillas que luego se enlazan.
 
