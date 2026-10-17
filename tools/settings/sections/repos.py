@@ -134,7 +134,7 @@ class ReposView(DView):
     ]
 
     def compose(self) -> ComposeResult:
-        yield Panel(Table(id="repos"), title="  Repositories", id="repos-panel")
+        yield Panel(Table(id="repos"), title="\uf09b  Repositories", id="repos-panel")
         yield Panel(Static(id="repo-info"), title="Selected", id="repo-info-panel")
 
     def on_mount(self) -> None:

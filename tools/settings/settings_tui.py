@@ -1381,7 +1381,7 @@ CATEGORIES = [
     ("Tools", [("notifications", "\uf0f3", "Notifications"), ("clipboard", "󰅌", "Clipboard"),
                ("screenshots", "󰄀", "Screenshots"), ("colorpicker", "󰴱", "Color picker"),
                ("agents", "󰚩", "AI Agents"), ("finances", "\uf0d6", "Finances"),
-               ("repos", "", "Repositories")]),
+               ("repos", "\uf09b", "Repositories")]),
     ("Hardware", [("displays", "󰍹", "Displays"), ("audio", "󰕾", "Audio"), ("input", "󰌌", "Input"),
                   ("power", "󰂄", "Power"), ("battery", "󰁹", "Battery"), ("storage", "󰋊", "Storage")]),
     ("Desktop", [("modes", "󰕮", "Modes"), ("workspaces", "\uf009", "Workspaces"),
