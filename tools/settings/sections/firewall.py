@@ -159,6 +159,7 @@ class FirewallView(NetZonesMixin, DView):
         Binding("r", "refresh", "refresh"),
         Binding("v", "switch", "zones / rules"),
         Binding("p", "pool", "VPN in/out of the pool", show=False),
+        Binding("i", "import_ovpn", "import OpenVPN (.ovpn)", show=False),
         Binding("K", "move(-1)", "move VPN up", show=False),
         Binding("J", "move(1)", "move VPN down", show=False),
     ]

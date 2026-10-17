@@ -21,13 +21,14 @@ Es un mixin de FirewallView (firewall.py): pone sus tablas en la pestaña
 from __future__ import annotations
 
 import importlib.machinery
+import re
 import shutil
 import time
 from pathlib import Path
 from typing import Optional
 
 from common import DOTFILES, detach, run, sudo_run, tilde
-from dtui import THEME, ConfirmModal, Panel, PickModal, Table, TextModal
+from dtui import THEME, ConfirmModal, Field, FormModal, Panel, PickModal, Table, TextModal
 from rich.text import Text
 from textual import work
 from textual.app import ComposeResult
@@ -50,6 +51,16 @@ def nm_profiles() -> list[dict]:
         parts = line.replace("\\:", "\0").split(":")
         if len(parts) >= 3:
             out.append({"name": parts[0].replace("\0", ":"), "uuid": parts[1], "type": parts[2]})
+    return out
+
+
+def ovpn_profiles(profiles: list[dict]) -> list[str]:
+    """Conexiones OpenVPN de NetworkManager (respaldo "stealth" del pool, p. ej. TCP 443)."""
+    out = []
+    for p in profiles:
+        if p["type"] == "vpn" and run(["nmcli", "-g", "vpn.service-type", "connection", "show", "uuid",
+                                       p["uuid"]]).stdout.strip().endswith("openvpn"):
+            out.append(p["name"])
     return out
 
 
@@ -127,6 +138,7 @@ class NetZonesMixin:
         if full or not d:
             profiles = nm_profiles()
             d.update({"profiles": profiles, "wg": [p["name"] for p in profiles if p["type"] == "wireguard"],
+                      "ovpn": ovpn_profiles(profiles),
                       "forti": forti_profiles(), "citrix": citrix_configured(), "daemon": daemon_running(),
                       "agent": Path("/usr/lib/systemd/user/hyprpolkitagent.service").exists()})
         d.update({"conf": conf, "state": st, "nets": ng.networks(), "installed": ng.installed(),
@@ -227,20 +239,23 @@ class NetZonesMixin:
         # Pool: en orden, y después lo disponible que no está
         pool = ng.pool(conf)
         up = set(st.get("vpn_up", [])) if d["fresh"] else set()
-        avail = d["wg"] + [f"forti:{p}" for p in d["forti"]] + (["citrix"] if d["citrix"] else [])
+        avail = d["wg"] + [f"ovpn:{p}" for p in d.get("ovpn", [])] + [f"forti:{p}" for p in d["forti"]] + \
+            (["citrix"] if d["citrix"] else [])
         prow = []
         for i, e in enumerate(pool):
             kind = ng.entry_kind(e)
             state = Text("● connected", style=ok) if e in up else Text(f"#{i + 1} in pool", style=primary)
             if e == st.get("vpn_pref") and e not in up:
                 state.append(" · preferred", style=muted)
-            prow.append((e, [e.removeprefix("forti:"), Text(kind, style=muted), state]))
+            prow.append((e, [e.removeprefix("forti:").removeprefix("ovpn:"), Text(kind, style=muted), state]))
         for e in avail:
             if e not in pool:
-                prow.append((e, [Text(e.removeprefix("forti:"), style=muted), Text(ng.entry_kind(e), style=muted),
+                prow.append((e, [Text(e.removeprefix("forti:").removeprefix("ovpn:"), style=muted),
+                                 Text(ng.entry_kind(e), style=muted),
                                  Text("not in pool", style=muted)]))
         self.query_one("#nz-pool", Table).set_rows(prow)
-        self.query_one("#nz-pool-panel").border_subtitle = " enter use now · p in/out of pool · K/J order "
+        self.query_one("#nz-pool-panel").border_subtitle = (" enter use now · p in/out of pool · K/J order · "
+                                                            "i import OpenVPN (stealth fallback) ")
 
     # ── acciones ──
 
@@ -248,7 +263,7 @@ class NetZonesMixin:
         if tid == "nz-nets":
             return [("enter", "trusted/untrusted"), ("d", "forget")]
         if tid == "nz-pool":
-            return [("enter", "use now"), ("p", "pool in/out"), ("K", "up"), ("J", "down")]
+            return [("enter", "use now"), ("p", "pool in/out"), ("K", "up"), ("J", "down"), ("i", "import .ovpn")]
         return [("enter", "select")]
 
     @work(thread=True, exclusive=True, group="nz-auth")
@@ -368,7 +383,7 @@ class NetZonesMixin:
 
     def use_vpn(self, entry: str) -> None:
         kind = ng.entry_kind(entry)
-        if kind == "wg":
+        if kind in ng.AUTO_KINDS:
             ng.request(vpn=entry)
             return self.app.notify_ok(f"Switching to {entry}… (the kill switch stays armed)")
         st = self.zd.get("state", {})
@@ -388,6 +403,38 @@ class NetZonesMixin:
         else:
             go()
 
+    def action_import_ovpn(self) -> None:
+        """Importa un .ovpn (p. ej. de Proton, TCP 443) a NetworkManager y lo suma al final del pool:
+        es el respaldo para redes que bloquean WireGuard."""
+        if self.focused_table() != "nz-pool":
+            return
+
+        def check(v: dict) -> Optional[str]:
+            f = Path(v["file"]).expanduser()
+            return None if f.is_file() and f.suffix == ".ovpn" else "Pick an existing .ovpn file"
+
+        def done(v: Optional[dict]) -> None:
+            if not v:
+                return
+            f = str(Path(v["file"]).expanduser())
+            r = run(["nmcli", "connection", "import", "type", "openvpn", "file", f], timeout=30)
+            m = re.search(r"Connection '(.+)' \(", r.stdout)
+            if r.returncode != 0 or not m:
+                return self.app.notify_err((r.stderr or r.stdout).strip()[:120] or "Import failed "
+                                           "(is networkmanager-openvpn installed?)")
+            name = m.group(1)
+            run(["nmcli", "connection", "modify", "id", name, "ipv4.dns-priority", "-50", "ipv6.dns-priority", "-50",
+                 "connection.autoconnect", "no"])
+            pool = ng.pool(self.zd.get("conf"))
+            ng.write_kv(ng.CONF, {"pool": ",".join(pool + [f"ovpn:{name}"])})
+            self.app.notify_ok(f"Imported {name} · added to the pool as fallback (set user/password in NM if it "
+                               "asks)")
+            self.load_zones()
+
+        self.app.push_screen(FormModal("Import OpenVPN (.ovpn)", [
+            Field("file", "File", str(Path.home()) + "/", paths=True, files=True)],
+            hint="TCP 443 configs pass where WireGuard is blocked (hotels, offices).", validate=check), done)
+
     def action_pool(self) -> None:
         if self.focused_table() != "nz-pool":
             return
@@ -399,9 +446,9 @@ class NetZonesMixin:
             pool.remove(key)
         else:
             pool.append(key)
-            if ng.entry_kind(key) == "wg":
+            if ng.entry_kind(key) in ng.AUTO_KINDS:
                 # DNS solo por la VPN mientras esté arriba (sin fugas)
-                run(["nmcli", "connection", "modify", "id", key, "ipv4.dns-priority", "-50",
+                run(["nmcli", "connection", "modify", "id", ng.nm_name(key), "ipv4.dns-priority", "-50",
                      "ipv6.dns-priority", "-50"])
         ng.write_kv(ng.CONF, {"pool": ",".join(pool)})
         self.load_zones()

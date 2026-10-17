@@ -66,6 +66,7 @@ from power import PowerView  # noqa: E402
 from storage import StorageView  # noqa: E402
 from update import UpdateView  # noqa: E402
 from usbguard import UsbGuardView  # noqa: E402
+from netsec import NetSecView  # noqa: E402
 from repos import ReposView  # noqa: E402
 from system import SystemView  # noqa: E402
 from workspaces import WorkspacesView  # noqa: E402
@@ -1301,7 +1302,7 @@ class ServicesView(DView):
 # Menú agrupado por categoría: (categoría, [(id, ícono, nombre)])
 CATEGORIES = [
     ("Connectivity", [("wifi", "󰖩", "Wi-Fi"), ("bluetooth", "󰂯", "Bluetooth"), ("vpn", "󰦝", "VPN"),
-                      ("firewall", "󰒃", "Firewall"), ("usbguard", "󰕓", "USB guard"), ("phone", "󰏲", "Phone"),
+                      ("firewall", "󰒃", "Firewall"), ("netsec", "\uf132", "Network security"), ("usbguard", "󰕓", "USB guard"), ("phone", "󰏲", "Phone"),
                       ("nettools", "󰛳", "Network tools")]),
     ("System", [("services", "\uf013", "Services"), ("startup", "󰒲", "Startup apps"), ("logs", "󰌱", "Logs"),
                 ("snapshots", "󰄄", "Snapshots"), ("backup", "󰅧", "Backup"), ("system", "󰌢", "System"),
@@ -1337,7 +1338,7 @@ def section_views() -> dict:
         "snapshots": SnapshotsView, "screenshots": ScreenshotsView, "colorpicker": ColorPickerView,
         "input": InputView, "battery": BatteryView, "storage": StorageView, "defaultapps": DefaultAppsView,
         "themeeditor": ThemeEditorView, "deskwidgets": DeskWidgetsView, "fonts": FontsView, "firewall": FirewallView,
-        "backup": load_view("backup_tui", "BackupView"), "maintenance": MaintenanceView, "usbguard": UsbGuardView, "repos": ReposView,
+        "backup": load_view("backup_tui", "BackupView"), "netsec": NetSecView, "maintenance": MaintenanceView, "usbguard": UsbGuardView, "repos": ReposView,
         # En Settings, AI Agents suma el panel Providers (mostrar/ocultar cada uno)
         "agents": functools.partial(load_view("agents_tui", "AgentsView"), manage=True),
         "finances": load_view("expenses_tui", "FinancesView"),

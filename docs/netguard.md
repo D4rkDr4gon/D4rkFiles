@@ -71,6 +71,64 @@ probalo con una VPN ya cargada en el pool antes de pasar a modo automático.
 - **Helper desactualizado**: el helper v2 (marca de armado, bypass que se cancela al desarmar) se instala repitiendo el
   Setup (fila *Set up again*). Repetirlo no toca las redes de confianza ni el pool. Después, reiniciar el daemon.
 
+## Endurecimiento de red (Settings → Network security)
+
+Completa a las zonas. Cuatro páginas (`tab` o `1`-`4`): **Hardening**, **Ports**, **App firewall** e **History**.
+Bajar la protección pide huella o contraseña, igual que en Zones.
+
+### Lo que aplica el daemon a cada conexión física
+
+Se guarda el valor original de cada propiedad (`orig` en `state.json`) y al apagar las zonas se restaura tal cual.
+
+| Opción (`netguard.conf`) | Qué hace |
+|---|---|
+| `dns=off\|opportunistic\|strict` | DNS over TLS por conexión (`connection.dns-over-tls`). `strict` usa Quad9 con TLS en todas las redes e ignora el DNS de la red (los nombres locales del router dejan de resolver). Durante un bypass vuelve al DNS de la red: el portal cautivo lo necesita |
+| `ipv6_unsafe=off` | IPv6 apagado (`ipv6.method disabled`) en las conexiones que no son de confianza: sin fugas si la VPN es solo IPv4 y sin dirección que te identifique |
+| `autoconnect_unsafe=off` | Una red insegura o nueva no se reconecta sola. `autoconnect` no se puede reaplicar con la conexión activa: queda pendiente (`pending`) y se guarda en el perfil cuando se desconecta |
+| `ap_check=on` | **Evil twin**: la primera vez en cada red de confianza por Wi-Fi se aprende su access point (BSSID y nivel de seguridad, en `aps.conf`). Otro BSSID (que no sea otra banda del mismo router: mismos 5 primeros octetos) o menos seguridad (WPA3 → WPA2 → WEP/OWE → abierta) la vuelven **insegura** y avisa; "It is my network" (con huella) suma el access point |
+| `ports_warn=on` | En una red insegura sin firewalld, avisa una vez por cada puerto que escucha fuera de loopback |
+
+### Lo que se instala una vez (sudo)
+
+| Fila | Archivo | Qué hace |
+|---|---|---|
+| Kernel network hardening | `system/netguard/sysctl.conf` → `/etc/sysctl.d/90-netguard.conf` | Sin redirects ICMP ni source routing, `rp_filter` loose (el estricto rompe WireGuard/Tailscale), martians al log, SYN cookies, RFC 1337. Al sacarlo, los valores vuelven al reiniciar |
+| MAC & IPv6 privacy | `nm-privacy.conf` → `/etc/NetworkManager/conf.d/90-netguard-privacy.conf` y, con el backend iwd, `iwd-main.conf` → `/etc/iwd/main.conf` (solo si no hay uno propio) | Una MAC por red, fija en cada una (`stable` / `AddressRandomization=network`): ninguna red te relaciona con otra y el router de casa te sigue reconociendo. MAC aleatoria al escanear. IPv6 con direcciones temporales. Rige desde la próxima conexión; instalarlo reinicia iwd (el Wi-Fi se reconecta). Si el router reserva IPs o filtra por MAC, actualizarlo |
+
+### Ports
+
+Lo que escucha fuera de loopback (`ss -tulnp`) con el proceso y su unidad de systemd, y si está expuesto: bloqueado por
+la zona `drop`, decidido por firewalld (zona `home`) o **alcanzable** sin firewalld. `enter` sobre un servicio del sistema
+lo para y lo deshabilita (sudo).
+
+### App firewall (OpenSnitch)
+
+Firewall por aplicación con [OpenSnitch](https://github.com/evilsocket/opensnitch) (`extra/opensnitch`; la primera fila lo
+instala). Las reglas se arman desde **listas dinámicas**:
+- `a` regla de app: elegís de lo que **usa la red ahora** (`ss -tunap`) o de las **apps instaladas** (`.desktop` → binario
+  real), o escribís la ruta. Acción `deny`/`allow` y, opcional, solo para un sitio.
+- `s` regla de sitio: elegís de los dominios de **Firefox** (historial, o marcadores si el historial está apagado; se lee
+  una copia) o escribís uno. Vale para el dominio y sus subdominios, en todas las apps o en una.
+- `enter` prende/apaga, `x` alterna allow/deny, `d` borra, `D` la acción por defecto para lo que no tiene regla.
+- `A` aplica (sudo): escribe `/etc/opensnitchd/rules/netguard-*.json` (borra los anteriores de netguard; las reglas
+  ajenas no se tocan) y reinicia opensnitchd.
+
+La fuente es `~/.config/dotfiles/netguard/opensnitch.json`. Por defecto lo que no tiene regla **se permite**. Pasar a `deny` agrega reglas
+allow para lo esencial (resolved, NetworkManager, timesyncd, pacman, curl, iwd); sumá el navegador antes de aplicar.
+**Escape** si algo deja de salir: `sudo systemctl stop opensnitchd` (sin el daemon no filtra nada).
+
+### History
+
+`~/.local/state/dotfiles/netguard/history.jsonl`: redes que aparecen y se van (con su BSSID y confianza), cambios de modo, VPN
+arriba/abajo, kill switch, avisos y access points aprendidos o sospechosos. `enter` muestra el evento, `c` lo borra.
+
+## VPN de respaldo "stealth" (OpenVPN TCP 443)
+
+Hay redes (hoteles, empresas) que bloquean WireGuard. En el panel **VPN pool** de Zones, `i` importa un `.ovpn` (por
+ejemplo uno de Proton por TCP 443) a NetworkManager (`networkmanager-openvpn`) y lo suma al pool como `ovpn:<nombre>`.
+El failover prueba primero todas las WireGuard y después las OpenVPN; sus servidores también entran como endpoints del
+kill switch. Si NetworkManager pide usuario y contraseña, guardalos en la conexión.
+
 ## Cambiar de VPN (pool)
 
 Panel **VPN pool**:
@@ -104,6 +162,9 @@ bypass dejaba el rearmado pendiente y bloqueaba la red de casa.
 | Pieza | Qué es |
 |---|---|
 | `~/.config/dotfiles/netguard/netguard.conf` | Config (fuera del repo): `enabled`, `auto`, `manual_mode`, `killswitch`, `pool`, `bypass_secs` |
+| `~/.config/dotfiles/netguard/aps.conf` | Access points conocidos de cada red de confianza: `<uuid>=<seguridad> <bssid>...` (los escribe el daemon; se olvidan en Network security) |
+| `~/.config/dotfiles/netguard/opensnitch.json` | Reglas de OpenSnitch armadas en Network security → App firewall (fuente; `A` las instala) |
+| `system/netguard/sysctl.conf`, `nm-privacy.conf`, `iwd-main.conf` | Archivos de sistema que instala Network security → Hardening (sudo) |
 | `~/.config/dotfiles/netguard/networks.conf` | Redes conocidas: `<uuid de NM>=trusted\|untrusted  # nombre` y reglas `name:<prefijo>=trusted\|untrusted` |
 | `scripts/netguard.py` | Daemon de usuario (exec-once de Hyprland) + CLI (`status`, `request vpn <entrada>`, `bypass [s]`, `captive`, `off`). Estado en `~/.local/state/dotfiles/netguard/state.json` (Settings lo lee); los pedidos de Settings van por `request.json` |
 | `system/netguard/netguard-root` | Helper con root, en Python `-I`. Settings lo instala en `/usr/local/lib/netguard/` (root:root): **nunca se ejecuta nada del repo como root**. Valida cada argumento. Kill switch = tabla nftables propia `inet netguard` (output, prioridad -10, policy drop), que convive con firewalld; Avahi on/off; bypass con rearmado |

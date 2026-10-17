@@ -53,6 +53,8 @@ NETWORKS = CONF_DIR / "networks.conf"
 STATE_DIR = Path(os.environ.get("NETGUARD_STATE") or STATE_HOME / "dotfiles" / "netguard")
 STATE = STATE_DIR / "state.json"
 REQUEST = STATE_DIR / "request.json"
+APS = CONF_DIR / "aps.conf"             # access points conocidos de cada red de confianza
+HISTORY = STATE_DIR / "history.jsonl"
 LOG = STATE_DIR / "netguard.log"
 LIB = Path("/usr/local/lib/netguard")
 APPLY, AUTH = LIB / "apply", LIB / "auth"
@@ -62,7 +64,19 @@ ARMED_FLAG = Path("/run/netguard/armed")   # la escribe el helper v2 mientras el
 VPN_GRACE = 45                  # s con el kill switch puesto esperando que vuelva la VPN antes de soltarlo
 PHYSICAL = ("802-11-wireless", "802-3-ethernet", "gsm", "cdma", "bond", "vlan", "bridge", "pppoe")
 DEFAULTS = {"enabled": "off", "auto": "on", "manual_mode": "insecure", "killswitch": "on",
-            "pool": "", "bypass_secs": "120"}
+            "pool": "", "bypass_secs": "120",
+            # endurecimiento por conexión (Settings → Network security)
+            "dns": "off",                   # off | opportunistic | strict (DNS over TLS por conexión física)
+            "ipv6_unsafe": "off",           # off = IPv6 apagado en redes inseguras (sin fugas ni dirección que delate)
+            "autoconnect_unsafe": "off",    # off = una red insegura o nueva no se reconecta sola
+            "ap_check": "on",               # detectar evil twin: access point o seguridad distintos a los conocidos
+            "ports_warn": "on"}             # avisar de puertos escuchando en una red insegura
+DOT4 = "9.9.9.9#dns.quad9.net,149.112.112.112#dns.quad9.net"
+DOT6 = "2620:fe::fe#dns.quad9.net,2620:fe::9#dns.quad9.net"
+# Lo que se toca de cada conexión además de zona/mDNS/DHCP: se guarda el valor original para restaurarlo
+SNAP_KEYS = ("ipv6.method", "connection.autoconnect", "connection.dns-over-tls", "ipv4.ignore-auto-dns",
+             "ipv4.dns", "ipv6.ignore-auto-dns", "ipv6.dns")
+SEC_NAMES = {0: "open", 1: "weak (WEP/OWE)", 2: "WPA2", 3: "WPA3"}
 POLL = 3
 sys.path.insert(0, str(DOTFILES / "tools"))
 
@@ -180,6 +194,91 @@ def helper_version() -> int:
     return int(m.group(1)) if m else 1
 
 
+def history(ev: str, **data) -> None:
+    """Evento del historial de redes (Settings → Network security → History). Se recorta solo."""
+    try:
+        STATE_DIR.mkdir(parents=True, exist_ok=True)
+        if HISTORY.exists() and HISTORY.stat().st_size > 1_000_000:
+            HISTORY.write_text("\n".join(HISTORY.read_text().splitlines()[-4000:]) + "\n")
+        with HISTORY.open("a") as f:
+            f.write(json.dumps({"t": int(time.time()), "ev": ev, **data}) + "\n")
+    except OSError:
+        pass
+
+
+def read_history(limit: int = 1000) -> list[dict]:
+    try:
+        lines = HISTORY.read_text().splitlines()[-limit:]
+    except OSError:
+        return []
+    out = []
+    for line in lines:
+        try:
+            out.append(json.loads(line))
+        except ValueError:
+            pass
+    return out
+
+
+def ap_security(flags: int, wpa: int, rsn: int) -> int:
+    """0 abierta · 1 WEP/OWE · 2 WPA2 (PSK/802.1X) · 3 WPA3 (SAE), según los flags de NM."""
+    k = wpa | rsn
+    if k & 0x400:
+        return 3
+    if k & (0x100 | 0x200):
+        return 2
+    if k & 0x800 or flags & 1:
+        return 1
+    return 0
+
+
+def load_aps() -> dict[str, tuple[int, list[str]]]:
+    """{uuid: (nivel de seguridad, [bssid...])} de las redes de confianza."""
+    out = {}
+    for uuid, v in read_kv(APS).items():
+        parts = v.split()
+        if parts and parts[0].isdigit():
+            out[uuid] = (int(parts[0]), [b.upper() for b in parts[1:]])
+    return out
+
+
+def save_ap(uuid: str, sec: int, bssid: str, name: str = "") -> None:
+    known = load_aps().get(uuid, (sec, []))
+    bssids = sorted(set(known[1]) | {bssid.upper()})
+    write_kv(APS, {uuid: " ".join([str(max(sec, known[0]))] + bssids) + (f"  # {name}" if name else "")},
+             header="# aps.conf — access points conocidos de cada red de confianza (netguard). <uuid>=<seguridad> <bssid>...")
+
+
+# Escuchas normales que no son un servicio expuesto: clientes DHCP y mDNS (se apaga en redes inseguras)
+PORTS_IGNORE = {("udp", 68), ("udp", 546), ("udp", 5353)}
+
+
+def listening(ss_out: str) -> list[dict]:
+    """Sockets escuchando fuera de loopback, de `ss -Htulnp`: [{proto, port, addr, proc}]."""
+    out, seen = [], set()
+    for line in ss_out.splitlines():
+        f = line.split()
+        if len(f) < 5:
+            continue
+        proto, local = f[0], f[4]
+        addr, _, port = local.rpartition(":")
+        addr = addr.strip("[]").split("%")[0]
+        if not port.isdigit() or addr.startswith("127.") or addr == "::1":
+            continue
+        key = (proto, int(port))
+        if key in seen or key in PORTS_IGNORE:
+            continue
+        seen.add(key)
+        m = re.search(r'users:\(\("([^"]+)"', line)
+        out.append({"proto": proto, "port": int(port), "addr": addr or "*", "proc": m.group(1) if m else ""})
+    return sorted(out, key=lambda p: (p["proto"], p["port"]))
+
+
+def same_device(a: str, b: str) -> bool:
+    """Mismo equipo: un router dual-band anuncia BSSIDs que solo cambian en el último octeto."""
+    return a.upper()[:14] == b.upper()[:14]
+
+
 def log(msg: str) -> None:
     """Log propio (el stderr de un exec-once no lo lee nadie). Se recorta solo."""
     try:
@@ -263,11 +362,19 @@ class NM:
             p = self.props(a, "org.freedesktop.NetworkManager.Connection.Active")
             if not p:
                 continue
-            devs = [self.props(d, "org.freedesktop.NetworkManager.Device").get("Interface", "")
-                    for d in p.get("Devices", [])]
+            devs, ap = [], None
+            for d in p.get("Devices", []):
+                dp = self.props(d, "org.freedesktop.NetworkManager.Device")
+                if dp.get("Interface"):
+                    devs.append(dp["Interface"])
+                if dp.get("DeviceType") == 2 and ap is None:      # Wi-Fi: el access point al que está asociado
+                    path = self.props(d, "org.freedesktop.NetworkManager.Device.Wireless").get("ActiveAccessPoint")
+                    a = self.props(path, "org.freedesktop.NetworkManager.AccessPoint") if path and path != "/" else {}
+                    if a.get("HwAddress"):
+                        ap = {"bssid": a["HwAddress"].upper(),
+                              "sec": ap_security(a.get("Flags", 0), a.get("WpaFlags", 0), a.get("RsnFlags", 0))}
             out.append({"name": p.get("Id", ""), "uuid": p.get("Uuid", ""), "type": p.get("Type", ""),
-                        "devs": [d for d in devs if d], "state": p.get("State", 0),
-                        "settings": p.get("Connection", "")})
+                        "devs": devs, "state": p.get("State", 0), "settings": p.get("Connection", ""), "ap": ap})
         return out
 
     def settings(self, path: str) -> dict:
@@ -287,7 +394,27 @@ def physical(conns: list[dict]) -> list[dict]:
 # ── VPN ───────────────────────────────────────────────────
 
 def entry_kind(e: str) -> str:
-    return "forti" if e.startswith("forti:") else "citrix" if e == "citrix" else "wg"
+    """wg (WireGuard de NM) · ovpn:<nombre> (OpenVPN de NM: respaldo "stealth" por TCP 443 para redes que
+    bloquean WireGuard) · forti:<perfil> · citrix. wg y ovpn se conectan solas; forti y citrix, a mano."""
+    if e.startswith("forti:"):
+        return "forti"
+    if e == "citrix":
+        return "citrix"
+    return "ovpn" if e.startswith("ovpn:") else "wg"
+
+
+AUTO_KINDS = ("wg", "ovpn")
+
+
+def nm_name(e: str) -> str:
+    """Nombre de la conexión de NetworkManager de una entrada wg/ovpn del pool."""
+    return e[5:] if e.startswith("ovpn:") else e
+
+
+def auto_entries(conf: dict) -> list[str]:
+    """Las que se conectan solas, en el orden de failover: primero WireGuard, después OpenVPN."""
+    p = pool(conf)
+    return [e for e in p if entry_kind(e) == "wg"] + [e for e in p if entry_kind(e) == "ovpn"]
 
 
 def forti_up() -> Optional[str]:
@@ -318,12 +445,18 @@ def endpoint_hosts(nm: NM, entries: list[str]) -> list[str]:
     """Hosts/IPs a los que hay que poder llegar sin túnel para levantar uno."""
     hosts = []
     wg = {e for e in entries if entry_kind(e) == "wg"}
+    ovpn = {nm_name(e) for e in entries if entry_kind(e) == "ovpn"}
     for s in nm.all_settings():
         c = s.get("connection", {})
         if c.get("type") == "wireguard" and c.get("id") in wg:
             for peer in s.get("wireguard", {}).get("peers", []):
                 ep = peer.get("endpoint", "")
                 hosts.append(ep.rsplit(":", 1)[0].strip("[]"))
+        elif c.get("type") == "vpn" and c.get("id") in ovpn:
+            # OpenVPN: vpn.data["remote"] = "host[:puerto[:proto]], host2 …"
+            for r in re.split(r"[,\s]+", s.get("vpn", {}).get("data", {}).get("remote", "")):
+                if r:
+                    hosts.append(r.strip("[]") if r.count(":") > 2 else r.split(":", 1)[0])
     for e in entries:
         if entry_kind(e) == "forti":
             r = subprocess.run(["fortivpn", "view", e[6:]], capture_output=True, text=True, timeout=6) \
@@ -384,6 +517,14 @@ class Guard:
         self.last_forti = (0.0, None)
         self.stopped_bt = bool(prev.get("stopped_bt"))
         self.modified: set[str] = set(prev.get("modified", []))   # conexiones a restaurar al apagar
+        self.orig: dict[str, dict] = prev.get("orig", {})            # valores originales (SNAP_KEYS) por conexión
+        self.pending: dict[str, dict] = prev.get("pending", {})      # cambios de perfil para cuando se desconecte
+        self.asked_aps: set[str] = set()
+        self.prev_conns: dict[str, str] = {}
+        self.prev_vpn: set[str] = set()
+        self.prev_armed: Optional[bool] = None
+        self.next_ports = 0.0
+        self.ports: list[dict] = []
         self.st: dict = {}
         self.warned: set[str] = set()   # avisos que ya se mostraron (uno por situación)
         self.next_arm_try = 0.0
@@ -398,7 +539,27 @@ class Guard:
         log(f"daemon started (helper v{self.helper_v}, kill switch {'armed' if self.armed else 'off'})")
 
     # decisiones
-    def decide(self, conf: dict, conns: list[dict], nets: dict) -> tuple[str, str]:
+    def trust(self, c: dict, nets: dict, conf: dict, aps: dict) -> tuple[str, str]:
+        """(trusted | untrusted | new | suspicious, motivo). Una red de confianza por Wi-Fi se compara
+        con sus access points conocidos: otro BSSID o menos seguridad = posible evil twin."""
+        t = trust_of(c, nets)
+        ap = c.get("ap")
+        if t != "trusted" or conf.get("ap_check") != "on" or not ap:
+            return t, ""
+        known = aps.get(c["uuid"])
+        if not known:       # primera vez que se la ve con esta función: se aprende el access point
+            save_ap(c["uuid"], ap["sec"], ap["bssid"], c["name"])
+            history("ap_learned", name=c["name"], uuid=c["uuid"], bssid=ap["bssid"], sec=SEC_NAMES[ap["sec"]])
+            return "trusted", ""
+        sec, bssids = known
+        if ap["sec"] < sec:
+            return "suspicious", f"{c['name']}: security dropped ({SEC_NAMES[sec]} → {SEC_NAMES[ap['sec']]})"
+        if not any(same_device(ap["bssid"], b) for b in bssids):
+            self.ask_ap(c)
+            return "suspicious", f"{c['name']}: unknown access point {ap['bssid']}"
+        return "trusted", ""
+
+    def decide(self, conf: dict, conns: list[dict], trust: dict) -> tuple[str, str]:
         if conf.get("enabled") != "on" or not installed():
             return "off", "network zones are off" if conf.get("enabled") != "on" else "not set up"
         if conf.get("auto") != "on":
@@ -406,12 +567,34 @@ class Guard:
             return (m if m in ("safe", "insecure") else "insecure"), "set by hand"
         if not conns:
             return (self.mode if self.mode in ("safe", "insecure") else "insecure"), "offline"
-        bad = [c for c in conns if trust_of(c, nets) != "trusted"]
+        bad = [c for c in conns if trust[c["uuid"]][0] != "trusted"]
         if bad:
+            why = [trust[c["uuid"]][1] for c in bad if trust[c["uuid"]][0] == "suspicious"]
+            if why:
+                return "insecure", "possible fake network: " + "; ".join(why)
             names = ", ".join(c["name"] for c in bad)
-            return "insecure", f"untrusted: {names}" if all(trust_of(c, nets) == "untrusted" for c in bad) \
+            return "insecure", f"untrusted: {names}" if all(trust[c["uuid"]][0] == "untrusted" for c in bad) \
                 else f"new network: {names}"
         return "safe", "trusted: " + ", ".join(c["name"] for c in conns)
+
+    def ask_ap(self, c: dict) -> None:
+        """Access point desconocido en una red de confianza: preguntar una vez por BSSID."""
+        ap = c["ap"]
+        if ap["bssid"] in self.asked_aps:
+            return
+        self.asked_aps.add(ap["bssid"])
+        history("suspicious", name=c["name"], uuid=c["uuid"], bssid=ap["bssid"], sec=SEC_NAMES[ap["sec"]])
+        log(f"unknown access point {ap['bssid']} for trusted network {c['name']}")
+
+        def run() -> None:
+            ans = notify(f"Unknown access point: {c['name']}",
+                         f"Same name, different access point ({ap['bssid']}, {SEC_NAMES[ap['sec']]}). It may be a "
+                         "fake network (evil twin): treated as UNSAFE.\nMiddle-click to choose.", "critical",
+                         (("same", "It is my network (new router/AP)"), ("unsafe", "Keep it unsafe")))
+            if ans == "same" and authenticate():
+                save_ap(c["uuid"], ap["sec"], ap["bssid"], c["name"])
+                history("ap_learned", name=c["name"], uuid=c["uuid"], bssid=ap["bssid"], sec=SEC_NAMES[ap["sec"]])
+        threading.Thread(target=run, daemon=True).start()
 
     def ask(self, c: dict) -> None:
         """Notificación por red nueva (en un hilo: espera la respuesta)."""
@@ -432,20 +615,81 @@ class Guard:
     def nmcli(self, *args: str) -> None:
         subprocess.run(["nmcli", *args], capture_output=True, timeout=20)
 
-    def apply_conn(self, c: dict, mode: str) -> None:
-        if self.applied.get(c["uuid"]) == mode:
+    def snapshot(self, uuid: str) -> None:
+        """Guarda una vez los valores originales de SNAP_KEYS (se restauran al apagar las zonas)."""
+        if uuid in self.orig:
             return
-        # mDNS/LLMNR por conexión (NetworkManager se lo pasa a systemd-resolved);
-        # "default" = lo que diga la config global de resolved
-        safe = mode == "safe"
-        self.nmcli("connection", "modify", "uuid", c["uuid"], "connection.zone", "home" if safe else "drop",
-                   "ipv4.dhcp-send-hostname", "yes" if safe else "no",
-                   "ipv6.dhcp-send-hostname", "yes" if safe else "no",
-                   "connection.mdns", "default" if safe else "no", "connection.llmnr", "default" if safe else "no")
+        try:
+            r = subprocess.run(["nmcli", "-g", ",".join(SNAP_KEYS), "connection", "show", uuid],
+                               capture_output=True, text=True, timeout=10)
+        except (OSError, subprocess.TimeoutExpired):
+            return
+        if r.returncode == 0:
+            vals = r.stdout.split("\n")
+            self.orig[uuid] = {k: (vals[i] if i < len(vals) else "").replace("\\:", ":")
+                               for i, k in enumerate(SNAP_KEYS)}
+
+    def desired(self, uuid: str, mode: str, trusted: bool, conf: dict, bypassing: bool) -> tuple[dict, dict]:
+        """(lo que se aplica en vivo con `device reapply`, lo que va al perfil cuando se desconecte)."""
+        safe, o = mode == "safe", self.orig.get(uuid, {})
+        # mDNS/LLMNR por conexión (NetworkManager se lo pasa a systemd-resolved); "default" = config global
+        live = {"connection.zone": "home" if safe else "drop",
+                "ipv4.dhcp-send-hostname": "yes" if safe else "no", "ipv6.dhcp-send-hostname": "yes" if safe else "no",
+                "connection.mdns": "default" if safe else "no", "connection.llmnr": "default" if safe else "no"}
+        # IPv6 apagado en una red que no es de confianza: el kill switch ya lo corta, así tampoco hay
+        # dirección que delate ni fugas si la VPN es solo IPv4
+        live["ipv6.method"] = "disabled" if not trusted and conf.get("ipv6_unsafe") != "on" \
+            else (o.get("ipv6.method") or "auto")
+        dns = conf.get("dns", "off")
+        orig_dns = {"connection.dns-over-tls": o.get("connection.dns-over-tls") or "-1",
+                    "ipv4.ignore-auto-dns": o.get("ipv4.ignore-auto-dns") or "no", "ipv4.dns": o.get("ipv4.dns", ""),
+                    "ipv6.ignore-auto-dns": o.get("ipv6.ignore-auto-dns") or "no", "ipv6.dns": o.get("ipv6.dns", "")}
+        if dns == "strict" and not bypassing:   # durante un bypass el portal cautivo necesita el DNS de la red
+            live.update({"connection.dns-over-tls": "yes", "ipv4.ignore-auto-dns": "yes", "ipv4.dns": DOT4,
+                         "ipv6.ignore-auto-dns": "yes", "ipv6.dns": DOT6})
+        else:
+            live.update(orig_dns)
+            if dns == "opportunistic" and not bypassing:
+                live["connection.dns-over-tls"] = "opportunistic"
+        # Una red insegura o nueva no se reconecta sola. `autoconnect` no se puede reaplicar con la
+        # conexión activa: se guarda en el perfil cuando se desconecta
+        profile = {"connection.autoconnect": "no" if not trusted and conf.get("autoconnect_unsafe") != "on"
+                   else (o.get("connection.autoconnect") or "yes")}
+        return live, profile
+
+    def apply_conn(self, c: dict, mode: str, trusted: bool, conf: dict, bypassing: bool) -> None:
+        self.snapshot(c["uuid"])
+        live, profile = self.desired(c["uuid"], mode, trusted, conf, bypassing)
+        key = json.dumps([live, profile], sort_keys=True)
+        if self.applied.get(c["uuid"]) == key:
+            return
+        self.nmcli("connection", "modify", "uuid", c["uuid"], *[x for kv in live.items() for x in kv])
         for d in c["devs"]:
-            self.nmcli("device", "reapply", d)
-        self.applied[c["uuid"]] = mode
+            r = subprocess.run(["nmcli", "device", "reapply", d], capture_output=True, text=True, timeout=20)
+            if r.returncode != 0:
+                self.error(f"reapply {d}: {(r.stderr or r.stdout).strip()[:140]}")
+        self.pending[c["uuid"]] = profile
+        self.applied[c["uuid"]] = key
         self.modified.add(c["uuid"])
+
+    def flush_pending(self, active_uuids: set[str]) -> None:
+        """Aplica los cambios de perfil (autoconnect) de las conexiones que ya no están activas."""
+        for uuid in [u for u in self.pending if u not in active_uuids]:
+            self.nmcli("connection", "modify", "uuid", uuid, *[x for kv in self.pending.pop(uuid).items() for x in kv])
+
+    def check_ports(self, fw: bool) -> None:
+        """Qué escucha fuera de loopback. Sin firewalld, en una red insegura eso está expuesto: se avisa."""
+        try:
+            out = subprocess.run(["ss", "-Htulnp"], capture_output=True, text=True, timeout=5).stdout
+        except (OSError, subprocess.TimeoutExpired):
+            return
+        self.ports = listening(out)
+        if fw:
+            return
+        for p in self.ports:
+            self.warn_once(f"port:{p['proto']}:{p['port']}", f"Open port on an untrusted network: {p['proto']}/{p['port']}",
+                           f"{p['proc'] or 'A system service'} listens on {p['addr']} and firewalld is stopped, so it "
+                           "is reachable from this network. Settings → Network security → Ports.")
 
     def set_discovery(self, on: bool, avahi_was_on: bool) -> None:
         if not on:
@@ -474,7 +718,7 @@ class Guard:
         """Nunca armar el kill switch si no hay con qué salir: sin una WireGuard en
         el pool (las únicas que se conectan solas) o sin sus endpoints, armarlo deja
         la máquina sin red. En ese caso se avisa una vez y no se bloquea."""
-        ok = any(entry_kind(e) == "wg" for e in pool(conf)) and bool(self.endpoints)
+        ok = bool(auto_entries(conf)) and bool(self.endpoints)
         if not ok:
             self.warn_once("nopool", "Kill switch NOT armed", "There is no WireGuard VPN in the pool (or its "
                            "server could not be resolved). Add one in Settings → Firewall → Zones.")
@@ -486,6 +730,7 @@ class Guard:
         if key not in self.warned:
             self.warned.add(key)
             log(f"{title}: {body}")
+            history("warning", title=title)
             notify(title, body, urgency)
 
     def error(self, msg: str) -> None:
@@ -496,13 +741,19 @@ class Guard:
         """Al apagar las zonas: las conexiones vuelven a como estaban (zona por
         defecto, nombre por DHCP, mDNS/LLMNR según resolved)."""
         for uuid in sorted(self.modified | set(self.applied)):
-            self.nmcli("connection", "modify", "uuid", uuid, "connection.zone", "",
-                       "ipv4.dhcp-send-hostname", "yes", "ipv6.dhcp-send-hostname", "yes",
-                       "connection.mdns", "default", "connection.llmnr", "default")
+            o = self.orig.get(uuid, {})
+            back = {"connection.zone": "", "ipv4.dhcp-send-hostname": "yes", "ipv6.dhcp-send-hostname": "yes",
+                    "connection.mdns": "default", "connection.llmnr": "default"}
+            back.update({k: v for k, v in o.items() if k in SNAP_KEYS})
+            if "connection.autoconnect" in back and not back["connection.autoconnect"]:
+                back["connection.autoconnect"] = "yes"
+            self.nmcli("connection", "modify", "uuid", uuid, *[x for kv in back.items() for x in kv])
         if self.modified:
             log(f"restored {len(self.modified)} connection(s)")
         self.applied.clear()
         self.modified.clear()
+        self.pending.clear()
+        self.orig.clear()
 
     def arm(self, conf: dict) -> bool:
         """Arma solo si el helper confirma (código 0). Devuelve si quedó armado."""
@@ -549,7 +800,7 @@ class Guard:
         names = {c["name"] for c in active if c["type"] in ("wireguard", "vpn") and c["state"] == 2}
         for e in pool(conf):
             k = entry_kind(e)
-            if k == "wg" and e in names:
+            if k in AUTO_KINDS and nm_name(e) in names:
                 up.append(e)
             elif k == "forti":
                 t, name = self.last_forti
@@ -569,7 +820,7 @@ class Guard:
         """Intenta las WireGuard del pool (la preferida primero). True si alguna levantó."""
         if time.time() < self.next_vpn_try:
             return False
-        wg = [e for e in pool(conf) if entry_kind(e) == "wg"]
+        wg = auto_entries(conf)
         if not wg:
             self.warn_once("nopool", "Untrusted network: no VPN in the pool",
                            "Traffic is NOT protected. Add a WireGuard VPN in Settings → Firewall → Zones.")
@@ -577,7 +828,7 @@ class Guard:
         pref = read_state().get("vpn_pref")
         order = ([pref] if pref in wg else []) + [e for e in wg if e != pref]
         for e in order:
-            if self.connect_wg(e):
+            if self.connect_wg(nm_name(e)):
                 log(f"VPN connected: {e}")
                 self.warned.discard("novpn")
                 notify(f"VPN connected: {e}", "Untrusted network: traffic goes through the VPN.")
@@ -591,12 +842,13 @@ class Guard:
         st = read_state()
         st["vpn_pref"] = target
         write_state(st)
-        if entry_kind(target) != "wg":
+        if entry_kind(target) not in AUTO_KINDS:
             return      # Forti/Citrix: login interactivo desde Settings
+        mine = {nm_name(e) for e in auto_entries(conf)}
         for c in active:
-            if c["type"] == "wireguard" and c["name"] in pool(conf) and c["name"] != target:
+            if c["type"] in ("wireguard", "vpn") and c["name"] in mine and c["name"] != nm_name(target):
                 self.nmcli("connection", "down", "id", c["name"])
-        if not self.connect_wg(target):
+        if not self.connect_wg(nm_name(target)):
             notify(f"Could not connect {target}", "Trying the next VPN in the pool.", "critical")
 
     def handle_request(self, conf: dict, active: list[dict]) -> None:
@@ -609,15 +861,27 @@ class Guard:
             self.switch_vpn(conf, req["vpn"], active)
 
     def tick(self) -> None:
-        conf, nets = load_conf(), networks()
+        conf, nets, aps = load_conf(), networks(), load_aps()
         active = self.nm.active()
         conns = physical(active)
-        mode, reason = self.decide(conf, conns, nets)
+        trust = {c["uuid"]: self.trust(c, nets, conf, aps) for c in conns}
+        mode, reason = self.decide(conf, conns, trust)
         if mode != "off" and conf.get("auto") == "on":
             for c in conns:
-                if trust_of(c, nets) == "new" and c["uuid"] not in self.asked:
+                if trust[c["uuid"]][0] == "new" and c["uuid"] not in self.asked:
                     self.asked.add(c["uuid"])
                     self.ask(c)
+        # Historial: redes que aparecen y se van
+        now_conns = {c["uuid"]: c["name"] for c in conns}
+        for c in conns:
+            if c["uuid"] not in self.prev_conns:
+                history("connect", name=c["name"], uuid=c["uuid"], type=c["type"],
+                        bssid=(c.get("ap") or {}).get("bssid", ""), trust=trust[c["uuid"]][0])
+        for uuid, name in self.prev_conns.items():
+            if uuid not in now_conns:
+                history("disconnect", name=name, uuid=uuid)
+        self.prev_conns = now_conns
+        self.flush_pending({c["uuid"] for c in active})
         self.handle_request(conf, active)
         until = bypass_until()
         bypassing = until > time.time()
@@ -630,6 +894,8 @@ class Guard:
 
         if mode != self.mode:
             log(f"mode {self.mode or '-'} → {mode} ({reason})")
+            history("mode", frm=self.mode or "", to=mode, reason=reason)
+            self.next_ports = 0.0     # revisar puertos ya, no en 30 s
             if mode == "insecure":
                 self.set_discovery(False, bool(rs.get("avahi")))
             else:       # safe u off: descubrimiento de vuelta
@@ -644,10 +910,19 @@ class Guard:
                        reason if mode == "insecure" else "VPN optional, discovery back on.")
         if mode in ("safe", "insecure"):
             for c in conns:
-                self.apply_conn(c, mode)
+                self.apply_conn(c, mode, trust[c["uuid"]][0] == "trusted", conf, bypassing)
 
         fw = run_ok(["systemctl", "is-active", "--quiet", "firewalld"])
         up = self.vpn_state(conf, active) if mode == "insecure" else []
+        if fw != getattr(self, "prev_fw", fw):
+            self.next_ports = 0.0       # firewalld cambió: lo expuesto cambió también
+        self.prev_fw = fw
+        if mode != "off" and now >= self.next_ports:
+            self.next_ports = now + 30
+            if mode == "insecure" and conf.get("ports_warn") == "on":
+                self.check_ports(fw)
+            else:
+                self.ports = []
         if mode == "insecure":
             if not fw:
                 self.warn_once("firewalld", "firewalld is stopped", "Incoming connections are not blocked on "
@@ -676,7 +951,7 @@ class Guard:
                                        "Retrying every minute.")
             else:
                 # Sin VPN y sin bloqueo: primero conectar; con la VPN arriba, el próximo tick arma
-                if not self.ensure_vpn(conf) and any(entry_kind(e) == "wg" for e in pool(conf)) \
+                if not self.ensure_vpn(conf) and auto_entries(conf) \
                         and "vpndown" not in self.warned:
                     self.warn_once("novpn", "No VPN could connect", "Untrusted network: traffic is NOT "
                                    "blocked and NOT protected. Retrying every minute; Settings → Firewall "
@@ -686,15 +961,26 @@ class Guard:
         elif self.armed and now >= self.next_disarm_try:
             # Seguro o apagado: nada bloqueado (cubre también un rearmado que quedó de antes)
             self.disarm()
+        # Historial: VPN y kill switch
+        for e in set(up) - self.prev_vpn:
+            history("vpn_up", name=e)
+        for e in self.prev_vpn - set(up):
+            history("vpn_down", name=e)
+        self.prev_vpn = set(up)
+        if self.prev_armed is not None and self.armed != self.prev_armed:
+            history("killswitch", on=self.armed)
+        self.prev_armed = self.armed
         self.st = {"mode": mode, "reason": reason, "auto": conf.get("auto") == "on",
                    "conns": [{"uuid": c["uuid"], "name": c["name"], "type": c["type"], "devs": c["devs"],
-                              "trust": trust_of(c, nets)} for c in conns],
+                              "trust": trust[c["uuid"]][0], "why": trust[c["uuid"]][1], "ap": c.get("ap")}
+                             for c in conns],
                    "vpn_up": up, "killswitch": self.armed, "bypass_until": until,
                    "endpoints": self.endpoints, "vpn_pref": read_state().get("vpn_pref"), "time": time.time(),
                    "pid": os.getpid(), "stopped_kdeconnect": self.stopped_kdeconnect,
                    "stopped_avahi": self.stopped_avahi, "stopped_bt": self.stopped_bt,
                    "modified": sorted(self.modified), "firewalld": fw, "helper_version": self.helper_v,
-                   "vpn_lost_at": self.vpn_lost_at, "last_error": self.last_error}
+                   "vpn_lost_at": self.vpn_lost_at, "last_error": self.last_error,
+                   "orig": self.orig, "pending": self.pending, "ports": self.ports}
         write_state(self.st)
 
     def run(self) -> None:
