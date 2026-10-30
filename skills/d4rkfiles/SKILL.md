@@ -43,13 +43,19 @@ Layout del repo: `config/<app>/` (→ `~/.config/<app>`), `home/zsh/`, `system/`
 6. **Pedir confirmación antes de**: `sudo`, `pacman -Syu`/instalar/quitar paquetes, tocar `/etc` o `/usr`
    (PAM, SDDM, sesiones), cambiar el shell por defecto, o hacer `git push`.
 7. Si hay una sesión gráfica viva, recargar con el comando de la tabla de abajo; no reiniciar el WM.
+8. **Hyprland >= 0.57 es Lua**: la config es `config/hypr/hyprland.lua`; `hyprctl dispatch`/`keyword` con la
+   sintaxis vieja no andan. Desde scripts, `"$HOME/.config/hypr/scripts/hypr-dispatch" workspace 3` **por ruta
+   absoluta** (lo que lanza Hyprland no tiene `~/.local/bin` en el PATH; probar lanzándolo desde Hyprland:
+   `hyprctl dispatch 'hl.dsp.exec_cmd("…")'`, no desde una terminal) y opciones con
+   `hyprctl eval 'hl.config({ … })'`. Overrides del usuario: `~/.config/dotfiles/hypr/*.conf` (subconjunto de
+   hyprlang, ver `docs/customization.md`) o `*.lua`.
 
 ## Recargar cada cosa
 
 | Cambiaste | Recargá con |
 |---|---|
 | Un tema / colores / fuentes / radio | `theme <nombre>` (regenera plantillas y recarga lo recargable) |
-| `hyprland.conf` o `~/.config/dotfiles/hypr/*.conf` | `hyprctl reload` (validar antes: `Hyprland --verify-config -c ~/.config/hypr/hyprland.conf`) |
+| `hyprland.lua` o `~/.config/dotfiles/hypr/*.conf` / `*.lua` | `hyprctl reload` (validar antes: `Hyprland --verify-config -c ~/.config/hypr/hyprland.lua`) |
 | waybar / polybar | `scripts/barupdate.sh` |
 | dunst | `dunstctl reload` |
 | kitty | `theme <activo>` (colores) · `Ctrl+Shift+F5` (config) |
@@ -65,7 +71,7 @@ Layout del repo: `config/<app>/` (→ `~/.config/<app>`), `home/zsh/`, `system/`
 ## Qué hacer ante cada pedido
 
 - **"Cambiá / creá un tema", "poné otro wallpaper"** → `references/recetas.md#temas-y-wallpapers` y `docs/themes.md`.
-- **"Agregá / cambiá un atajo"** → `docs/keybindings.md`; Hyprland: `config/hypr/hyprland.conf` (o un `.conf` propio en
+- **"Agregá / cambiá un atajo"** → `docs/keybindings.md`; Hyprland: `config/hypr/hyprland.lua` (o un `.conf`/`.lua` propio en
   `~/.config/dotfiles/hypr/`), Qtile: `config/qtile/modules/keys.py`. `Super+K` abre la cheatsheet.
 - **"Configurá mis monitores"** → `references/recetas.md#monitores`.
 - **Casi todo tiene una sección en Settings** (`Super+Shift+Space`, `tools/settings/settings_tui.py`): antes de editar a mano,

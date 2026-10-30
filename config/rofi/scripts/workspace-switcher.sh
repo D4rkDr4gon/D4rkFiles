@@ -18,7 +18,7 @@ CHOICE=$(printf "$LIST" | rofi -dmenu -p "Go to workspace")
 WS=$(echo "$CHOICE" | awk '{print $NF}')
 
 if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
-    hyprctl dispatch workspace "$WS"
+    "$HOME/.config/hypr/scripts/hypr-dispatch" workspace "$WS"
 else
     qtile cmd-obj -o group "$WS" -f toscreen
 fi

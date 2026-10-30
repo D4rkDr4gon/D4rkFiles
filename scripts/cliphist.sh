@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Wrapper único de cliphist: el store (wl-paste --watch, en hyprland.conf) y el
+# Wrapper único de cliphist: el store (wl-paste --watch, autostart de hyprland.lua) y el
 # historial (tools/clipboard_tui.py) tienen que usar la MISMA base.
 #
 # La base vive en $XDG_RUNTIME_DIR (tmpfs, 0700): el historial nunca toca el

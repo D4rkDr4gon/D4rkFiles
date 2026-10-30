@@ -7,11 +7,13 @@ step_configure() {
     local conf="$conf_dir/user.conf"
 
     run mkdir -p "$conf_dir/hypr"
-    # Hyprland necesita al menos un .conf en este directorio (source con glob).
+    # Overrides de Hyprland: los lee config/hypr/lib/user_conf.lua (*.conf y *.lua).
     if [[ ! -e "$conf_dir/hypr/local.conf" ]]; then
         if $DRY_RUN; then echo "[dry-run] crear $conf_dir/hypr/local.conf"; else
             cat > "$conf_dir/hypr/local.conf" <<'CONF'
 # Tus overrides de Hyprland (se cargan al final, pisan todo lo anterior).
+# Hyprland >= 0.57 lee Lua: este .conf admite opciones, env, monitor, exec-once y
+# bind/unbind con exec; para lo demás creá un .lua en esta carpeta.
 # Ejemplo de monitores (nombres con `hyprctl monitors`):
 #   monitor=eDP-1,1920x1080@60,0x0,1
 #   monitor=DP-1,2560x1440@144,1920x0,1

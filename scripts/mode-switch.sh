@@ -62,10 +62,10 @@ place() {
     local ws="$1" match="$2" cmd="$3" addr
     addr="$(find_window "$match")"
     if [[ -n "$addr" ]]; then
-        hyprctl dispatch movetoworkspacesilent "$ws,address:$addr" >/dev/null
+        "$HOME/.config/hypr/scripts/hypr-dispatch" movetoworkspacesilent "$ws,address:$addr" >/dev/null
         return
     fi
-    hyprctl dispatch exec "[workspace $ws silent] $cmd" >/dev/null
+    "$HOME/.config/hypr/scripts/hypr-dispatch" exec "[workspace $ws silent] $cmd" >/dev/null
     # La regla de exec va por PID: apps que se relanzan a sí mismas (steam,
     # firefoxpwa, electron) abren en otro workspace. Esperar la ventana y moverla.
     (
@@ -73,7 +73,7 @@ place() {
             sleep 0.5
             addr="$(find_window "$match")"
             [[ -n "$addr" ]] || continue
-            hyprctl dispatch movetoworkspacesilent "$ws,address:$addr" >/dev/null
+            "$HOME/.config/hypr/scripts/hypr-dispatch" movetoworkspacesilent "$ws,address:$addr" >/dev/null
             exit 0
         done
     ) &
@@ -103,6 +103,6 @@ done < <(entries)
 
 rm -f "$DOTFILES_STATE_DIR/desktop-mode"   # estado viejo (persistía entre reinicios)
 echo "$MODE" > "$STATE"
-hyprctl dispatch workspace 1 >/dev/null
+"$HOME/.config/hypr/scripts/hypr-dispatch" workspace 1 >/dev/null
 notify-send "Modo $MODE" "Apps ubicadas en sus workspaces" -t 2500
 wait

@@ -48,7 +48,7 @@ fi
 #    cambia al workspace 5, reservado para navegador, y abre ahí la búsqueda)
 encoded=$(echo "$query" | sed 's/ /+/g')
 if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
-    hyprctl dispatch workspace 5 &>/dev/null
+    "$HOME/.config/hypr/scripts/hypr-dispatch" workspace 5 &>/dev/null
 else
     qtile cmd-obj -o group "5" -f toscreen &>/dev/null
 fi

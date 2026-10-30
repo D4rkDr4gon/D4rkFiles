@@ -6,8 +6,8 @@
 # Uso: float-tui-launch.sh <class> <titulo> <cols> <rows> <comando...>
 #
 # <class>   wm_class que se le pone a la ventana de Kitty (tiene que
-#           coincidir con el windowrule en hypr/hyprland.conf: float on,
-#           pin on, opacity ... para esa clase).
+#           coincidir con su hl.window_rule en config/hypr/hyprland.lua: float,
+#           pin, opacity ... para esa clase).
 # <cols>/<rows>  tamaño del panel EN CELDAS (no en pixeles), para que kitty
 #           calce con el contenido sin importar la fuente/DPI.
 #
@@ -29,9 +29,9 @@ EXISTING=$(hyprctl clients -j 2>/dev/null | jq -r --arg c "$CLASS" '[.[] | selec
 if [ -n "$EXISTING" ]; then
     ACTIVE=$(hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty')
     if [ "$EXISTING" = "$ACTIVE" ]; then
-        hyprctl dispatch closewindow "address:$EXISTING" >/dev/null 2>&1
+        "$HOME/.config/hypr/scripts/hypr-dispatch" closewindow "address:$EXISTING" >/dev/null 2>&1
     else
-        hyprctl dispatch focuswindow "address:$EXISTING" >/dev/null 2>&1
+        "$HOME/.config/hypr/scripts/hypr-dispatch" focuswindow "address:$EXISTING" >/dev/null 2>&1
     fi
     exit 0
 fi
@@ -61,7 +61,7 @@ place_top_right() {
     x=$((mon_x + mon_w - win_w - MARGIN_RIGHT))
     y=$((mon_y + MARGIN_TOP))
 
-    hyprctl dispatch movewindowpixel "exact $x $y,class:^($CLASS)\$" >/dev/null 2>&1
+    "$HOME/.config/hypr/scripts/hypr-dispatch" movewindowpixel "exact $x $y,class:^($CLASS)\$" >/dev/null 2>&1
 }
 
 FOUND=""

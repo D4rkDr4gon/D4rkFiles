@@ -6,8 +6,8 @@ Settings. Los textos de la TUI están en inglés.
 
 Se abre con `Mod + Shift + Space` (Hyprland y Qtile) o con un click en el logo de waybar o de
 polybar. `config/waybar/scripts/settings-launch.sh` la abre en una kitty flotante **centrada**
-en el monitor con foco, como un diálogo (clase `settings`, 1560×960 por `windowrule`
-`center`/`size` en `config/hypr/hyprland.conf`; en Qtile, `FLOAT_GEOMETRY` de
+en el monitor con foco, como un diálogo (clase `settings`, 1560×960 por `hl.window_rule`
+`center`/`size` en `config/hypr/hyprland.lua`; en Qtile, `FLOAT_GEOMETRY` de
 `config/qtile/modules/hooks.py` con márgenes `None` = centrada). Si ya está abierta, el mismo
 atajo la enfoca o la cierra (`config/waybar/scripts/center-tui-launch.sh`).
 
@@ -18,8 +18,8 @@ tus ajustes):
 
 | Qué | Dónde |
 |---|---|
-| Input (teclado, mouse, touchpad) y cursor | `~/.config/dotfiles/hypr/settings.conf`: líneas planas (`input:sensitivity = 0.2`, `env = XCURSOR_SIZE,24`). `config/hypr/hyprland.conf` incluye `~/.config/dotfiles/hypr/*.conf` al final, así que ganan sobre el repo |
-| Distribución de teclado | Además, `KB_LAYOUT` / `KB_VARIANT` de `~/.config/dotfiles/user.conf` (de ahí salen `config/hypr/env.conf` y la sesión X11) |
+| Input (teclado, mouse, touchpad) y cursor | `~/.config/dotfiles/hypr/settings.conf`: líneas planas (`input:sensitivity = 0.2`, `env = XCURSOR_SIZE,24`). `config/hypr/hyprland.lua` los carga al final (con `lib/user_conf.lua`), así que ganan sobre el repo |
+| Distribución de teclado | Además, `KB_LAYOUT` / `KB_VARIANT` de `~/.config/dotfiles/user.conf` (de ahí salen `config/hypr/env.lua` y la sesión X11) |
 | Apps de inicio propias | `~/.config/dotfiles/hypr/autostart.conf` |
 | Temas editados (Theme editor, Appearance, Fonts) | `~/.config/dotfiles/themes/<tema>/`. Si el tema es del repo se copia ahí primero; `scripts/theme-switch.sh` busca primero ahí, así que tu copia reemplaza a la original ([themes.md](themes.md#temas-propios)) |
 | Inactividad (Power) | `config/hypr/hypridle.conf`, generado e ignorado por git |
@@ -74,7 +74,7 @@ Dentro de una sección rigen sus propias teclas (al pie); las que tienen varios 
 | Backup | Respaldo incremental de carpetas en Proton Drive: una fila por carpeta con barra de avance, velocidad y tiempo restante; `enter`/`u` sube, `x` cancela, `a`/`e`/`d` agrega, edita o quita carpetas, `l` log, `L` inicia sesión | Vista `BackupView` de `tools/backup_tui.py` sobre `scripts/proton-backup.sh` ([customization.md](customization.md#backup-en-proton-drive)) |
 | Displays | Tarjetas (`tab`): **Monitors** (mapa con los monitores según su posición, `enter` abre `hyprmon`), **Night light** (barras de temperatura y brillo nocturno —`←/→`, `-/+` en vivo—, franja de 24 h con la hora actual, `enter` on/off, `s` horario, `l` al iniciar sesión) y **Tablet as monitor** (VNC) | `tools/settings/sections/displays.py` + `nightlight.py`: `hyprctl monitors -j`; hyprsunset (`hyprsunset.service`, IPC `hyprctl hyprsunset`) con `config/hypr/hyprsunset.conf` generado (en `.gitignore`); `scripts/wayland/wayvnc-toggle.sh` (la primera vez: `init`) |
 | Audio | Salidas y entradas: `enter` predeterminada, `←/→` volumen, `m` silenciar | `pw-dump`, `wpctl` |
-| Input | Teclado, mouse y touchpad, en vivo y guardado; interruptor del OSD de Caps/Num lock (servicio de sistema, `sudo`) | `hyprctl keyword` + `settings.conf`; `systemctl enable --now swayosd-libinput-backend` |
+| Input | Teclado, mouse y touchpad, en vivo y guardado; interruptor del OSD de Caps/Num lock (servicio de sistema, `sudo`) | en vivo con `hyprctl eval` + `settings.conf` (sin override muestra el valor vivo de Hyprland); `systemctl enable --now swayosd-libinput-backend` |
 | Power | **Battery** (carga, estado, tiempo restante, consumo, salud), **Power profile**, **Brightness** de pantalla y teclado (`←/→`, `↑/↓` elige), **Idle actions** con línea de tiempo (hypridle on/off y minutos para bloquear, apagar pantalla, suspender) y **Session** (bloquear, suspender, cerrar sesión, reiniciar, apagar; los tres últimos con confirmación) | `tools/settings/sections/power.py`: `upower`, `powerprofilesctl`, `brightnessctl`; genera `config/hypr/hypridle.conf` (en `.gitignore`) |
 | Battery | Carga, salud, ciclos, consumo y baterías de periféricos. `l` **tope de carga** (100/90/80/60 %, si el driver lo permite: deja de cargar ahí y retoma 5 puntos abajo) | `upower`; tope: `charge_control_end_threshold` en `/sys/class/power_supply/BAT*` + regla de udev `/etc/udev/rules.d/90-battery-charge-limit.rules` (100 % la borra), con sudo |
 | Storage | Discos y pendrives con uso; `enter` monta/desmonta, `o` abre, `e` expulsa | `lsblk`, `udisksctl` |

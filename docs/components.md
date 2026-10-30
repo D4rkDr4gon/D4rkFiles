@@ -7,15 +7,21 @@ Qué hace cada pieza y dónde está su config. Todo vive en `config/<app>/` y se
 
 `config/hypr/`
 
-- `hyprland.conf` — configuración base (monitores autodetectados, gestos de touchpad,
-  reglas de ventana, atajos). No tiene valores de máquina.
-- `env.conf` *(generado)* — `$terminal`, `$browser`, `$fileManager`, `$editor`, teclado, y
+- `hyprland.lua` — configuración base (Hyprland >= 0.57 solo lee Lua): monitores autodetectados,
+  gestos de touchpad, reglas de ventana, atajos. No tiene valores de máquina.
+- `env.lua` *(generado)* — terminal, navegador, gestor de archivos, editor, teclado, y
   `WLR_NO_HARDWARE_CURSORS` si se detecta NVIDIA o una VM.
-- `theme.conf` *(generado)* — borde (color sólido o gradiente, grosor), gaps, `rounding`, opacidad inactiva,
-  dim, blur (incluido el ajuste fino), sombra, preset de animaciones (`config/hypr/animations/<preset>.conf`)
-  y opacidad por app. Se carga antes que `hyprland.conf`, que por eso no define esas claves.
+- `theme.lua` *(generado)* — borde (color sólido o gradiente, grosor), gaps, `rounding`, opacidad inactiva,
+  dim, blur (incluido el ajuste fino), sombra, preset de animaciones (`config/hypr/animations/<preset>.lua`)
+  y opacidad por app. `hyprland.lua` lo carga después de su `hl.config`, que por eso no define esas claves.
+- `lib/user_conf.lua` — lee tus overrides (`*.conf` con un subconjunto de hyprlang, y `*.lua`); ver
+  [customization.md](customization.md#hyprland-monitores-y-atajos-propios).
+- `config/hypr/scripts/hypr-dispatch` — `hyprctl dispatch` con la sintaxis de siempre (`workspace 3`,
+  `movetoworkspacesilent 2,address:0x…`, `exec [workspace 2 silent] cmd`…) traducida a Lua. Los scripts
+  lo llaman por ruta absoluta (`$HOME/.config/hypr/scripts/hypr-dispatch`): lo que lanza Hyprland
+  (atajos, waybar, hypridle) hereda su PATH, que no tiene `~/.local/bin`.
 - `hypridle.conf`, `hyprsunset.conf` *(generados por Settings → Power / Displays, en `.gitignore`)*.
-- `~/.config/dotfiles/hypr/*.conf` — **tus** overrides, cargados al final.
+- `~/.config/dotfiles/hypr/*.conf` y `*.lua` — **tus** overrides, cargados al final.
 - `config/hypr/scripts/start-hyprland.sh` — wrapper de arranque (limpia `DISPLAY`, activa la sesión de
   logind, guarda logs en `~/.local/state/hyprland/`). Lo usa la sesión "Hyprland (dotfiles)".
 - `config/hypr/scripts/start-hyprpaper.sh` — arranca hyprpaper con el wallpaper del tema activo.

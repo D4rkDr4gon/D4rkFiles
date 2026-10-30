@@ -67,7 +67,7 @@ theme_load_tokens() {
     : "${TOK[blur_size]:=6}" "${TOK[blur_passes]:=2}" "${TOK[font_mono]:=Hack Nerd Font}"
     : "${TOK[icon_theme]:=Papirus-Dark}" "${TOK[opencode_theme]:=}"
     # Forma extendida (Settings → Appearance / Fonts & cursor). Los defaults son
-    # los valores que ya tenía hyprland.conf: un tema que no los define se ve igual.
+    # los valores que ya tenía la config de Hyprland: un tema que no los define se ve igual.
     : "${TOK[blur_noise]:=0.0117}" "${TOK[blur_contrast]:=0.8916}" "${TOK[blur_brightness]:=1.0}"
     : "${TOK[blur_vibrancy]:=0.1696}" "${TOK[blur_popups]:=false}"
     : "${TOK[inactive_opacity]:=0.95}" "${TOK[dim_inactive]:=false}" "${TOK[dim_strength]:=0.5}"
@@ -118,12 +118,14 @@ theme_load_tokens() {
     # Borde: solid = primary; gradient/rotating = primary → secondary a border_angle
     # grados (rotating además gira: animación borderangle en loop).
     if [[ "${TOK[border_style]}" == gradient || "${TOK[border_style]}" == rotating ]]; then
-        TOK[active_border]="rgba(${TOK[primary_hex]}ff) rgba(${TOK[secondary_hex]}ff) ${TOK[border_angle]}deg"
+        TOK[active_border]="{ colors = { \"rgba(${TOK[primary_hex]}ff)\", \"rgba(${TOK[secondary_hex]}ff)\" }, angle = ${TOK[border_angle]} }"
     else
-        TOK[active_border]="rgb(${TOK[primary_hex]})"
+        TOK[active_border]="\"rgb(${TOK[primary_hex]})\""
     fi
-    TOK[borderangle_anim]="borderangle, 1, 8, liner"
-    [[ "${TOK[border_style]}" == rotating ]] && TOK[borderangle_anim]="borderangle, 1, 60, liner, loop"
+    # Valores en sintaxis Lua: los usa config/hypr/theme.lua.tpl (Hyprland >= 0.57)
+    TOK[borderangle_anim]='hl.animation({ leaf = "borderangle", enabled = true, speed = 8, bezier = "liner" })'
+    [[ "${TOK[border_style]}" == rotating ]] && \
+        TOK[borderangle_anim]='hl.animation({ leaf = "borderangle", enabled = true, speed = 60, bezier = "liner", style = "loop" })'
     # Sombra: dark = el gris casi negro de siempre; glow = halo del primary (alpha 0x99).
     TOK[shadow_color]="rgba(1a1a1aee)"
     [[ "${TOK[shadow_style]}" == glow ]] && TOK[shadow_color]="rgba(${TOK[primary_hex]}99)"
@@ -188,7 +190,7 @@ theme_load_user_tokens() {
     # NVIDIA y VMs necesitan cursor por software en wlroots/Hyprland.
     TOK[hw_cursor_env]=""
     if command -v lspci >/dev/null 2>&1 && lspci 2>/dev/null | grep -qiE 'nvidia|vmware|virtio|qxl'; then
-        TOK[hw_cursor_env]="env = WLR_NO_HARDWARE_CURSORS,1"
+        TOK[hw_cursor_env]='hl.env("WLR_NO_HARDWARE_CURSORS", "1")'
     fi
 }
 

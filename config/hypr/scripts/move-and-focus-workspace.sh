@@ -49,11 +49,11 @@ log "Target: ws=$TARGET_WS | Monitor=$FOCUSED_MONITOR"
 
 # --- Mover workspace al monitor actual ---
 # Si el workspace ya está en este monitor, moveworkspacetomonitor es no-op
-hyprctl dispatch moveworkspacetomonitor "$TARGET_WS" "$FOCUSED_MONITOR"
+"$HOME/.config/hypr/scripts/hypr-dispatch" moveworkspacetomonitor "$TARGET_WS" "$FOCUSED_MONITOR"
 log "Moved workspace $TARGET_WS to $FOCUSED_MONITOR"
 
 # --- Enfocar workspace ---
-hyprctl dispatch workspace "$TARGET_WS"
+"$HOME/.config/hypr/scripts/hypr-dispatch" workspace "$TARGET_WS"
 log "Focused workspace $TARGET_WS"
 
 exit 0

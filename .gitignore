@@ -11,9 +11,9 @@
 /config/gtklock/layout.ui
 /config/gtklock/style.css
 /config/herdr/config.toml
-/config/hypr/env.conf
+/config/hypr/env.lua
 /config/hyprshell/styles.css
-/config/hypr/theme.conf
+/config/hypr/theme.lua
 /config/hypr/hyprtoolkit.conf
 /config/impala/config.toml
 /config/kitty/colors.conf

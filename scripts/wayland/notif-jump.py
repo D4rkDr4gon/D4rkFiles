@@ -14,7 +14,7 @@ La ventana se busca en dos pasos:
 2. Fallback por nombre: el log id -> app que escribe
    config/dunst/scripts/notif-record.sh (regla [notif_jump_record]), matcheado
    contra class/initialClass (p. ej. apps Flatpak, que notifican vía portal).
-Se enfoca con `hyprctl dispatch focuswindow`, que cambia de workspace.
+Se enfoca con `hypr-dispatch focuswindow`, que cambia de workspace.
 
 Solo Hyprland. Notificaciones sin acciones (p. ej. notify-send pelado) no
 emiten ActionInvoked: para esas el click del medio solo la cierra.
@@ -27,6 +27,8 @@ import subprocess
 import sys
 
 LOG = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "dunst-notif-apps.tsv")
+# Ruta absoluta: corre en el autostart con el PATH de Hyprland, sin ~/.local/bin
+HYPR_DISPATCH = os.path.expanduser("~/.config/hypr/scripts/hypr-dispatch")
 MATCH = "type='signal',interface='org.freedesktop.Notifications',member='ActionInvoked'"
 
 
@@ -131,7 +133,7 @@ def main():
                 win = find_window(names) if names else None
             if win:
                 subprocess.run(
-                    ["hyprctl", "dispatch", "focuswindow", f"address:{win['address']}"],
+                    [HYPR_DISPATCH, "focuswindow", f"address:{win['address']}"],
                     capture_output=True,
                 )
 

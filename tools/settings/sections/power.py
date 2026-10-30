@@ -24,7 +24,7 @@ import subprocess
 from typing import Optional
 
 from battery import upower_info
-from common import DOTFILES, HYPRLAND, run
+from common import DOTFILES, HYPR_DISPATCH, HYPRLAND, run
 from dtui import THEME, Card, ConfirmModal, DView, Field, FormModal, Panel, Table, bar, charge10, css
 from rich.text import Text
 from textual import work
@@ -64,14 +64,14 @@ def write_idle_conf(st: dict) -> None:
         "general {",
         f"    lock_cmd = pidof gtklock || bash {DOTFILES}/scripts/lock-screen.sh",
         "    before_sleep_cmd = loginctl lock-session",
-        "    after_sleep_cmd = hyprctl dispatch dpms on",
+        "    after_sleep_cmd = $HOME/.config/hypr/scripts/hypr-dispatch dpms on",
         "}",
     ]
     if st["lock"]:
         lines += ["", "listener {", f"    timeout = {st['lock'] * 60}", "    on-timeout = loginctl lock-session", "}"]
     if st["screen"]:
-        lines += ["", "listener {", f"    timeout = {st['screen'] * 60}", "    on-timeout = hyprctl dispatch dpms off",
-                  "    on-resume = hyprctl dispatch dpms on", "}"]
+        lines += ["", "listener {", f"    timeout = {st['screen'] * 60}", "    on-timeout = $HOME/.config/hypr/scripts/hypr-dispatch dpms off",
+                  "    on-resume = $HOME/.config/hypr/scripts/hypr-dispatch dpms on", "}"]
     if st["suspend"]:
         lines += ["", "listener {", f"    timeout = {st['suspend'] * 60}", "    on-timeout = systemctl suspend", "}"]
     tmp = IDLE_CONF.with_suffix(".conf.tmp")
@@ -355,7 +355,7 @@ class PowerView(DView):
             elif key == "suspend":
                 run(["systemctl", "suspend"])
             elif key == "logout":
-                run(["hyprctl", "dispatch", "exit"] if HYPRLAND else ["qtile", "cmd-obj", "-o", "cmd", "-f", "shutdown"])
+                run([HYPR_DISPATCH, "exit"] if HYPRLAND else ["qtile", "cmd-obj", "-o", "cmd", "-f", "shutdown"])
             else:
                 r = run(["systemctl", key])
                 if r.returncode != 0:

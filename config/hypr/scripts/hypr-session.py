@@ -37,6 +37,8 @@ STATE = Path(os.environ.get("SESSION_STATE", Path(os.environ.get("XDG_STATE_HOME
                             / "hypr-session"))
 SESSION = STATE / "session.json"
 PREVIOUS = STATE / "previous.json"
+# Dispatchers con la sintaxis de siempre (Hyprland >= 0.57 los recibe en Lua)
+HYPR_DISPATCH = Path(__file__).resolve().with_name("hypr-dispatch")
 APP_DIRS = [Path.home() / ".local/share/applications", Path("/usr/share/applications")]
 PLACE_WINDOW = 60     # segundos que se espera a que aparezcan las ventanas restauradas
 DEFAULTS = {"autosave": "on", "interval": "120", "restore_on_login": "off",
@@ -63,6 +65,13 @@ def hypr(*args: str) -> str:
         return subprocess.run(["hyprctl", *args], capture_output=True, text=True, timeout=5).stdout
     except (OSError, subprocess.TimeoutExpired):
         return ""
+
+
+def dispatch(name: str, arg: str) -> None:
+    try:
+        subprocess.run([str(HYPR_DISPATCH), name, arg], capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.TimeoutExpired):
+        pass
 
 
 def clients() -> list[dict]:
@@ -151,13 +160,13 @@ def launch_line(w: dict) -> str:
 
 
 def place(addr: str, w: dict) -> None:
-    hypr("dispatch", "movetoworkspacesilent", f"{w['workspace']},address:{addr}")
+    dispatch("movetoworkspacesilent", f"{w['workspace']},address:{addr}")
     if w["floating"]:
-        hypr("dispatch", "setfloating", f"address:{addr}")
+        dispatch("setfloating", f"address:{addr}")
         if w.get("size"):
-            hypr("dispatch", "resizewindowpixel", f"exact {w['size'][0]} {w['size'][1]},address:{addr}")
+            dispatch("resizewindowpixel", f"exact {w['size'][0]} {w['size'][1]},address:{addr}")
         if w.get("at"):
-            hypr("dispatch", "movewindowpixel", f"exact {w['at'][0]} {w['at'][1]},address:{addr}")
+            dispatch("movewindowpixel", f"exact {w['at'][0]} {w['at'][1]},address:{addr}")
 
 
 def restore() -> int:
@@ -181,7 +190,7 @@ def restore() -> int:
         launched_pids.add(w["pid"])
         line = launch_line(w)
         if line:
-            hypr("dispatch", "exec", f"[workspace {w['workspace']} silent] {line}")
+            dispatch("exec", f"[workspace {w['workspace']} silent] {line}")
     if not pending:
         return 0
     total = len(pending)

@@ -2,7 +2,7 @@
 # Lanzador genérico de TUIs como ventana flotante CENTRADA (tipo diálogo),
 # a diferencia de float-tui-launch.sh, que ancla los popups de waybar arriba
 # a la derecha. Tamaño y centrado los pone el windowrule de la clase en
-# config/hypr/hyprland.conf (float on, center on, size W H, opacity 0.97).
+# config/hypr/hyprland.lua (float, center, size W H, opacity 0.97).
 #
 # Uso: center-tui-launch.sh <class> <titulo> <comando...>
 #
@@ -17,9 +17,9 @@ if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
     if [ -n "$EXISTING" ]; then
         ACTIVE=$(hyprctl activewindow -j 2>/dev/null | jq -r '.address // empty')
         if [ "$EXISTING" = "$ACTIVE" ]; then
-            hyprctl dispatch closewindow "address:$EXISTING" >/dev/null 2>&1
+            "$HOME/.config/hypr/scripts/hypr-dispatch" closewindow "address:$EXISTING" >/dev/null 2>&1
         else
-            hyprctl dispatch focuswindow "address:$EXISTING" >/dev/null 2>&1
+            "$HOME/.config/hypr/scripts/hypr-dispatch" focuswindow "address:$EXISTING" >/dev/null 2>&1
         fi
         exit 0
     fi

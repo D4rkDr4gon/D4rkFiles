@@ -50,12 +50,12 @@ define se ve igual):
 | `blur_popups` | Blur también en menús y tooltips | `false` |
 | `shadow_enabled` / `shadow_range` / `shadow_power` | Sombra: on/off, alcance (px), caída 1–4 | `true` / `8` / `3` |
 | `shadow_style` | `dark` = gris casi negro · `glow` = halo del `primary` | `dark` |
-| `animations` | Preset `smooth` · `snappy` · `bouncy` · `off` (`config/hypr/animations/<preset>.conf`) | `smooth` |
+| `animations` | Preset `smooth` · `snappy` · `bouncy` · `off` (`config/hypr/animations/<preset>.lua`) | `smooth` |
 | `font_size` | Tamaño base: kitty = N, rofi y workspaces de waybar = N−1, waybar, dunst y GTK = N−3 | `13` |
 | `font_ui` | Fuente de interfaz GTK (también por `gsettings`); vacío = `Sans 10` | vacío |
 
-Todo eso llega a Hyprland por `config/hypr/theme.conf.tpl` (que se carga antes que
-`hyprland.conf`, por eso `hyprland.conf` ya no define gaps, borde, sombra ni animaciones).
+Todo eso llega a Hyprland por `config/hypr/theme.lua.tpl` (`hyprland.lua` lo carga después
+de su propio `hl.config`, por eso no define gaps, borde, sombra ni animaciones).
 
 `wallpaper` se busca por nombre en `EXTRA_WALLPAPER_DIRS`, `~/.local/share/backgrounds` y
 `assets/wallpapers`. Una ruta absoluta también funciona, pero el doctor avisa (no es portable).
@@ -78,7 +78,7 @@ También hay tokens del usuario (de `user.conf` y autodetección): `@user_displa
 ## Vista previa en vivo
 
 Settings → Themes pinta el tema bajo el cursor (tras 0,35 s) con `scripts/theme-preview.sh`: solo el borde de las ventanas de
-Hyprland (`hyprctl keyword`) y los colores de kitty (`kitty @ set-colors`). No escribe a disco; el resto cambia al aplicar con
+Hyprland (`hyprctl eval 'hl.config({ general = { col = … } })'`) y los colores de kitty (`kitty @ set-colors`). No escribe a disco; el resto cambia al aplicar con
 `enter`. Volver al tema aplicado, `v`, salir de la sección o cerrar Settings lo revierte (`hyprctl reload` + el `colors.conf` actual).
 
 ## Plantillas

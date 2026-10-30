@@ -28,9 +28,8 @@ Después de cambiar algo: `theme <tema-actual>` (o `./install.sh --configure`) r
 
 ## Hyprland: monitores y atajos propios
 
-`hyprland.conf` carga al final `~/.config/dotfiles/hypr/*.conf`, así que lo tuyo pisa
-todo. El instalador crea `local.conf` (siempre debe haber al menos un `.conf`: Hyprland
-falla si el glob no encuentra nada).
+`config/hypr/hyprland.lua` carga al final `~/.config/dotfiles/hypr/*.conf` y después
+`*.lua`, así que lo tuyo pisa todo. El instalador crea `local.conf` de ejemplo.
 
 ```ini
 # ~/.config/dotfiles/hypr/local.conf
@@ -42,11 +41,38 @@ env = WLR_NO_HARDWARE_CURSORS,1
 
 `hyprctl monitors` lista los nombres de salida; `hyprmon` (paquete AUR) los configura gráficamente.
 
+Hyprland >= 0.57 solo lee Lua: esos `.conf` los traduce `config/hypr/lib/user_conf.lua`, que
+entiende un subconjunto de hyprlang. Opciones planas (`input:sensitivity = 0.2`) o en bloques
+(`general { gaps_in = 2 }`), `$variables`, `env`, `monitor`, `exec-once`/`exec`, `unbind` y
+`bind*` con `exec`, `killactive`, `togglefloating`, `fullscreen`, `workspace` o
+`movetoworkspace[silent]`. Heredan `$mainMod`, `$terminal`, `$browser`, `$fileManager`,
+`$editor`, `$dotfiles` y `$SCRIPTS_DIR`. Lo demás (`windowrule`, `layerrule`, `source`,
+`gesture`, otros dispatchers) no se aplica y Hyprland lo avisa con una notificación al
+cargar: pasalo a un `.lua` en la misma carpeta, que tiene toda la API `hl.*`:
+
+```lua
+-- ~/.config/dotfiles/hypr/local.lua
+hl.window_rule({ match = { class = "^(foot)$" }, float = true })
+hl.bind("SUPER + Z", hl.dsp.window.pseudo())
+```
+
+### Actualizar desde Hyprland < 0.57
+
+1. `sudo pacman -Syu` (trae Hyprland 0.57).
+2. `git -C ~/.local/share/dotfiles pull`.
+3. `~/.local/share/dotfiles/scripts/theme-switch.sh <tu-tema> --render-only` (genera
+   `env.lua` y `theme.lua`; `./install.sh --only configure` también, pero con `DEFAULT_THEME`).
+4. Cerrar sesión y volver a entrar.
+
+Tus archivos de `~/.config/dotfiles/hypr/` se siguen leyendo; si alguna línea no se puede
+traducir, la notificación dice cuál (`archivo:línea`). Un `workspaces.conf` viejo con
+`unbind`/`bind` no molesta: de ese archivo solo se lee `# count: N`.
+
 [Settings](settings.md) también escribe en esa carpeta, nunca en el repo: `settings.conf`
 (input y cursor, como líneas planas `input:sensitivity = 0.2`), `autostart.conf` (tus apps de
-inicio) y `workspaces.conf` (cuántos workspaces habilitar: `unbind` de los que sobran y la línea
-`# count: N` que leen waybar, Ctrl+Tab y rofi). Se pueden editar a mano; como Hyprland incluye los archivos en orden alfabético, lo que
-pongas en `local.conf` queda por debajo de `settings.conf`.
+inicio) y `workspaces.conf` (cuántos workspaces habilitar: la línea `# count: N`, que leen
+`hyprland.lua` para los atajos, waybar, Ctrl+Tab y rofi). Se pueden editar a mano; como se cargan
+en orden alfabético, lo que pongas en `local.conf` queda por debajo de `settings.conf`.
 
 **Qtile/X11:** los monitores se configuran con `xrandr` (o `arandr`); poné el comando en tu
 `~/.xprofile` o en `local.zsh`. Qtile y polybar detectan los monitores conectados solos.

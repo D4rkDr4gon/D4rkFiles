@@ -2,7 +2,7 @@
 # ──────────────────────────────────────────────────────────
 # theme-preview.sh — vista previa en vivo de un tema, sin escribir nada a disco.
 # Cambia solo lo liviano y reversible: el borde de las ventanas de Hyprland
-# (hyprctl keyword) y los colores de las kitty abiertas (kitty @ set-colors).
+# (hyprctl eval) y los colores de las kitty abiertas (kitty @ set-colors).
 # El resto (waybar, rofi, GTK…) recién cambia al aplicar con theme-switch.sh.
 #
 # Uso: theme-preview.sh <tema>   previsualiza themes/<tema>/theme.json
@@ -37,12 +37,12 @@ f() { jq -r --arg k "$1" --arg d "${2:-}" 'if .[$k] == null then $d else .[$k] e
 primary=$(f primary); secondary=$(f secondary); bg=$(f background); fg=$(f foreground)
 inactive=$(f chip_battery); style=$(f border_style solid); angle=$(f border_angle 45)
 
-active="rgb(${primary#\#})"
+active="\"rgb(${primary#\#})\""
 if [[ "$style" == gradient || "$style" == rotating ]]; then
-    active="rgba(${primary#\#}ff) rgba(${secondary#\#}ff) ${angle}deg"
+    active="{ colors = { \"rgba(${primary#\#}ff)\", \"rgba(${secondary#\#}ff)\" }, angle = ${angle} }"
 fi
-hypr keyword general:col.active_border "$active"
-hypr keyword general:col.inactive_border "rgb(${inactive#\#})"
+# Hyprland >= 0.57: las opciones van en Lua (keyword ya no existe)
+hypr eval "hl.config({ general = { col = { active_border = ${active}, inactive_border = \"rgb(${inactive#\#})\" } } })"
 
 kitty @ set-colors --all background="$bg" foreground="$fg" cursor="$primary" \
     selection_background="$primary" selection_foreground="$bg" url_color="$primary" \

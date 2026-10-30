@@ -45,7 +45,7 @@ from textual.widgets import DataTable, Input  # noqa: E402
 # Raíz del repo: DOTFILES_DIR si está exportado; si no, un nivel arriba de tools/
 DOTFILES = Path(os.environ.get("DOTFILES_DIR") or Path(__file__).resolve().parents[1])
 CONFIG = DOTFILES / "config"
-HYPR_CONF = CONFIG / "hypr" / "hyprland.conf"
+HYPR_CONF = CONFIG / "hypr" / "hyprland.lua"
 HYPRSHELL_CONF = CONFIG / "hyprshell" / "config.ron"
 KITTY_CONF = CONFIG / "kitty" / "kitty.conf"
 # config.toml de herdr se genera desde la plantilla: los atajos se editan en el .tpl.
@@ -80,39 +80,87 @@ class Shortcut:
 
 # ── Parsers ──────────────────────────────────────────────────────────────
 
+def _lua_args(text: str) -> list[str]:
+    """Separa los argumentos de nivel superior de una llamada Lua (sin el
+    paréntesis de apertura): respeta comillas, (), {} y corta en el `)` que
+    cierra la llamada. Lo que sigue (un `-- comentario`) queda afuera."""
+    args, cur, depth, quote = [], "", 0, ""
+    for ch in text:
+        if quote:
+            cur += ch
+            quote = "" if ch == quote else quote
+        elif ch in "\"'":
+            cur, quote = cur + ch, ch
+        elif ch in "({":
+            cur, depth = cur + ch, depth + 1
+        elif ch in ")}":
+            if depth == 0:
+                break
+            cur, depth = cur + ch, depth - 1
+        elif ch == "," and depth == 0:
+            args.append(cur.strip())
+            cur = ""
+        else:
+            cur += ch
+    return [*args, cur.strip()] if cur.strip() else args
+
+
+# Variables de hyprland.lua que aparecen en las concatenaciones de comandos
+_LUA_VARS = {"home": "~", "SCRIPTS": "~/.config/hypr/scripts", "mainMod": "SUPER",
+             "dotfiles": "~/.local/share/dotfiles", "terminal": "$terminal", "browser": "$browser",
+             "file_manager": "$fileManager", "editor": "$editor"}
+
+
+def _lua_concat(expr: str) -> str:
+    """`home .. "/x.sh " .. SCRIPTS` -> "~/x.sh ~/dotfiles/hypr/scripts"."""
+    parts = re.findall(r'"((?:[^"\\]|\\.)*)"|(\w+)', expr)
+    return "".join(lit if lit or not var else _LUA_VARS.get(var, var) for lit, var in parts)
+
+
 def parse_hyprland() -> list[Shortcut]:
+    """Atajos de hypr/hyprland.lua: las líneas `exec(combo, cmd[, flags])` y
+    `hl.bind(combo, hl.dsp…)` con combo de una línea (los de los bucles — hjkl,
+    Super+N — se agregan abajo como solo lectura)."""
     out = []
     if not HYPR_CONF.exists():
         return out
     lines = HYPR_CONF.read_text().splitlines()
-    pat = re.compile(r"^(bind[a-z]*)\s*=\s*([^,]*),\s*([^,]+),\s*(.+)$")
+    pat = re.compile(r'^(?P<fn>hl\.bind|exec)\((?P<rest>\s*(?:mainMod\s*\.\.\s*)?".+)$')
     for i, line in enumerate(lines, start=1):
         m = pat.match(line.strip())
         if not m:
             continue
-        directive, mods, key, rest = m.groups()
-        action, _, comment = rest.partition("#")
-        combo = f"{mods.strip()}, {key.strip()}".strip(", ")
-        combo = combo.replace("$mainMod", "SUPER")
+        args = _lua_args(m["rest"])
+        # Combo literal (con o sin `mainMod ..`); los de los bucles (`.. key`) no
+        if len(args) < 2 or not re.fullmatch(r'(?:mainMod\s*\.\.\s*)?"[^"]+"', args[0]):
+            continue
+        cm = re.search(r'\)\s*--\s*(.*)$', m["rest"])
+        comment = cm[1] if cm else ""
+        parts = [p.strip() for p in _lua_concat(args[0]).split("+") if p.strip()]
+        key = parts[-1]
+        mods = " ".join(parts[:-1])
+        combo = f"{mods}, {key}" if mods else key
+        if m["fn"] == "exec":
+            action = _lua_concat(args[1])
+        elif args[1].startswith("function"):
+            action = "lua function"
+        else:
+            action = args[1].removeprefix("hl.dsp.")
 
-        def rewrite(orig_line: str, new_combo: str, _directive=directive) -> str:
+        def rewrite(orig_line: str, new_combo: str) -> str:
             new_mods, _, new_key = new_combo.rpartition(",")
-            new_mods = new_mods.strip().upper().replace("SUPER", "$mainMod") or ""
-            new_key = new_key.strip()
-            return re.sub(
-                rf"^({re.escape(_directive)}\s*=\s*)[^,]*,\s*[^,]+,",
-                lambda mm: f"{mm.group(1)}{new_mods}, {new_key},",
-                orig_line,
-                count=1,
-            )
+            lit = " + ".join([*new_mods.split(), new_key.strip()]).replace("mainMod", "SUPER")
+            indent = orig_line[:len(orig_line) - len(orig_line.lstrip())]
+            return indent + re.sub(r'^((?:hl\.bind|exec)\()\s*(?:mainMod\s*\.\.\s*)?"[^"]+"',
+                                   lambda mm: f'{mm.group(1)}"{lit}"', orig_line.lstrip(), count=1)
 
         out.append(Shortcut(
-            app="Hyprland", combo=combo, action=action.strip(),
-            description=comment.strip(), file=HYPR_CONF, line_no=i,
-            rewrite=rewrite, reload_hint="hyprctl reload",
+            app="Hyprland", combo=combo, action=action, description=comment.strip(),
+            file=HYPR_CONF, line_no=i, rewrite=rewrite, reload_hint="hyprctl reload",
         ))
 
-    # Atajos que NO son `bind =` en hyprland.conf: los gestos (`gesture =`) y
+    # Atajos que NO son una línea `exec`/`hl.bind` en hyprland.lua: los gestos
+    # (`hl.gesture`), los de los bucles y
     # los que registra hyprshell en runtime (hyprshell/config.ron). Solo
     # lectura: el parser de arriba no sabe reescribirlos.
     def _ro(combo: str, action: str, desc: str, file: Path, hint: str) -> None:
@@ -125,9 +173,13 @@ def parse_hyprland() -> list[Shortcut]:
     hs_hint = "not editable here — edit hyprshell/config.ron (reloads by itself)"
     _ro("SUPER, W", "hyprshell overview", "workspace overview + launcher", HYPRSHELL_CONF, hs_hint)
     _ro("ALT, Tab", "hyprshell switch", "switch window with previews (release Alt to confirm)", HYPRSHELL_CONF, hs_hint)
-    gs_hint = "not editable here — edit the `gesture =` lines in config/hypr/hyprland.conf"
+    gs_hint = "not editable here — edit the `hl.gesture` / loop binds in config/hypr/hyprland.lua"
     _ro("3 fingers ← →", "previous/next workspace", "touchpad gesture, follows the finger", HYPR_CONF, gs_hint)
     _ro("3 fingers ↑", "hyprshell overview", "touchpad gesture", HYPR_CONF, gs_hint)
+    _ro("SUPER, 1…0", "bring workspace N to this monitor", "Settings → Workspaces sets how many", HYPR_CONF, gs_hint)
+    _ro("SUPER SHIFT, 1…0", "move window to workspace N", "", HYPR_CONF, gs_hint)
+    _ro("SUPER SHIFT, h/j/k/l", "move window left/down/up/right", "", HYPR_CONF, gs_hint)
+    _ro("SUPER CTRL, h/j/k/l", "resize window", "", HYPR_CONF, gs_hint)
     return out
 
 
@@ -391,7 +443,11 @@ def save_shortcut(s: Shortcut, new_combo: str) -> None:
     lines = s.file.read_text().splitlines(keepends=False)
     idx = s.line_no - 1
     lines[idx] = s.rewrite(lines[idx], new_combo)
-    s.file.write_text("\n".join(lines) + "\n")
+    # Temporal + os.replace: Hyprland relee hyprland.lua al cambiar y no tiene
+    # que ver nunca un archivo a medio escribir
+    tmp = s.file.with_name(s.file.name + ".tmp")
+    tmp.write_text("\n".join(lines) + "\n")
+    os.replace(tmp, s.file)
 
 
 # ── UI ───────────────────────────────────────────────────────────────────

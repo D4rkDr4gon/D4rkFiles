@@ -1,17 +1,18 @@
 """Input — teclado, mouse y touchpad de Hyprland.
 
-Cada cambio se aplica en vivo (`hyprctl keyword input:…`) y se guarda como
-línea plana en ~/.config/dotfiles/hypr/settings.conf (common.hypr_set), así
-sobrevive al reinicio sin tocar el repo. La distribución y la variante de
-teclado además van a KB_LAYOUT / KB_VARIANT de user.conf (de ahí salen
-config/hypr/env.conf y la sesión de X11). enter edita (o alterna los on/off).
+Cada cambio se aplica en vivo (`hyprctl eval`, common.hypr_apply) y se guarda
+como línea plana en ~/.config/dotfiles/hypr/settings.conf (common.hypr_set), así
+sobrevive al reinicio sin tocar el repo. Sin override se muestra el valor vivo
+de Hyprland. La distribución y la variante de teclado además van a
+KB_LAYOUT / KB_VARIANT de user.conf (de ahí salen config/hypr/env.lua y la
+sesión de X11). enter edita (o alterna los on/off).
 """
 
 from __future__ import annotations
 
 from typing import Optional
 
-from common import hypr_get, hypr_set, run, sudo_run, user_conf_set
+from common import hypr_apply, hypr_get, hypr_set, run, sudo_run, user_conf_set
 from dtui import THEME, DView, Field, FormModal, Panel, Table, css
 from rich.text import Text
 from textual.app import ComposeResult
@@ -35,7 +36,7 @@ SETTINGS = [
 
 
 # Caps/Num/Scroll lock en el OSD: lo da el backend de libinput de SwayOSD, un servicio de
-# sistema (lee /dev/input como root), así que se prende con sudo y no vive en hyprland.conf.
+# sistema (lee /dev/input como root), así que se prende con sudo y no vive en hyprland.lua.
 OSD_UNIT = "swayosd-libinput-backend.service"
 OSD_KEY = "svc|lockosd"
 
@@ -92,9 +93,9 @@ class InputView(DView):
         return [("enter", "edit / toggle"), ("q", "quit")]
 
     def apply(self, block: str, key: str, value: str) -> None:
-        r = run(["hyprctl", "keyword", f"{block}:{key}", value])
-        if r.returncode != 0 or "error" in r.stdout.lower():
-            return self.app.notify_err(r.stdout.strip() or "hyprctl rejected the value")
+        ok, msg = hypr_apply(f"{block}:{key}", value)
+        if not ok:
+            return self.app.notify_err(msg or "hyprctl rejected the value")
         hypr_set(f"{block}:{key}", value)
         if key in ("kb_layout", "kb_variant"):
             user_conf_set(key.upper(), value)

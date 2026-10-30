@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""hypr-dispatch — `hyprctl dispatch` con la sintaxis vieja sobre Hyprland >= 0.57.
+
+0.57 sacó el formato hyprlang: `hyprctl dispatch` ahora recibe Lua
+(`hl.dsp.focus({ workspace = "2" })`). Este wrapper acepta los dispatchers de
+siempre (workspace, focuswindow, closewindow, movetoworkspace[silent],
+moveworkspacetomonitor, movewindowpixel, resizewindowpixel, setfloating, exec,
+dpms, exit) y los traduce, así los scripts no cambian de forma.
+Uso: hypr-dispatch <dispatcher> [argumentos…]
+
+Los scripts lo llaman por ruta absoluta ($HOME/.config/hypr/scripts/hypr-dispatch,
+~/.config/hypr enlaza a config/hypr):
+lo que lanza Hyprland (atajos, waybar, hypridle) hereda su PATH, sin ~/.local/bin.
+"""
+import json
+import re
+import subprocess
+import sys
+
+
+def lua(s: str) -> str:
+    return json.dumps(s, ensure_ascii=False)
+
+
+def split_window(arg: str) -> tuple[str, str | None]:
+    """"2,address:0x1" -> ("2", "address:0x1"); sin selector -> (arg, None)."""
+    head, sep, tail = arg.partition(",")
+    return (head.strip(), tail.strip()) if sep else (arg.strip(), None)
+
+
+def win(selector: str | None) -> str:
+    return f", window = {lua(selector)}" if selector else ""
+
+
+def translate(name: str, arg: str) -> str:
+    if name == "workspace":
+        return f"hl.dsp.focus({{ workspace = {lua(arg)} }})"
+    if name == "focuswindow":
+        return f"hl.dsp.focus({{ window = {lua(arg)} }})"
+    if name == "closewindow":
+        return f"hl.dsp.window.close({{ window = {lua(arg)} }})"
+    if name in ("movetoworkspace", "movetoworkspacesilent"):
+        ws, sel = split_window(arg)
+        follow = "true" if name == "movetoworkspace" else "false"
+        return f"hl.dsp.window.move({{ workspace = {lua(ws)}, follow = {follow}{win(sel)} }})"
+    if name == "moveworkspacetomonitor":
+        ws, mon = arg.split(None, 1)
+        return f"hl.dsp.workspace.move({{ workspace = {lua(ws)}, monitor = {lua(mon.strip())} }})"
+    if name in ("movewindowpixel", "resizewindowpixel"):
+        pos, sel = split_window(arg)           # "exact X Y,class:^(c)$"
+        m = re.match(r"exact\s+(-?\d+)\s+(-?\d+)$", pos)
+        if not m:
+            raise ValueError(f"{name}: se esperaba 'exact X Y', llegó {pos!r}")
+        fn = "move" if name == "movewindowpixel" else "resize"
+        return f"hl.dsp.window.{fn}({{ x = {m[1]}, y = {m[2]}, relative = false{win(sel)} }})"
+    if name == "setfloating":
+        return f"hl.dsp.window.float({{ action = \"enable\"{win(arg.strip() or None)} }})"
+    if name == "exec":
+        m = re.match(r"\[([^\]]*)\]\s*(.*)$", arg, re.S)   # "[workspace 2 silent] cmd"
+        if not m:
+            return f"hl.dsp.exec_cmd({lua(arg)})"
+        rules = []
+        for rule in filter(None, (r.strip() for r in m[1].split(";"))):
+            key, _, val = rule.partition(" ")
+            rules.append(f"{key} = {lua(val.strip())}" if val else f"{key} = true")
+        return f"hl.dsp.exec_cmd({lua(m[2])}, {{ {', '.join(rules)} }})"
+    if name == "dpms":
+        return f"hl.dsp.dpms({{ action = {lua('off' if arg.strip() == 'off' else 'on')} }})"
+    if name == "exit":
+        return "hl.dsp.exit()"
+    raise ValueError(f"dispatcher sin traducción: {name}")
+
+
+def main() -> int:
+    if len(sys.argv) < 2:
+        print(__doc__, file=sys.stderr)
+        return 2
+    try:
+        code = translate(sys.argv[1], " ".join(sys.argv[2:]))
+    except ValueError as e:
+        print(f"hypr-dispatch: {e}", file=sys.stderr)
+        return 2
+    r = subprocess.run(["hyprctl", "dispatch", code], capture_output=True, text=True)
+    out = (r.stdout + r.stderr).strip()
+    if out:
+        print(out)
+    return 0 if r.returncode == 0 and not out.lower().startswith("error") else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

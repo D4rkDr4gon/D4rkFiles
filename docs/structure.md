@@ -29,7 +29,7 @@
 
 | Necesitás… | Editá |
 |---|---|
-| Un atajo de Hyprland | `config/hypr/hyprland.conf` (o tu `~/.config/dotfiles/hypr/*.conf`) |
+| Un atajo de Hyprland | `config/hypr/hyprland.lua` (o tu `~/.config/dotfiles/hypr/*.conf` / `*.lua`) |
 | Un atajo de Qtile | `config/qtile/modules/keys.py` |
 | Colores o forma de un tema | `themes/<tema>/theme.json` |
 | Cómo se ve una app | su `*.tpl` en `config/<app>/` |
@@ -42,7 +42,7 @@
 
 Los archivos que dependen del tema o del usuario se generan desde una plantilla `.tpl`
 y **no se versionan** (están en `.gitignore`). Ejemplos: `config/kitty/colors.conf`,
-`config/waybar/style.css`, `config/hypr/theme.conf`, `config/hypr/env.conf`,
+`config/waybar/style.css`, `config/hypr/theme.lua`, `config/hypr/env.lua`,
 `config/dunst/dunstrc`, `system/sddm/dotfiles-ascii/Main.qml`.
 
 Si un archivo que querés editar tiene un `.tpl` al lado, **editá el `.tpl`**.

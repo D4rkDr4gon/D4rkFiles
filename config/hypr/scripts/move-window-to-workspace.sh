@@ -42,15 +42,15 @@ fi
 log "move-window: target=$TARGET_WS | monitor=$FOCUSED_MONITOR"
 
 # 1. Mover ventana al workspace en silencio (sin cambiar foco)
-hyprctl dispatch movetoworkspacesilent "$TARGET_WS"
+"$HOME/.config/hypr/scripts/hypr-dispatch" movetoworkspacesilent "$TARGET_WS"
 log "Window moved to workspace $TARGET_WS (silent)"
 
 # 2. Traer workspace al monitor actual
-hyprctl dispatch moveworkspacetomonitor "$TARGET_WS" "$FOCUSED_MONITOR"
+"$HOME/.config/hypr/scripts/hypr-dispatch" moveworkspacetomonitor "$TARGET_WS" "$FOCUSED_MONITOR"
 log "Workspace $TARGET_WS moved to $FOCUSED_MONITOR"
 
 # 3. Enfocar workspace
-hyprctl dispatch workspace "$TARGET_WS"
+"$HOME/.config/hypr/scripts/hypr-dispatch" workspace "$TARGET_WS"
 log "Focused workspace $TARGET_WS"
 
 exit 0

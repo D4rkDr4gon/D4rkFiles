@@ -8,7 +8,7 @@ query=$(rofi -dmenu -p "🌐 Search" -theme $HOME/.config/rofi/theme.rasi \
 encoded=$(echo "$query" | sed 's/ /+/g')
 
 if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
-    hyprctl dispatch workspace 5
+    "$HOME/.config/hypr/scripts/hypr-dispatch" workspace 5
 else
     qtile cmd-obj -o group "5" -f toscreen
 fi

@@ -24,4 +24,4 @@ case "${1:-next}" in
     *) echo "Uso: $0 next|prev" >&2; exit 1 ;;
 esac
 
-hyprctl dispatch workspace "$n" >/dev/null
+"$HOME/.config/hypr/scripts/hypr-dispatch" workspace "$n" >/dev/null

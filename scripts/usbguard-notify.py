@@ -6,7 +6,7 @@ Lee `usbguard watch` (IPC del daemon: el usuario tiene que estar en
 IPCAllowedUsers de /etc/usbguard/usbguard-daemon.conf, lo deja así Settings →
 USB guard). Acciones: permitir esta vez, permitir siempre (regla permanente) o
 dejarlo bloqueado. Sin usbguard instalado sale enseguida; si el daemon se cae,
-reintenta cada 30 s. Lo lanza exec-once en config/hypr/hyprland.conf.
+reintenta cada 30 s. Lo lanza el autostart de config/hypr/hyprland.lua.
 """
 
 from __future__ import annotations

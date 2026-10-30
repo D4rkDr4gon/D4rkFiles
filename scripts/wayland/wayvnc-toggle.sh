@@ -98,7 +98,8 @@ start() {
         sleep 0.5
     fi
     # Setear resolución y posicionarlo a la derecha de los monitores existentes
-    hyprctl keyword monitor "$OUTPUT_NAME,$RES@60,auto-right,1" >/dev/null
+    # Hyprland >= 0.57: los monitores se configuran en Lua (keyword ya no existe)
+    hyprctl eval "hl.monitor({ output = \"$OUTPUT_NAME\", mode = \"$RES@60\", position = \"auto-right\", scale = 1 })" >/dev/null
 
     echo "Iniciando wayvnc en $ip:$PORT (output $OUTPUT_NAME)..."
     nohup wayvnc -C "$CONFIG" -o "$OUTPUT_NAME" "$ip" "$PORT" \

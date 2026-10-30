@@ -23,7 +23,7 @@ case "$CHOICE" in
   ;;
 "Logout")
   if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
-    hyprctl dispatch exit
+    "$HOME/.config/hypr/scripts/hypr-dispatch" exit
   else
     qtile cmd-obj -o cmd -f shutdown
   fi

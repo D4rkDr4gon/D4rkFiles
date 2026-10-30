@@ -91,8 +91,8 @@ mascota (mostrar/ajustes) · `Shift+r`/`Shift+q` cuotas de agentes (refrescar/aj
 
 ## Personalizar
 
-Editá `config/hypr/hyprland.conf` o `config/qtile/modules/keys.py`, o agregá los tuyos en
-`~/.config/dotfiles/hypr/*.conf` (ver [customization.md](customization.md)).
+Editá `config/hypr/hyprland.lua` o `config/qtile/modules/keys.py`, o agregá los tuyos en
+`~/.config/dotfiles/hypr/*.conf` o `*.lua` (ver [customization.md](customization.md)).
 
 ## Teclas de Settings y las TUIs
 

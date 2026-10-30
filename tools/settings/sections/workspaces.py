@@ -1,11 +1,9 @@
 """Workspaces — cuántos hay habilitados y a cuál ir.
 
-config/hypr/hyprland.conf (del repo, solo lectura) trae Super+1..9 (traer y
-enfocar) y Super+Shift+1..9 (mover la ventana). La cantidad elegida (1–10) se
-guarda en ~/.config/dotfiles/hypr/workspaces.conf, que hyprland.conf incluye
-al final (`source = ~/.config/dotfiles/hypr/*.conf`): `unbind` de los atajos
-que sobran, el bind del 10 (tecla 0) si hace falta, y la línea `# count: N`
-que leen el indicador de waybar (config/hypr/scripts/hypr-workspaces.py),
+La cantidad elegida (1–10) se guarda en la línea `# count: N` de
+~/.config/dotfiles/hypr/workspaces.conf. La leen config/hypr/hyprland.lua (arma
+en un bucle Super+1..N, traer y enfocar, y Super+Shift+1..N, mover la ventana;
+el 10 es la tecla 0), el indicador de waybar (config/hypr/scripts/hypr-workspaces.py),
 Ctrl+Tab y la rueda sobre waybar (config/hypr/scripts/workspace-cycle.sh, dan
 la vuelta en 1..N) y el switcher de rofi. Sin el archivo rigen los 9 de siempre.
 
@@ -25,7 +23,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from common import CONF_DIR, DOTFILES, HYPR_USER_DIR, HYPRLAND, atomic_write, detach, run
+from common import CONF_DIR, DOTFILES, HYPR_DISPATCH, HYPR_USER_DIR, HYPRLAND, atomic_write, detach, run
 from dtui import THEME, Card, ConfirmModal, DView, Panel, Table, ago, css
 from rich.text import Text
 from textual import work
@@ -68,19 +66,13 @@ def ws_count() -> int:
 
 
 def write_ws_conf(n: int) -> None:
-    """Genera ~/.config/dotfiles/hypr/workspaces.conf para n workspaces: los
-    atajos 1..9 vienen de hyprland.conf; acá se sacan los que sobran (unbind) y
-    se agrega el 10 (tecla 0)."""
+    """Genera ~/.config/dotfiles/hypr/workspaces.conf para n workspaces (solo la
+    línea count: los atajos los arma hyprland.lua con ese número)."""
     lines = ["# workspaces.conf — generado por Settings → Workspaces (tools/settings/sections/workspaces.py).",
-             "# No editar a mano: se reescribe al cambiar la cantidad. Lo incluye hyprland.conf",
-             "# (source = ~/.config/dotfiles/hypr/*.conf). La línea count la leen el indicador de",
+             "# No editar a mano: se reescribe al cambiar la cantidad. La línea count la leen",
+             "# config/hypr/hyprland.lua (atajos Super+N y Super+Shift+N), el indicador de",
              "# waybar, workspace-cycle.sh y el switcher de rofi.",
-             f"# count: {n}", ""]
-    for i in range(n + 1, DEFAULT_WS + 1):
-        lines += [f"unbind = $mainMod, {i}", f"unbind = $mainMod SHIFT, {i}"]
-    if n >= 10:
-        lines += ["bind = $mainMod, 0, exec, $SCRIPTS_DIR/move-and-focus-workspace.sh 10",
-                  "bind = $mainMod SHIFT, 0, exec, $SCRIPTS_DIR/move-window-to-workspace.sh 10"]
+             f"# count: {n}"]
     atomic_write(WS_CONF, "\n".join(lines) + "\n")
 
 
@@ -97,7 +89,7 @@ def hypr_state() -> tuple[dict[int, dict], Optional[int], list[dict]]:
 
 def goto_workspace(ws: int) -> None:
     if HYPRLAND:
-        run(["hyprctl", "dispatch", "workspace", str(ws)])
+        run([HYPR_DISPATCH, "workspace", str(ws)])
     else:
         run(["qtile", "cmd-obj", "-o", "group", str(ws), "-f", "toscreen"])
 
@@ -266,7 +258,7 @@ class WorkspacesView(DView):
         def done(yes: bool) -> None:
             if yes:
                 for c in stranded:
-                    run(["hyprctl", "dispatch", "movetoworkspacesilent", f"{n},address:{c['address']}"])
+                    run([HYPR_DISPATCH, "movetoworkspacesilent", f"{n},address:{c['address']}"])
             self.save(n)
 
         self.app.push_screen(ConfirmModal(f"Use {n} workspaces",

@@ -130,7 +130,7 @@ restart_firefox() {
         return 0
     fi
     if [[ -n "$ws" ]]; then
-        hyprctl dispatch exec "[workspace $ws silent] firefox" >/dev/null 2>&1 || true
+        "$HOME/.config/hypr/scripts/hypr-dispatch" exec "[workspace $ws silent] firefox" >/dev/null 2>&1 || true
     else
         setsid -f firefox >/dev/null 2>&1 || true
     fi

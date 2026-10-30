@@ -6,16 +6,17 @@ Las secciones se importan desde settings_tui.py y se registran en CATEGORIES.
 Estilo común de las TUIs: tools/dtui.py. Textos visibles en inglés.
 
 Settings nunca edita archivos versionados del repo:
-- Hyprland: los cambios (input, cursor) van como líneas planas
-  (`input:sensitivity = 0.2`, `env = XCURSOR_SIZE,24`) a
-  ~/.config/dotfiles/hypr/settings.conf, que hyprland.conf incluye al final
-  (`source = ~/.config/dotfiles/hypr/*.conf`) y por eso gana. Las apps de
-  inicio propias van a autostart.conf, en la misma carpeta.
+- Hyprland (>= 0.57, config en Lua): los cambios (input, cursor) se aplican en
+  vivo con `hyprctl eval` y se guardan como líneas planas
+  (`input:sensitivity = 0.2`, `env = XCURSOR_SIZE,24`) en
+  ~/.config/dotfiles/hypr/settings.conf, que config/hypr/lib/user_conf.lua
+  traduce al cargar hyprland.lua (al final, por eso gana). Las apps de inicio
+  propias van a autostart.conf, en la misma carpeta.
 - Temas: lo que se edita (Theme editor, Appearance, Fonts) se guarda en
   ~/.config/dotfiles/themes/<tema>/; si el tema es del repo se copia ahí
   primero. theme-switch.sh busca ahí antes que en themes/ del repo.
 - Teclado: KB_LAYOUT / KB_VARIANT de ~/.config/dotfiles/user.conf (de donde
-  se genera config/hypr/env.conf) + settings.conf para que gane al instante.
+  se genera config/hypr/env.lua) + settings.conf para que gane al instante.
 """
 
 from __future__ import annotations
@@ -41,7 +42,10 @@ STATE_HOME = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/stat
 DATA_HOME = Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share")
 CONF_DIR = CONFIG_HOME / "dotfiles"
 USER_CONF = CONF_DIR / "user.conf"
-HYPR_CONF = DOTFILES / "config" / "hypr" / "hyprland.conf"      # del repo: solo lectura
+HYPR_LUA = DOTFILES / "config" / "hypr" / "hyprland.lua"        # del repo: solo lectura
+# Dispatchers con la sintaxis de siempre sobre Hyprland >= 0.57. Ruta absoluta:
+# Settings corre con el PATH de Hyprland, que no tiene ~/.local/bin.
+HYPR_DISPATCH = str(DOTFILES / "config" / "hypr" / "scripts" / "hypr-dispatch")
 HYPR_USER_DIR = CONF_DIR / "hypr"
 SETTINGS_CONF = HYPR_USER_DIR / "settings.conf"                  # lo escribe Settings
 AUTOSTART_CONF = HYPR_USER_DIR / "autostart.conf"                # apps de inicio propias
@@ -210,17 +214,17 @@ def settings_hidden(app):
         except ValueError:
             pass
     if addr:
-        run(["hyprctl", "dispatch", "movetoworkspacesilent", f"special:dotfiles-hide,address:{addr}"])
+        run([HYPR_DISPATCH, "movetoworkspacesilent", f"special:dotfiles-hide,address:{addr}"])
         time.sleep(0.35)   # que el compositor redibuje sin la ventana
     try:
         yield
     finally:
         if addr:
-            run(["hyprctl", "dispatch", "movetoworkspace", f"{ws},address:{addr}"])
-            run(["hyprctl", "dispatch", "focuswindow", f"address:{addr}"])
+            run([HYPR_DISPATCH, "movetoworkspace", f"{ws},address:{addr}"])
+            run([HYPR_DISPATCH, "focuswindow", f"address:{addr}"])
 
 
-# ── Hyprland: lectura del repo + overrides en settings.conf ──
+# ── Hyprland: overrides en settings.conf + valores vivos ──
 
 def _flat_get(text: str, key: str) -> Optional[str]:
     # [ \t] y no \s: con un valor vacío, \s saltaba a la línea siguiente
@@ -261,21 +265,55 @@ def _conf_get(path: Path, key: str) -> Optional[str]:
 
 
 def _chain() -> list[Path]:
-    """Archivos de Hyprland en orden de prioridad (el primero que define gana)."""
-    # Hyprland los incluye en orden alfabético: el último que define gana
+    """Overrides del usuario en orden de prioridad (el primero que define gana)."""
+    # user_conf.lua los carga en orden alfabético: el último que define gana
     # (settings.conf incluido; un override propio con nombre posterior le gana)
-    user = sorted(HYPR_USER_DIR.glob("*.conf"), reverse=True)
-    return [*user, HYPR_CONF.with_name("env.conf"), HYPR_CONF]
+    return sorted(HYPR_USER_DIR.glob("*.conf"), reverse=True)
+
+
+def _live_option(key: str) -> Optional[str]:
+    """Valor vivo de una opción (`hyprctl getoption -j`): lo que puso hyprland.lua
+    o el default de Hyprland. None si Hyprland no corre."""
+    if not HYPRLAND:
+        return None
+    try:
+        opt = json.loads(run(["hyprctl", "getoption", key.replace("-", "_"), "-j"]).stdout)
+    except ValueError:
+        return None
+    if "bool" in opt:
+        return "true" if opt["bool"] else "false"
+    if "float" in opt:
+        return f"{opt['float']:g}"
+    if "int" in opt:
+        return str(opt["int"])
+    if "str" in opt:
+        return "" if opt["str"] == "[[EMPTY]]" else opt["str"]
+    return None
 
 
 def hypr_get(key: str) -> Optional[str]:
     """Valor efectivo de una opción: overrides del usuario (settings.conf,
-    local.conf…) > env.conf / hyprland.conf del repo."""
+    local.conf…) > valor vivo de Hyprland (hyprland.lua / default)."""
     for path in _chain():
         v = _conf_get(path, key)
         if v is not None:
             return v
-    return None
+    return _live_option(key)
+
+
+def _lua_value(v: str) -> str:
+    if v in ("true", "false") or re.fullmatch(r"-?\d+(\.\d+)?", v):
+        return v
+    return json.dumps(v, ensure_ascii=False)
+
+
+def hypr_apply(key: str, value: str) -> tuple[bool, str]:
+    """Aplica `input:touchpad:natural_scroll = true` en vivo (hyprctl eval;
+    Hyprland >= 0.57 ya no tiene `keyword`). (ok, mensaje de Hyprland)."""
+    path = key.replace(":", ".").replace("-", "_")
+    r = run(["hyprctl", "eval", f'hl.config({{ ["{path}"] = {_lua_value(value)} }})'])
+    out = (r.stdout + r.stderr).strip()
+    return r.returncode == 0 and not out.lower().startswith("error"), out
 
 
 def hypr_set(key: str, value: str) -> None:
@@ -284,7 +322,7 @@ def hypr_set(key: str, value: str) -> None:
         lines = SETTINGS_CONF.read_text().splitlines()
     except OSError:
         lines = ["# settings.conf — lo escribe Settings (tools/settings). Se puede editar",
-                 "# a mano; gana sobre config/hypr/hyprland.conf porque se incluye al final.", ""]
+                 "# a mano; gana sobre config/hypr/hyprland.lua porque se carga al final.", ""]
     pat = re.compile(rf"^[ \t]*{re.escape(key)}[ \t]*=")
     for i, l in enumerate(lines):
         if pat.match(l):
@@ -296,7 +334,7 @@ def hypr_set(key: str, value: str) -> None:
 
 
 def env_get(name: str) -> str:
-    """`env = NAME,valor` efectivo (settings.conf > overrides > repo)."""
+    """`env = NAME,valor` efectivo (settings.conf > overrides > hl.env del repo)."""
     for path in _chain():
         try:
             found = re.findall(rf"^[ \t]*env[ \t]*=[ \t]*{name}[ \t]*,[ \t]*(.+?)[ \t]*$", path.read_text(), re.M)
@@ -304,7 +342,11 @@ def env_get(name: str) -> str:
             continue
         if found:
             return found[-1]
-    return ""
+    try:
+        m = re.search(rf'hl\.env\(\s*"{re.escape(name)}"\s*,\s*"([^"]*)"', HYPR_LUA.read_text())
+    except OSError:
+        return ""
+    return m.group(1) if m else ""
 
 
 def env_set(name: str, value: str) -> None:

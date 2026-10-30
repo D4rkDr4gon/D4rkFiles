@@ -1,7 +1,8 @@
-"""Startup apps — lo que arranca con la sesión de Hyprland (`exec-once`).
+"""Startup apps — lo que arranca con la sesión de Hyprland.
 
 Dos grupos:
-- Del repo (config/hypr/hyprland.conf): solo lectura; x las corre ahora.
+- Del repo (tabla `autostart` de config/hypr/hyprland.lua): solo lectura; x las
+  corre ahora.
 - Propias (~/.config/dotfiles/hypr/autostart.conf, fuera del repo): a agrega,
   enter prende/apaga (comenta la línea con el marcador `#off#`), d borra.
 
@@ -14,7 +15,7 @@ from __future__ import annotations
 import re
 from typing import Optional
 
-from common import AUTOSTART_CONF, HYPR_CONF, atomic_write, run, tilde
+from common import AUTOSTART_CONF, DOTFILES, HYPR_DISPATCH, HYPR_LUA, atomic_write, run, tilde
 from dtui import THEME, ConfirmModal, DView, Field, FormModal, Panel, Table, css
 from rich.text import Text
 from textual.app import ComposeResult
@@ -22,20 +23,31 @@ from textual.binding import Binding
 from textual.widgets import DataTable
 
 LINE = re.compile(r"^(?P<off>#off#\s*)?exec-once\s*=\s*(?P<cmd>.*?)(?:\s+#\s*(?P<note>.*))?$")
+# Una entrada de la tabla `autostart` de hyprland.lua: `"cmd",  -- nota`
+LUA_LINE = re.compile(r'^"(?P<cmd>(?:[^"\\]|\\.)*)",\s*(?:--\s*(?P<note>.*))?$')
 HEADER = ["# autostart.conf — apps de inicio propias (Settings → Startup apps).",
-          "# Se incluye desde config/hypr/hyprland.conf. `#off#` = apagada desde Settings.", ""]
+          "# Lo carga config/hypr/lib/user_conf.lua. `#off#` = apagada desde Settings.", ""]
 
 
 def entries(path, user: bool) -> list[dict]:
+    """Apps de inicio de autostart.conf (user) o de la tabla `autostart` de hyprland.lua."""
     try:
         lines = path.read_text().splitlines()
     except OSError:
         return []
-    out = []
+    out, in_table = [], False
     for i, line in enumerate(lines):
-        m = LINE.match(line.strip())
-        if m and (user or not m.group("off")):
-            out.append({"line": i, "user": user, "on": not m.group("off"), "cmd": m.group("cmd").strip(),
+        line = line.strip()
+        if not user:
+            in_table = (in_table or line.startswith("local autostart = {")) and line != "}"
+            m = LUA_LINE.match(line) if in_table else None
+            if m:
+                cmd = re.sub(r'\\(.)', r"\1", m.group("cmd"))
+                out.append({"line": i, "user": False, "on": True, "cmd": cmd, "note": (m.group("note") or "").strip()})
+            continue
+        m = LINE.match(line)
+        if m:
+            out.append({"line": i, "user": True, "on": not m.group("off"), "cmd": m.group("cmd").strip(),
                         "note": (m.group("note") or "").strip()})
     return out
 
@@ -65,7 +77,7 @@ class StartupView(DView):
         t = self.query_one("#startup", Table)
         prev = t.selected_key()
         t.clear()
-        mine, repo = entries(AUTOSTART_CONF, True), entries(HYPR_CONF, False)
+        mine, repo = entries(AUTOSTART_CONF, True), entries(HYPR_LUA, False)
         self.items = {f"user:{e['line']}": e for e in mine} | {f"repo:{e['line']}": e for e in repo}
         primary, muted = THEME["primary"], THEME["muted"]
         t.add_row("", Text("YOURS", style=f"bold {primary}"), Text("~/.config/dotfiles/hypr/autostart.conf",
@@ -76,7 +88,7 @@ class StartupView(DView):
                       Text(e["note"], style=muted), key=f"user:{e['line']}")
         t.add_row("", Text("+  Add a startup app…", style=primary), "", key="add")
         t.add_row("", Text("FROM THE REPO", style=f"bold {primary}"),
-                  Text("read only · config/hypr/hyprland.conf", style=muted), key="hdr:repo")
+                  Text("read only · config/hypr/hyprland.lua", style=muted), key="hdr:repo")
         for e in repo:
             t.add_row(Text("●", style=muted), Text(e["cmd"].replace("$HOME", "~"), style=muted),
                       Text(e["note"], style=muted), key=f"repo:{e['line']}")
@@ -111,7 +123,7 @@ class StartupView(DView):
         if not e:
             return
         if not e["user"]:
-            return self.app.notify_err("Repo entries are read only: edit config/hypr/hyprland.conf")
+            return self.app.notify_err("Repo entries are read only: edit config/hypr/hyprland.lua")
         self.set_line(e["line"], not e["on"])
         self.app.notify_ok(f"{'Off' if e['on'] else 'On'} at next login: {e['cmd'].split()[0]}")
         self.reload()
@@ -147,5 +159,5 @@ class StartupView(DView):
 
     def action_run_now(self) -> None:
         if e := self.current():
-            run(["hyprctl", "dispatch", "exec", e["cmd"].replace("$dotfiles", str(HYPR_CONF.parents[2]))])
+            run([HYPR_DISPATCH, "exec", e["cmd"].replace("$dotfiles", str(DOTFILES))])
             self.app.notify_ok(f"Started: {e['cmd'].split()[0]}")

@@ -33,10 +33,10 @@ Campos opcionales de `theme.json` (defaults = como se veía todo antes; tabla en
 
 - Lo más fácil: Settings → Appearance / Fonts & cursor. Editan una **copia** del tema en `~/.config/dotfiles/themes/`
   (nunca `themes/` del repo) y reaplican.
-- A mano: editá esa copia (o tu tema) y `theme <tema>`. Llegan a Hyprland por `config/hypr/theme.conf.tpl`; los presets
-  de animación son `config/hypr/animations/<preset>.conf`. No pongas gaps/borde/sombra/animaciones en `hyprland.conf`:
-  `theme.conf` se carga antes y quedaría pisado.
-- Validar: `Hyprland --verify-config -c ~/.config/hypr/hyprland.conf`.
+- A mano: editá esa copia (o tu tema) y `theme <tema>`. Llegan a Hyprland por `config/hypr/theme.lua.tpl`; los presets
+  de animación son `config/hypr/animations/<preset>.lua`. No pongas gaps/borde/sombra/animaciones en `hyprland.lua`:
+  `theme.lua` se carga después y lo pisaría.
+- Validar: `Hyprland --verify-config -c ~/.config/hypr/hyprland.lua` (no valida los argumentos de `hl.dsp.*`).
 
 ## Monitores
 

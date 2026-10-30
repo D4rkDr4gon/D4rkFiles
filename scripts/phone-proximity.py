@@ -11,7 +11,7 @@ Para no bloquear de más:
 - Nunca si kdeconnectd no está en el bus, si la compu no tiene red (sin ruta
   por defecto el teléfono "desaparece" aunque esté al lado) o si ya hay lock.
 Bloquea con `loginctl lock-session` (hypridle corre su lock_cmd). Lo lanza
-exec-once en hypr/hyprland.conf; con proximity_lock=off solo relee la config.
+autostart de config/hypr/hyprland.lua; con proximity_lock=off solo relee la config.
 """
 
 from __future__ import annotations
