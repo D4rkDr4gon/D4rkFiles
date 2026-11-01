@@ -124,8 +124,15 @@ Settings y el historial del portapapeles (`Mod+V`) ya no son menús de rofi: son
   - `dwlib.py`: lógica sin GTK. Config en `~/.config/dotfiles/desktop-widgets.conf` (la escribe Settings →
     Desktop widgets; sin ese archivo: todo prendido al centro y el clima sin ciudad), todo y caches en
     `~/.local/state/dotfiles/desktop-widgets/`. Para probar: `DESKTOP_WIDGETS_CONF` / `DESKTOP_WIDGETS_STATE`.
-  - Estilo: `config/desktop-widgets/style.css.tpl` (rampa `chip_*`, `radius`, `font_ui_or_mono`,
-    `font_mono`). Config, estilo y todo se releen en caliente; si se toca el `.py`, reiniciar el daemon.
+  - Estilo: `config/desktop-widgets/style.css.tpl` (rampa `chip_*`, `radius`, `font_mono`). Mismo aspecto
+    que las TUIs: cada tarjeta es un `Panel` de `tools/dtui.py` — fondo `background`, borde redondeado de
+    1 px en `dw_border` (`foreground` al 22 % sobre `background`, derivado en el CSS con `mix()`) y el
+    título sin ícono cortando la línea de arriba; con el mouse encima, borde y título en `primary`. El borde
+    lo dibuja `Card` con cairo (un `GtkFrame` no corta la línea detrás del título). Todo en `font_mono`;
+    barras de texto (`TextBar`): `▓░` con color por nivel para medidores (como `meter10`), `█░` en
+    `primary` para avance (música, pomodoro). Filas del todo y la agenda con hover en `chip_battery`, el
+    campo del todo como un `Input` (`chip_battery`, `chip_wlan` con foco). Config, estilo y todo se releen
+    en caliente; si se toca el `.py`, reiniciar el daemon.
 
 ## Pantalla de bloqueo y login
 

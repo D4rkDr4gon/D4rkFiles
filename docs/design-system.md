@@ -7,8 +7,8 @@ escritorio sin tocar ninguna config a mano.
 ## Principios
 
 1. **Sin bordes decorativos.** La jerarquía sale de superficies y espacio, no de marcos.
-   Excepciones: el borde de ventana de Hyprland (color de foco) y los paneles de las TUIs
-   (ver [TUIs](#tuis)).
+   Excepciones: el borde de ventana de Hyprland (color de foco), los paneles de las TUIs
+   (ver [TUIs](#tuis)) y los widgets de escritorio, que los imitan.
 2. **Un solo radio.** `radius` del tema se usa en Hyprland, waybar, dunst, rofi, OSDs,
    gtklock, etc. Los contenedores externos usan `radius + 4` (token `@radius_outer@`).
 3. **El acento es un relleno de estado, no decoración.** `primary` marca selección,
@@ -36,6 +36,11 @@ la misma vista se abre suelta (waybar, atajos) o como sección de
 [Settings](settings.md). Por eso una vista no busca widgets de la app: publica sus atajos con
 `hints()` + `update_hints()`, usa `self.app.push_screen`/`notify_ok`/`suspend`, declara el widget
 inicial en `FOCUS` y pausa sus timers con `visible_now` cuando su sección no se ve.
+
+Los **widgets de escritorio** (`config/desktop-widgets/`, GTK3) copian esta misma forma aunque no
+sean Textual: tarjeta = `Panel` (borde redondeado con el título cortando la línea, `primary` con el
+mouse encima), barras de bloques `▓░`/`█░` y filas con hover en `chip_battery` (detalle en
+[components.md](components.md)).
 
 | Pieza | Regla |
 |---|---|

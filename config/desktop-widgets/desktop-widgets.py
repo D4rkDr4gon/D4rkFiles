@@ -64,6 +64,8 @@ HERE = Path(__file__).resolve().parent
 STYLE_PATH = Path(os.environ.get("DESKTOP_WIDGETS_STYLE", HERE / "style.css"))
 NAMESPACE = "desktop-widgets"
 ART_SIZE = 72
+CARD_ALPHA = 0.92                         # opacidad del fondo de las tarjetas
+METER_WIDTH = 14                          # bloques de las barras de texto
 TODO_MAX = 8
 COLUMN_MARGIN = 24          # separación de las zonas con los bordes (waybar ya reserva su zona)
 BAR_RESERVE = 40            # alto de waybar (+ aire) que no pueden usar las columnas
@@ -443,31 +445,117 @@ def set_classes(widget: Gtk.Widget, on: str, choices=("ok", "warn", "error")) ->
         ctx.add_class(on)
 
 
-def card(title: str) -> tuple[Gtk.Box, Gtk.Box]:
-    outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
-    outer.get_style_context().add_class("card")
-    outer.pack_start(label(title.upper(), "card-title"), False, False, 0)
-    body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-    outer.pack_start(body, True, True, 0)
-    return outer, body
+class Card(Gtk.EventBox):
+    """Tarjeta con la forma de un Panel de las TUIs (dtui.py): fondo, borde
+    redondeado de 1 px y el título montado sobre la línea de arriba, cortándola
+    (╭─ Title ───╮). Con el mouse encima, borde y título van en primary, como el
+    panel con foco. Se dibuja a mano: GtkFrame no corta el borde detrás del
+    título. Colores de style.css (dw_bg, dw_border, dw_accent) y radio de
+    `.card { border-radius }` (style.css, renderizado desde style.css.tpl)."""
+
+    def __init__(self, title: str):
+        super().__init__()
+        self.get_style_context().add_class("card")
+        self.add_events(Gdk.EventMask.ENTER_NOTIFY_MASK | Gdk.EventMask.LEAVE_NOTIFY_MASK)
+        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.title = label(f" {title} ", "card-title")
+        self.title.set_halign(Gtk.Align.START)
+        self.body = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
+        self.body.get_style_context().add_class("card-body")
+        box.pack_start(self.title, False, False, 0)
+        box.pack_start(self.body, True, True, 0)
+        self.add(box)
+        self.connect("draw", self.on_draw)
+        self.connect("enter-notify-event", self.on_cross, True)
+        self.connect("leave-notify-event", self.on_cross, False)
+
+    def on_cross(self, _w, ev, inside: bool) -> bool:
+        # Pasar a un hijo (botón, fila del todo) no es salir de la tarjeta
+        if ev.detail != Gdk.NotifyType.INFERIOR:
+            set_classes(self, "hover" if inside else "", ("hover",))
+            self.queue_draw()
+        return False
+
+    def color(self, name: str) -> Gdk.RGBA:
+        ok, c = self.get_style_context().lookup_color(name)
+        return c if ok else Gdk.RGBA(0.5, 0.5, 0.5, 1)
+
+    def on_draw(self, _w, cr) -> bool:
+        ctx = self.get_style_context()
+        w, h = self.get_allocated_width(), self.get_allocated_height()
+        t = self.title.get_allocation()
+        top = t.y + t.height / 2 + 0.5
+        r = float(ctx.get_property("border-radius", ctx.get_state()) or 0)
+        r = min(r, (h - top) / 2, w / 2)
+        x0, y0, x1, y1 = 0.5, top, w - 0.5, h - 0.5
+
+        def path():
+            cr.new_sub_path()
+            cr.arc(x1 - r, y0 + r, r, -1.5708, 0)
+            cr.arc(x1 - r, y1 - r, r, 0, 1.5708)
+            cr.arc(x0 + r, y1 - r, r, 1.5708, 3.1416)
+            cr.arc(x0 + r, y0 + r, r, 3.1416, 4.7124)
+            cr.close_path()
+
+        bg = self.color("dw_bg")
+        cr.set_source_rgba(bg.red, bg.green, bg.blue, CARD_ALPHA)
+        path()
+        cr.fill()
+        # Borde con un hueco detrás del título
+        cr.save()
+        cr.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
+        cr.rectangle(0, 0, w, h)
+        cr.rectangle(t.x, 0, t.width, top + 2)
+        cr.clip()
+        line = self.color("dw_accent" if ctx.has_class("hover") else "dw_border")
+        cr.set_source_rgba(line.red, line.green, line.blue, 1)
+        cr.set_line_width(1)
+        path()
+        cr.stroke()
+        cr.restore()
+        return False
+
+
+def card(title: str) -> tuple[Card, Gtk.Box]:
+    c = Card(title)
+    return c, c.body
+
+
+class TextBar(Gtk.Box):
+    """Barra de bloques en texto, como las de las TUIs: lleno en el color de
+    la clase (ok/warn/error/accent) y el resto en el color del borde."""
+
+    def __init__(self, width: int = METER_WIDTH, fill: str = "▓", cls: str = "accent"):
+        super().__init__(orientation=Gtk.Orientation.HORIZONTAL)
+        self.width, self.fill = width, fill
+        self.full = label("", "mono bar-full " + cls)
+        self.empty = label("░" * width, "mono bar-empty")
+        self.pack_start(self.full, False, False, 0)
+        self.pack_start(self.empty, False, False, 0)
+
+    def update(self, frac: float, cls: str | None = None) -> None:
+        n = int(round(max(0.0, min(1.0, frac)) * self.width))
+        self.full.set_text(self.fill * n)
+        self.empty.set_text("░" * (self.width - n))
+        if cls is not None:
+            set_classes(self.full, cls, ("ok", "warn", "error", "accent"))
 
 
 class Meter(Gtk.Box):
-    """Fila "CPU [=====    ] 34%" con color por nivel."""
+    """Fila "CPU ▓▓▓▓░░░░░░ 34%" con color por nivel (meter10 de dtui)."""
 
     def __init__(self, name: str):
         super().__init__(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
         self.name = label(name, "muted mono", width=6)
-        self.bar = Gtk.ProgressBar()
-        self.bar.set_valign(Gtk.Align.CENTER)
+        self.bar = TextBar(cls="ok")
         self.value = label("", "text value", xalign=1.0, width=12)
         self.pack_start(self.name, False, False, 0)
-        self.pack_start(self.bar, True, True, 0)
-        self.pack_start(self.value, False, False, 0)
+        self.pack_start(self.bar, False, False, 0)
+        self.pack_start(self.value, True, True, 0)
 
     def update(self, pct: float | None, text: str, cls: str | None = None) -> None:
-        self.bar.set_fraction(max(0.0, min(1.0, (pct or 0) / 100)))
-        set_classes(self.bar, dwlib.level(pct or 0) if cls is None else cls)
+        # Debajo de warn la barra va en ok, como meter10
+        self.bar.update((pct or 0) / 100, (dwlib.level(pct or 0) if cls is None else cls) or "ok")
         self.value.set_text(text)
 
 
@@ -697,7 +785,7 @@ def build_clock(hub: Hub, xalign: float = 0.5) -> Gtk.Widget:
 
 
 def build_music(hub: Hub) -> Gtk.Widget:
-    outer, body = card("󰎆  Now playing")
+    outer, body = card("Now playing")
     row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
     art = Gtk.Image()
     art.set_name("music-art")
@@ -711,7 +799,7 @@ def build_music(hub: Hub) -> Gtk.Widget:
     info.pack_start(badge, False, False, 0)
     title = label("", "text", ellipsize=True, width=26)
     artist = label("", "muted", ellipsize=True, width=26)
-    bar = Gtk.ProgressBar()
+    bar = TextBar(26, "█")
     times = label("", "muted mono")
     info.pack_start(title, False, False, 0)
     info.pack_start(artist, False, False, 0)
@@ -802,7 +890,7 @@ def build_music(hub: Hub) -> Gtk.Widget:
 
     def upd_pos(pos: float):
         if state["length"]:
-            bar.set_fraction(min(1.0, pos / state["length"]))
+            bar.update(pos / state["length"])
             times.set_text(f"{fmt_time(pos)} / {fmt_time(state['length'])}")
 
     def upd_app(app):
@@ -824,7 +912,7 @@ def build_music(hub: Hub) -> Gtk.Widget:
 
 def build_weather(hub: Hub) -> Gtk.Widget:
     city = hub.conf.get("weather_city", "")
-    outer, body = card("󰖐  Weather" + (f" · {city}" if city else ""))
+    outer, body = card("Weather" + (f" · {city}" if city else ""))
     top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
     icon = label("", "big mono")
     icon.get_style_context().add_class("weather-icon")
@@ -873,7 +961,7 @@ def build_weather(hub: Hub) -> Gtk.Widget:
 
 
 def build_system(hub: Hub) -> Gtk.Widget:
-    outer, body = card("󰍛  System")
+    outer, body = card("System")
     cpu, mem, disk, bat = Meter("CPU"), Meter("RAM"), Meter("Disk"), Meter("Bat")
     for m in (cpu, mem, disk, bat):
         body.pack_start(m, False, False, 0)
@@ -907,7 +995,7 @@ def build_system(hub: Hub) -> Gtk.Widget:
 
 
 def build_agents(hub: Hub) -> Gtk.Widget:
-    outer, body = card("󰚩  AI agents")
+    outer, body = card("AI agents")
     five, seven = Meter("5h"), Meter("7d")
     resets = label("", "muted")
     body.pack_start(five, False, False, 0)
@@ -947,7 +1035,7 @@ def build_agents(hub: Hub) -> Gtk.Widget:
 
 
 def build_status(hub: Hub) -> Gtk.Widget:
-    outer, body = card("󰄬  Status")
+    outer, body = card("Status")
     rows = {}
     for key in ("updates", "vpn", "todo"):
         r = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
@@ -989,7 +1077,7 @@ def build_status(hub: Hub) -> Gtk.Widget:
 
 
 def build_todo(hub: Hub) -> Gtk.Widget:
-    outer, body = card("󰄲  Todo")
+    outer, body = card("Todo")
     entry = Gtk.Entry()
     entry.set_placeholder_text("Add a task and press Enter")
     body.pack_start(entry, False, False, 0)
@@ -1051,7 +1139,7 @@ def build_todo(hub: Hub) -> Gtk.Widget:
 
 
 def build_agenda(hub: Hub) -> Gtk.Widget:
-    outer, body = card("󰃭  Agenda")
+    outer, body = card("Agenda")
     rows = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
     body.pack_start(rows, False, False, 0)
     foot = label("", "muted")
@@ -1085,7 +1173,7 @@ def build_agenda(hub: Hub) -> Gtk.Widget:
             if d != last_day:
                 name = ("Today" if d == today else "Tomorrow" if (d - today).days == 1
                         else datetime.combine(d, datetime.min.time()).strftime("%a %d"))
-                rows.pack_start(label(name.upper(), "card-title agenda-day"), False, False, 2 if last_day else 0)
+                rows.pack_start(label(name, "agenda-day"), False, False, 2 if last_day else 0)
                 last_day = d
             ev = Gtk.EventBox()
             ev.get_style_context().add_class("todo-item")
@@ -1123,7 +1211,7 @@ def build_agenda(hub: Hub) -> Gtk.Widget:
 
 
 def build_pomodoro(hub: Hub) -> Gtk.Widget:
-    outer, body = card("󱎫  Pomodoro")
+    outer, body = card("Pomodoro")
     top = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
     phase = label("", "text")
     dots = label("", "muted mono", xalign=1.0)
@@ -1131,7 +1219,8 @@ def build_pomodoro(hub: Hub) -> Gtk.Widget:
     top.pack_start(dots, False, False, 0)
     clock = label("25:00", "big mono", xalign=0.5)
     clock.get_style_context().add_class("pomo-time")
-    bar = Gtk.ProgressBar()
+    bar = TextBar(24, "█")
+    bar.set_halign(Gtk.Align.CENTER)
     body.pack_start(top, False, False, 0)
     body.pack_start(clock, False, False, 2)
     body.pack_start(bar, False, False, 2)
@@ -1159,8 +1248,7 @@ def build_pomodoro(hub: Hub) -> Gtk.Widget:
         done = st.get("done", 0)
         dots.set_text("●" * (done % every) + "○" * (every - done % every) + (f"  {done}" if done else ""))
         clock.set_text(f"{int(left) // 60:02d}:{int(left) % 60:02d}")
-        bar.set_fraction(0 if not total else 1 - left / total)
-        set_classes(bar, "ok" if st["phase"] in ("short", "long") else "")
+        bar.update(0 if not total else 1 - left / total, "ok" if st["phase"] in ("short", "long") else "accent")
         buttons["toggle"].set_label("󰏤" if running else "󰐊")
 
     hub.on("pomodoro", upd)
@@ -1168,7 +1256,7 @@ def build_pomodoro(hub: Hub) -> Gtk.Widget:
 
 
 def build_phone(hub: Hub) -> Gtk.Widget:
-    outer, body = card("󰏲  Phone")
+    outer, body = card("Phone")
     name = label("…", "text")
     bat = Meter("Bat")
     sig = label("", "muted")
@@ -1262,7 +1350,7 @@ class Sparkline(Gtk.DrawingArea):
 
 
 def build_network(hub: Hub) -> Gtk.Widget:
-    outer, body = card("󰛳  Network")
+    outer, body = card("Network")
     head = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=10)
     icon = label("󰈀", "big mono")
     info = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -1320,7 +1408,7 @@ def fmt_money(v: float, cur: str) -> str:
 
 
 def build_money(hub: Hub) -> Gtk.Widget:
-    outer, body = card("\uf0d6  Money")
+    outer, body = card("Money")
     net = label("…", "big")
     split = label("", "muted")
     month = label("", "text")
