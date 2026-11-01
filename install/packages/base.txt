@@ -51,6 +51,7 @@ wireplumber
 pavucontrol
 alsa-utils
 playerctl
+spotify-player   # daemon de la TUI de Spotify (Super+Y; Settings → Spotify)
 
 # Red y bluetooth
 networkmanager

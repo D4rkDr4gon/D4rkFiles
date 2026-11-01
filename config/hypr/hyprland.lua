@@ -62,6 +62,7 @@ hl.on("hyprland.start", function()
         "command -v kdeconnectd >/dev/null && kdeconnectd",            -- KDE Connect (opcional)
         "$HOME/.local/share/dotfiles/scripts/phone-proximity.py",      -- bloquea al alejarse el teléfono (Settings → Phone; off por defecto)
         "$HOME/.local/share/dotfiles/scripts/usbguard-notify.py",      -- avisa/permite USB bloqueados (sale solo si no hay usbguard)
+        "$HOME/.local/share/dotfiles/tools/spotify_api.py --autostart", -- spotify_player -d si se prendió en Settings → Spotify (off por defecto)
         "$HOME/.local/share/dotfiles/config/hypr/scripts/hypr-session.py daemon", -- autosave/restauración de ventanas (Settings → Workspaces → Session)
         "systemctl --user start hyprpolkitagent",                      -- agente de polkit (diálogo de contraseña/huella; tema: hyprtoolkit.conf)
         "hyprshell run",                                               -- overview (Mod+W / swipe 3 dedos arriba) + Alt+Tab con previews; config: config/hyprshell/config.ron
@@ -149,6 +150,7 @@ local dialogs = {
     settings  = { 1560, 960 },   -- tools/settings/settings_tui.py
     clipboard = { 1200, 680 },   -- tools/clipboard_tui.py, Mod+V
     expenses  = { 1560, 960 },   -- tools/expenses_tui.py, Mod+G
+    ["spotify-tui"] = { 1300, 800 }, -- tools/spotify_tui.py, Mod+Y
 }
 for class, size in pairs(dialogs) do
     hl.window_rule({ match = { class = "^(" .. class .. ")$" }, float = true, center = true,
@@ -189,6 +191,7 @@ exec(mainMod .. " + K",              "bash " .. home .. "/.config/waybar/scripts
 exec(mainMod .. " + S",              editor)
 exec(mainMod .. " + V",              home .. "/.config/waybar/scripts/clipboard-launch.sh")  -- historial de portapapeles (cliphist + TUI)
 exec(mainMod .. " + G",              home .. "/.config/waybar/scripts/expenses-launch.sh")   -- gestor de gastos (TUI)
+exec(mainMod .. " + Y",              home .. "/.config/waybar/scripts/spotify-launch.sh")    -- Spotify (TUI sobre spotify_player)
 exec(mainMod .. " + E",              home .. "/.config/rofi/scripts/emoji.sh")               -- selector de emojis (copia al portapapeles)
 exec(mainMod .. " + SHIFT + M",      dotfiles .. "/scripts/mode-switch.sh")  -- modos de escritorio (~/.config/dotfiles/modes.conf)
 

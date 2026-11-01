@@ -397,7 +397,9 @@ def parse_settings() -> list[Shortcut]:
                             reload_hint="applied now in Settings; standalone TUIs on next launch",
                             default=b.key, section=section,
                             category=section if app == "Finances"
-                            else "General" if section in SETTINGS_GLOBAL else cat_of.get(section, "Other")))
+                            else "General" if section in SETTINGS_GLOBAL
+                            # "Spotify TUI" (TUI suelta) va con su sección, Spotify
+                            else cat_of.get(section) or cat_of.get(section.removesuffix(" TUI"), "Other")))
     return out
 
 

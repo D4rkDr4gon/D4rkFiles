@@ -20,6 +20,7 @@ todos los atajos (y permite reasignar su combinación).
 | `Super+Shift+D` | Modo Focus: No Molestar + oculta los widgets que distraen (música, clima, teléfono, dinero); `scripts/focus-mode.sh` |
 | `Super+V` | Historial del portapapeles (Hyprland: cliphist + `tools/clipboard_tui.py` · Qtile: CopyQ) |
 | `Super+G` | Gestor de gastos (`tools/expenses_tui.py`, [customization.md](customization.md#gestor-de-gastos)) |
+| `Super+Y` | Spotify (`tools/spotify_tui.py`, [customization.md](customization.md#spotify)) |
 | `Super+L` | Menú de acciones: bloquear, suspender, reiniciar, apagar, salir |
 | `Print` / `Super+Shift+S` | Captura de pantalla (región; Wayland: guarda y copia) |
 | `Super+Ctrl+R` | Recargar barra (y la config del WM) |

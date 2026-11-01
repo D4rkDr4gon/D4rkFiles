@@ -1309,7 +1309,7 @@ CATEGORIES = [
                 ("update", "󰚰", "Update"), ("maintenance", "󰣉", "Maintenance")]),
     ("Tools", [("notifications", "\uf0f3", "Notifications"), ("clipboard", "󰅌", "Clipboard"),
                ("screenshots", "󰄀", "Screenshots"), ("colorpicker", "󰴱", "Color picker"),
-               ("agents", "󰚩", "AI Agents"), ("finances", "\uf0d6", "Finances"),
+               ("agents", "󰚩", "AI Agents"), ("spotify", "󰓇", "Spotify"), ("finances", "\uf0d6", "Finances"),
                ("repos", "\uf09b", "Repositories")]),
     ("Hardware", [("displays", "󰍹", "Displays"), ("audio", "󰕾", "Audio"), ("input", "󰌌", "Input"),
                   ("power", "󰂄", "Power"), ("battery", "󰁹", "Battery"), ("storage", "󰋊", "Storage")]),
@@ -1342,6 +1342,8 @@ def section_views() -> dict:
         # En Settings, AI Agents suma el panel Providers (mostrar/ocultar cada uno)
         "agents": functools.partial(load_view("agents_tui", "AgentsView"), manage=True),
         "finances": load_view("expenses_tui", "FinancesView"),
+        # Como Finances: en Settings la gestión (logins, daemon, app.toml, favoritas); escuchar, en Mod+Y
+        "spotify": load_view("spotify_tui", "SpotifySettingsView"),
     }
 
 
@@ -1358,6 +1360,7 @@ def binding_catalog() -> list[tuple[str, Binding]]:
             out += [(name, b) for b in bindings_of(c)]
     # TUIs sueltas que no son secciones (usan el mismo keymap de dtui)
     out += [("Expenses TUI", b) for b in bindings_of(load_view("expenses_tui", "ExpensesApp"))]
+    out += [("Spotify TUI", b) for b in bindings_of(load_view("spotify_tui", "SpotifyView"))]
     seen, uniq = set(), []
     for sec, b in out:
         if b.id not in seen:

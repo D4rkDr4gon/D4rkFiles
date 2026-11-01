@@ -195,6 +195,53 @@ cuotas que vienen y deuda; `s` lo carga como lo muestra el banco y `p` registra 
   vuelve a ofrecer y antes de aplicar se guarda `expenses.db.bak-…`. También por línea de comandos:
   `python3 tools/expenses_import.py backup.sqlite [--apply]`.
 
+## Spotify
+
+`Super+Y` abre `tools/spotify_tui.py`, un reproductor con la estética de las TUIs: lo que suena con carátula
+(protocolo gráfico de kitty), la biblioteca en dos modos (`m`: **Music** — Liked songs, Queue, álbumes guardados,
+Top tracks, playlists favoritas y el resto — y **Podcasts**), búsqueda y dispositivos. Teclas: `space` play/pausa,
+`n`/`b`, `←`/`→` adelanta/atrasa, `-`/`+` volumen, `s` shuffle, `r` repeat, `l` like, `enter` reproduce el tema,
+`p` la lista entera, `/` filtra la lista abierta (o busca en Spotify desde Library), `f` marca la playlist como
+favorita, `d` pasa la reproducción a otro dispositivo, `R` recarga.
+
+La TUI habla directo con la **Web API** de Spotify. No reproduce sola:
+[spotify_player](https://github.com/aome510/spotify-player) (paquete `spotify-player`) corre como daemon
+(`spotify_player -d`), es el dispositivo de Spotify Connect que suena, publica MPRIS (lo ve el widget de
+música) y renueva el token de la Web API en su cache, que la TUI solo lee. Si no está corriendo, la TUI lo arranca.
+No se usa la CLI de spotify_player para los pedidos: devuelve las respuestas grandes corruptas (UDP en pedazos de
+4 KB) y no informa los errores de reproducción.
+
+**Settings → Spotify** es la gestión, como Finances con la TUI de gastos (detalle en [settings.md](settings.md)):
+daemon (arrancar, parar, reiniciar), **Start on login** (off por defecto: `tools/spotify_api.py --autostart` corre
+en el exec-once de Hyprland y solo arranca el daemon si se prendió acá), los dos logins, el Client ID, la cuenta y
+su plan, la config de spotify_player (`~/.config/spotify-player/app.toml`: nombre y tipo del dispositivo, volumen
+inicial, bitrate, normalización, autoplay, cache de audio, notificaciones; se edita conservando comentarios y el
+daemon la lee al arrancar, `r` la aplica) y el orden de las playlists favoritas.
+
+**Login (una sola vez; requiere Spotify Premium):**
+
+1. **App propia** en https://developer.spotify.com/dashboard: Redirect URI `http://127.0.0.1:8989/login`, API
+   *Web API* y tu cuenta en *User Management* (development mode). Su Client ID va en Settings → Spotify → Client ID.
+   Sin app propia spotify_player usa el client de ncspot, compartido y limitado (errores `429`).
+2. **Web API**: Settings → Spotify → Web API login (`spotify_player authenticate`): aceptar el **primer** link en
+   el navegador. El segundo ("ncspot fallback client") falla (`redirect_uri: Not matching configuration`): cortarlo
+   con `ctrl+c`. Con un client ID propio, spotify_player 0.25 exige igual un token del client de ncspot como
+   respaldo; antes de arrancar el daemon la TUI renueva el token propio y lo copia con ese nombre, así nunca lo pide.
+3. **Streaming** (librespot): Settings → Spotify → Streaming login (o `a` en la TUI) abre `spotify_player`
+   interactivo, que pide solo este login. Salir con `q`.
+
+Límites de development mode: `/search` y los álbumes de un artista dan hasta 10 resultados por pedido, el top de
+un artista da 403 y las playlists de otros usuarios no muestran sus temas ("Not your playlist"; `p` la reproduce
+igual).
+
+- **Archivos**: `tools/spotify_tui.py` (`SpotifyView`, el reproductor, y `SpotifySettingsView`),
+  `tools/spotify_api.py` (backend sin Textual), `~/.config/spotify-player/app.toml`,
+  `~/.config/dotfiles/spotify-tui.conf` (`autostart=on|off`), favoritas en
+  `~/.local/state/dotfiles/spotify-tui/favorites.json`, carátulas en `~/.cache/spotify-tui/covers/`.
+- **Probar sin tocar lo real**: `SPOTIFY_TUI_API` (otra URL base, p. ej. un `http.server` que conteste JSON),
+  `SPOTIFY_PLAYER_CACHE`, `SPOTIFY_PLAYER_BIN`, `XDG_CONFIG_HOME`, `SPOTIFY_TUI_CONF` y `SPOTIFY_TUI_STATE`; en un
+  `bwrap --unshare-pid` para no ver ni tocar un daemon real.
+
 ## Backup en Proton Drive
 
 Respaldo incremental de carpetas locales en Proton Drive con el CLI oficial (`proton-drive`, paquete AUR
