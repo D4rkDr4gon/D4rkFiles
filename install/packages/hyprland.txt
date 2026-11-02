@@ -9,6 +9,9 @@ wl-clipboard
 cliphist
 grim
 slurp
+tesseract
+tesseract-data-spa
+tesseract-data-eng
 wlr-randr
 gtk-layer-shell
 python-cairo           # widgets de escritorio: región de input (config/desktop-widgets)

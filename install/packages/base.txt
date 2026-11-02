@@ -31,6 +31,7 @@ timeshift
 etckeeper
 dust
 tealdeer
+lnav
 
 # Terminal, launcher, notificaciones y archivos
 kitty

@@ -23,6 +23,7 @@ todos los atajos (y permite reasignar su combinación).
 | `Super+Y` | Spotify (`tools/spotify_tui.py`, [customization.md](customization.md#spotify)) |
 | `Super+L` | Menú de sesión: bloquear, suspender, salir, reiniciar, apagar (lanzador, modo `power`) |
 | `Print` / `Super+Shift+S` | Captura de pantalla (región: guarda y copia) |
+| `Super+Shift+O` | OCR: elegís una región y el texto queda en el portapapeles (`scripts/ocr.sh`) |
 | `Super+Ctrl+R` | Recargar barra (y la config del WM) |
 
 ## Ventanas

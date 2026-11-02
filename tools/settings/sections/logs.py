@@ -2,12 +2,16 @@
 
 Lee `journalctl -o json` (el usuario está en wheel, puede leer el journal
 del sistema). Escribir filtra; w alterna errores / errores + warnings;
-b alterna este arranque / el anterior; enter muestra el mensaje completo.
+b alterna este arranque / el anterior; enter muestra el mensaje completo; l abre
+el journal completo de ese arranque en lnav (filtros, búsqueda, SQL, línea de
+tiempo) en la misma ventana: Settings se suspende y vuelve al salir de lnav.
 """
 
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
 import time
 
 from common import run
@@ -29,7 +33,8 @@ class LogsView(DView):
     #logs-panel { height: 1fr; }
     """)
     BINDINGS = [Binding("w", "toggle_level", "warnings"), Binding("b", "toggle_boot", "previous boot"),
-                Binding("slash", "focus_filter", "filter"), Binding("r", "reload", "reload")]
+                Binding("slash", "focus_filter", "filter"), Binding("r", "reload", "reload"),
+                Binding("l", "lnav", "open in lnav")]
 
     def compose(self) -> ComposeResult:
         yield Panel(Input(placeholder="filter by unit or text…", id="logs-filter"), title="\uf002  Filter",
@@ -47,7 +52,7 @@ class LogsView(DView):
 
     def hints(self) -> list[tuple[str, str]]:
         return [("enter", "details"), ("/", "filter"), ("w", "errors/warnings"), ("b", "this/previous boot"),
-                ("r", "reload"), ("q", "quit")]
+                ("l", "lnav"), ("r", "reload"), ("q", "quit")]
 
     @work(thread=True, exclusive=True, group="logs")
     def action_reload(self) -> None:
@@ -110,6 +115,20 @@ class LogsView(DView):
 
     def action_focus_filter(self) -> None:
         self.query_one("#logs-filter", Input).focus()
+
+    def action_lnav(self) -> None:
+        if not shutil.which("lnav"):
+            self.app.notify_err("lnav is not installed (sudo pacman -S lnav)")
+            return
+        boot = ["-b", str(-self.boot)] if self.boot else ["-b"]
+        with self.app.suspend():
+            # El journal completo del arranque por stdin: lnav detecta el formato y deja filtrar a fondo.
+            journal = subprocess.Popen(["journalctl", *boot, "-o", "short-iso", "--no-pager"],
+                                       stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+            subprocess.run(["lnav"], stdin=journal.stdout)
+            journal.stdout.close()
+            journal.terminate()
+        self.app.refresh(layout=True)
 
     def action_toggle_level(self) -> None:
         self.level = 4 if self.level == 3 else 3

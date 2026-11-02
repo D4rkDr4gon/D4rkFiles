@@ -251,6 +251,7 @@ end)
 -- ===================== SCREENSHOTS =====================
 exec("Print",                   dotfiles .. "/scripts/screenshot.sh")
 exec(mainMod .. " + SHIFT + S", dotfiles .. "/scripts/screenshot.sh")
+exec(mainMod .. " + SHIFT + O", dotfiles .. "/scripts/ocr.sh")                 -- OCR: región → texto al portapapeles
 
 -- ===================== VOLUMEN / BRILLO / MEDIA (OSD vía swayosd) =====================
 -- locked = funciona con la pantalla bloqueada; repeating = repite al mantener
