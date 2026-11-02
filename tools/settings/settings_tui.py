@@ -42,6 +42,8 @@ sys.path.insert(0, str(TOOLS))                                    # dtui y las T
 sys.path.insert(0, str(Path(__file__).resolve().parent / "sections"))   # secciones en archivos propios
 from dtui import (THEME, ConfirmModal, DApp, DView, bindings_of, Field, FormModal, ImagePreview, KeyHints, bar, charge10, meter10,  # noqa: E402
                   Panel, PickModal, Table, TextModal, css, load_theme, swatches)
+from dtui import enable_images  # noqa: E402
+enable_images()   # textual-image para ImagePreview: tiene que cargarse antes de que arranque la app
 
 from battery import BatteryView  # noqa: E402
 from common import unsafe_gate  # noqa: E402

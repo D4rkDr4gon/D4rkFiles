@@ -30,6 +30,8 @@ from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dtui import THEME, ConfirmModal, DView, ImagePreview, Panel, Table, ViewApp, css  # noqa: E402
+from dtui import enable_images  # noqa: E402
+enable_images()   # textual-image para ImagePreview: tiene que cargarse antes de que arranque la app
 
 from rich.text import Text  # noqa: E402
 from textual.app import ComposeResult  # noqa: E402

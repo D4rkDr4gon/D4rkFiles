@@ -50,7 +50,7 @@ mouse encima), barras de bloques `▓░`/`█░` y filas con hover en `chip_ba
 | `KeyHints` | Línea fija al pie: tecla en `primary` + acción atenuada; cambia según el panel con foco |
 | Popups | `FormModal`, `ConfirmModal`, `PickModal`, `TextModal`: centrados, borde en `primary`, campos de una línea sin borde |
 | Barras | `meter10` para uso (`▓▓▓░░░░░░░`, verde/amarillo/rojo a 50/80 %), `charge10` para cargas (verde desde 50 %), `bar` para volumen/brillo |
-| Imágenes | `ImagePreview` (protocolo gráfico de kitty vía `python-textual-image`; sin el paquete, un texto) |
+| Imágenes | `ImagePreview` (protocolo gráfico de kitty vía `python-textual-image`; sin el paquete, un texto). La TUI que lo use llama a `enable_images()` a nivel de módulo, antes de `app.run()`: textual-image consulta a la terminal al importarse y arrastra numpy (~100 ms), así que dtui no lo carga solo |
 | Navegación | `tab` cambia de panel, `j`/`k` o flechas mueven, `enter` es la acción principal, `q`/`esc` salen; con un popup abierto las teclas de atrás no hacen nada |
 | Teclas | Cada `Binding` de una `DView`/`DApp` recibe un id `Clase.acción` y se puede reasignar (keymap en `~/.config/dotfiles/keymap.json`, Settings → Shortcuts → Settings); el pie se traduce solo. Dale `description` a los que tienen `show=False` |
 | Procesos lentos | Lo que llama a procesos (nmcli, firewall-cmd, pacman, hyprctl…) va en un `@work(thread=True)` y la interfaz solo pinta; no usar `self.loading` como bandera (es una propiedad de Textual que muestra un spinner) |

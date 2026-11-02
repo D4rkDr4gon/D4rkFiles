@@ -50,11 +50,23 @@ KEYMAP_FILE = Path(os.environ.get("DTUI_KEYMAP") or Path(os.environ.get("XDG_CON
 # textual-image le pregunta a la terminal qué protocolo de imágenes soporta y
 # espera la respuesta: tiene que importarse ANTES de que arranque la app (si
 # se importa con Textual ya leyendo la entrada, la respuesta se pierde y la
-# TUI queda colgada en blanco). Sin el paquete, ImagePreview muestra un texto.
-try:
-    from textual_image.widget import Image as _ImageWidget
-except Exception:  # noqa: BLE001 - paquete ausente o terminal sin soporte
-    _ImageWidget = None
+# TUI queda colgada en blanco). Además arrastra numpy (~100 ms), así que no se
+# importa acá: cada TUI que muestra imágenes llama a enable_images() al
+# cargarse (a nivel de módulo, nunca con la app corriendo). Sin llamarla, o sin
+# el paquete, ImagePreview muestra un texto.
+_ImageWidget = None
+
+
+def enable_images() -> None:
+    """Carga textual-image para ImagePreview. Idempotente; llamarla antes de app.run()."""
+    global _ImageWidget
+    if _ImageWidget is not None:
+        return
+    try:
+        from textual_image.widget import Image as widget
+    except Exception:  # noqa: BLE001 - paquete ausente o terminal sin soporte
+        widget = False
+    _ImageWidget = widget
 
 
 # ── Tema ──────────────────────────────────────────────────
@@ -404,7 +416,7 @@ class ImagePreview(Vertical):
         self._path = path
 
     def compose(self) -> ComposeResult:
-        if _ImageWidget is None:
+        if not _ImageWidget:
             yield Static("no preview", classes="no-preview")
         else:
             yield _ImageWidget(str(self._path) if self._path else None)
@@ -413,7 +425,7 @@ class ImagePreview(Vertical):
         if path == self._path:
             return
         self._path = path
-        if _ImageWidget is not None:
+        if _ImageWidget:
             self.query_one(_ImageWidget).image = str(path) if path and path.exists() else None
 
 
