@@ -183,7 +183,7 @@ theme_load_user_tokens() {
     done <<<"$banner"
     TOK[banner_xml]="$xml"
     TOK[banner_qml]="$qml"
-    printf '%s\n' "$banner" > "$DOTFILES_DIR/home/zsh/banner.txt"   # lo imprime 60-banner.zsh
+    printf '%s\n' "$banner" > "$(_st "$DOTFILES_DIR/home/zsh/banner.txt")"   # lo imprime 60-banner.zsh
     TOK[battery]="$(df_detect_battery || true)"
     TOK[wifi_iface]="$(df_detect_wifi_iface || true)"
     # NVIDIA y VMs necesitan cursor por software en wlroots/Hyprland.
@@ -191,6 +191,63 @@ theme_load_user_tokens() {
     if command -v lspci >/dev/null 2>&1 && lspci 2>/dev/null | grep -qiE 'nvidia|vmware|virtio|qxl'; then
         TOK[hw_cursor_env]='hl.env("WLR_NO_HARDWARE_CURSORS", "1")'
     fi
+}
+
+# ── Aplicación transaccional ─────────────────────────────────────────────
+# Con theme_stage_begin activo, todo lo que se escribe va a un staging
+# ($THEME_STAGE/root<ruta real canónica>) y theme_stage_commit reemplaza,
+# con temporal en el mismo directorio + mv (inodo nuevo, mismos permisos),
+# solo los archivos que cambiaron. Si algo falla antes (set -e), no se tocó
+# ningún archivo real. Sin staging (gen-assets.sh), _st devuelve la ruta tal
+# cual y se escribe directo.
+THEME_STAGE=""
+THEME_COMMITTED=false
+
+# _st <ruta real> → dónde escribirla. La primera vez copia la real (si
+# existe) para que sed -i / >> partan del contenido actual. Sirve en $(…):
+# el estado vive en el filesystem.
+_st() {
+    [[ -n "$THEME_STAGE" ]] || { printf '%s' "$1"; return 0; }
+    local real p
+    real="$(realpath -m -- "$1")"
+    p="$THEME_STAGE/root$real"
+    if [[ ! -e "$p" ]]; then
+        mkdir -p "${p%/*}"
+        if [[ -f "$real" ]]; then cp -- "$real" "$p"; fi
+    fi
+    printf '%s' "$p"
+}
+
+theme_stage_begin() {
+    THEME_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/theme-switch.XXXXXX")"
+    trap _theme_stage_cleanup EXIT
+}
+
+_theme_stage_cleanup() {
+    local rc=$?
+    [[ -n "$THEME_STAGE" ]] && rm -rf -- "$THEME_STAGE"
+    [[ -n "$_SEDSCRIPT" ]] && rm -f -- "$_SEDSCRIPT"
+    if [[ "$THEME_COMMITTED" == false && -n "$THEME_STAGE" ]] && (( rc != 0 )); then
+        echo "✗ El tema no se aplicó: falló la generación y no se tocó ningún archivo." >&2
+    fi
+    return 0
+}
+
+theme_stage_commit() {
+    local f real tmp n=0
+    while IFS= read -r -d '' f; do
+        real="${f#"$THEME_STAGE/root"}"
+        [[ "$real" == *.tmp ]] && continue
+        if [[ -f "$real" ]] && cmp -s -- "$f" "$real"; then continue; fi
+        mkdir -p -- "${real%/*}"
+        tmp="${real%/*}/.${real##*/}.theme-switch.$$"
+        cp -- "$f" "$tmp"
+        if [[ -e "$real" ]]; then chmod --reference="$real" -- "$tmp"; fi
+        mv -f -- "$tmp" "$real"
+        n=$((n + 1))
+    done < <(find "$THEME_STAGE/root" -type f -print0 2>/dev/null)
+    THEME_COMMITTED=true
+    echo "  → $n archivos actualizados"
 }
 
 # Escapa un valor para usarlo como REEMPLAZO en `sed 's|..|VALOR|'`.
@@ -207,7 +264,8 @@ _build_sedscript() {
 
 # render_template <origen.tpl> <destino>
 render_template() {
-    local src="$1" dst="$2" tk
+    local src="$1" dst tk
+    dst="$(_st "$2")"
     [[ -n "$_SEDSCRIPT" ]] || _build_sedscript
     for tk in $(grep -oE '@[a-z][a-z0-9_]*@' "$src" | sort -u); do
         tk="${tk//@/}"
@@ -232,11 +290,11 @@ render_all_templates() {
 # las TUIs y los scripts). Vive en el directorio de estado, no en el repo.
 write_current_theme() {
     local json="$1"
-    mkdir -p "$DOTFILES_STATE_DIR"
+    local out
+    out="$(_st "$CURRENT_THEME_FILE")"
     # .dir = carpeta del tema (la usa Settings para saber cuál está activo).
     jq --arg wp "${TOK[wallpaper]}" --arg dir "$(basename "$(dirname "$json")")" \
-        '.wallpaper = $wp | .dir = $dir' "$json" > "$CURRENT_THEME_FILE.tmp" \
-        && mv -f "$CURRENT_THEME_FILE.tmp" "$CURRENT_THEME_FILE"
+        '.wallpaper = $wp | .dir = $dir' "$json" > "$out.tmp" && mv -f "$out.tmp" "$out"
 }
 
 # Firefox: userChrome/userContent van al perfil activo (nombre aleatorio por
@@ -248,11 +306,12 @@ apply_firefox_theme() {
     [[ -n "$prof" ]] || return 0
     [[ "$prof" = /* ]] || prof="$(dirname "$ini")/$prof"
     [[ -d "$prof" ]] || return 0
-    mkdir -p "$prof/chrome"
     render_template "$TEMPLATES_DIR/firefox-userChrome.css.tpl" "$prof/chrome/userChrome.css"
     render_template "$TEMPLATES_DIR/firefox-userContent.css.tpl" "$prof/chrome/userContent.css"
     local pref='user_pref("toolkit.legacyUserProfileCustomizations.stylesheets", true);'
-    grep -qF "$pref" "$prof/user.js" 2>/dev/null || echo "$pref" >> "$prof/user.js"
+    local userjs
+    userjs="$(_st "$prof/user.js")"
+    grep -qF "$pref" "$userjs" 2>/dev/null || echo "$pref" >> "$userjs"
     echo "  → firefox userChrome/userContent (reiniciar Firefox)"
 }
 
@@ -261,18 +320,22 @@ apply_external_themes() {
     local hf="$XDG_CONFIG_HOME/hyprfm"
     if [[ -d "$hf" ]]; then
         render_template "$TEMPLATES_DIR/hyprfm.toml.tpl" "$hf/themes/dotfiles.toml"
-        if [[ -f "$hf/config.toml" ]] && ! grep -q "^theme = 'dotfiles'" "$hf/config.toml"; then
-            sed -i "s|^theme = .*|theme = 'dotfiles'|" "$hf/config.toml"
+        local hfc
+        hfc="$(_st "$hf/config.toml")"
+        if [[ -f "$hfc" ]] && ! grep -q "^theme = 'dotfiles'" "$hfc"; then
+            sed -i "s|^theme = .*|theme = 'dotfiles'|" "$hfc"
         fi
         echo "  → hyprfm"
     fi
     local cl="$XDG_CONFIG_HOME/cliamp"
     if [[ -f "$cl/config.toml" ]]; then
         render_template "$TEMPLATES_DIR/cliamp.toml.tpl" "$cl/themes/dotfiles.toml"
-        if grep -q '^theme = ' "$cl/config.toml"; then
-            sed -i 's|^theme = .*|theme = "dotfiles"|' "$cl/config.toml"
+        local clc
+        clc="$(_st "$cl/config.toml")"
+        if grep -q '^theme = ' "$clc"; then
+            sed -i 's|^theme = .*|theme = "dotfiles"|' "$clc"
         else
-            sed -i '1i theme = "dotfiles"' "$cl/config.toml"
+            sed -i '1i theme = "dotfiles"' "$clc"
         fi
         echo "  → cliamp"
     fi

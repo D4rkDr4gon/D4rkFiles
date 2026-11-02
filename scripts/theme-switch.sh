@@ -3,6 +3,8 @@
 #
 # Lee themes/<tema>/theme.json, calcula los tokens y renderiza las plantillas
 # *.tpl del repo (ver scripts/lib/theme.sh). No edita archivos versionados.
+# Transaccional: todo se genera en un staging y se reemplaza al final (temporal
+# + mv, solo lo que cambió); si algo falla, no se toca ningún archivo.
 
 set -euo pipefail
 
@@ -137,6 +139,7 @@ apply_theme() {
     }
     THEME_JSON="$dir/theme.json"
 
+    theme_stage_begin
     theme_load_tokens "$THEME_JSON"
     theme_load_user_tokens
 
@@ -144,6 +147,7 @@ apply_theme() {
     render_all_templates
     write_current_theme "$THEME_JSON"
     apply_external_themes
+    theme_stage_commit
 
     if [[ "$render_only" == false ]]; then
         # SDDM escribe fuera del HOME (/usr/share/sddm, del usuario tras el setup):

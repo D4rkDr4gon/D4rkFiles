@@ -24,6 +24,13 @@ También desde `Super+Shift+Space → THEMES` (con preview).
 
 Nada versionado se edita: si cambiás de tema, `git status` sigue limpio.
 
+**Es transaccional**: los pasos 2 y 3 escriben en un directorio temporal (`theme_stage_begin` en
+`scripts/lib/theme.sh`) y recién cuando todo se generó sin errores `theme_stage_commit` reemplaza cada
+archivo que cambió (temporal en su mismo directorio + `mv`, mismos permisos). Si una plantilla o un paso
+falla, no se toca ningún archivo y avisa *El tema no se aplicó*. Lo que escribe fuera de los archivos
+generados (SDDM en `/usr/share`, wallpaper, recargas) corre después. Un paso nuevo que escriba un archivo
+lo hace con `render_template` o a `"$(_st "$ruta")"`.
+
 ## `theme.json`
 
 Obligatorios: `name`, `wallpaper` (nombre de archivo), `primary`, `secondary`, `background`,
