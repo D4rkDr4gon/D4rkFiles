@@ -52,6 +52,7 @@ from common import (CURRENT_THEME, DOTFILES, HYPRLAND, THEME_SWITCH, active_them
                     tilde, user_conf, wallpaper_dirs)
 from colorpicker import ColorPickerView  # noqa: E402
 from displays import DisplaysView  # noqa: E402
+from etckeeper import EtckeeperView  # noqa: E402
 from defaultapps import DefaultAppsView  # noqa: E402
 from deskwidgets import DeskWidgetsView  # noqa: E402
 from firewall import FirewallView  # noqa: E402
@@ -1306,7 +1307,7 @@ CATEGORIES = [
                       ("firewall", "󰒃", "Firewall"), ("netsec", "\uf132", "Network security"), ("usbguard", "󰕓", "USB guard"), ("phone", "󰏲", "Phone"),
                       ("nettools", "󰛳", "Network tools")]),
     ("System", [("services", "\uf013", "Services"), ("startup", "󰒲", "Startup apps"), ("logs", "󰌱", "Logs"),
-                ("snapshots", "󰄄", "Snapshots"), ("backup", "󰅧", "Backup"), ("system", "󰌢", "System"),
+                ("snapshots", "󰄄", "Snapshots"), ("etckeeper", "󰊢", "etckeeper"), ("backup", "󰅧", "Backup"), ("system", "󰌢", "System"),
                 ("update", "󰚰", "Update"), ("maintenance", "󰣉", "Maintenance")]),
     ("Tools", [("notifications", "\uf0f3", "Notifications"), ("clipboard", "󰅌", "Clipboard"),
                ("screenshots", "󰄀", "Screenshots"), ("colorpicker", "󰴱", "Color picker"),
@@ -1336,7 +1337,7 @@ def section_views() -> dict:
         "wifi": WifiView, "bluetooth": BluetoothView, "power": PowerView,
         "clipboard": load_view("clipboard_tui", "ClipboardView"), "services": ServicesView, "system": SystemView,
         "phone": PhoneView, "nettools": NetToolsView, "startup": StartupView, "logs": LogsView,
-        "snapshots": SnapshotsView, "screenshots": ScreenshotsView, "colorpicker": ColorPickerView,
+        "snapshots": SnapshotsView, "etckeeper": EtckeeperView, "screenshots": ScreenshotsView, "colorpicker": ColorPickerView,
         "input": InputView, "battery": BatteryView, "storage": StorageView, "defaultapps": DefaultAppsView,
         "themeeditor": ThemeEditorView, "deskwidgets": DeskWidgetsView, "fonts": FontsView, "firewall": FirewallView,
         "backup": load_view("backup_tui", "BackupView"), "netsec": NetSecView, "maintenance": MaintenanceView, "usbguard": UsbGuardView, "repos": ReposView,

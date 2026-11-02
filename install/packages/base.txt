@@ -28,6 +28,9 @@ xdg-user-dirs
 pacman-contrib
 psmisc
 timeshift
+etckeeper
+dust
+tealdeer
 
 # Terminal, launcher, notificaciones y archivos
 kitty
