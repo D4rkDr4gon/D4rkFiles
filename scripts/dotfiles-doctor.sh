@@ -199,7 +199,6 @@ UNITS=(
     "user|pipewire-pulse.service|pipewire-pulse"
     "user|wireplumber.service|wireplumber"
     "user|hyprland-session-init.service|Hyprland"
-    "user|elephant.service|elephant"
     "user|battery-watch.timer|path:/sys/class/power_supply/BAT*"
     "system|display-manager.service|Hyprland"
     "system|bluetooth.service|bluetoothd"
@@ -366,7 +365,7 @@ section_configs() {
     primary="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["primary"])' "$cur" 2>/dev/null)"
     if [ -n "$primary" ]; then
         local generated=(config/kitty/colors.conf config/swayosd/style.css config/hyprshell/styles.css
-                         config/walker/themes/dotfiles/style.css config/waybar/theme.css
+                         config/waybar/theme.css
                          config/dunst/dunstrc config/lazygit/config.yml config/impala/config.toml config/fprint-osd/style.css)
         bad=0
         for f in "${generated[@]}"; do

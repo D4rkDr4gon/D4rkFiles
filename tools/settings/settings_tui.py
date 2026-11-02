@@ -2,7 +2,7 @@
 """
 settings_tui.py — Settings del entorno (Mod+Shift+Space, logo de waybar).
 
-Reemplaza al menú rofi de Settings. A la izquierda el perfil (logo de
+Reemplazó al viejo menú de rofi. A la izquierda el perfil (logo de
 waybar + USER_DISPLAY_NAME de user.conf, o el nombre de la cuenta) y el menú
 de secciones; a la derecha la sección elegida. Modes, Webapps, Shortcuts,
 VPN, Clipboard y AI Agents son las mismas vistas que las TUIs sueltas
@@ -496,7 +496,7 @@ class NotificationsView(DView):
 # tema los defina). La fuente y su tamaño viven en Fonts & cursor.
 SHAPE_FIELDS = [
     ("Shape", [
-        ("radius", "Corner radius", "int", 10, (0, 30), "windows, waybar, rofi, dunst, gtklock, OSDs (px)"),
+        ("radius", "Corner radius", "int", 10, (0, 30), "windows, waybar, dunst, gtklock, OSDs (px)"),
         ("border_size", "Border width", "int", 2, (0, 6), "window border (px)"),
         ("border_style", "Border style", "choice", "solid", ("solid", "gradient", "rotating"),
          "solid = primary · gradient = primary → secondary · rotating = spins"),
@@ -506,7 +506,7 @@ SHAPE_FIELDS = [
     ]),
     ("Transparency", [
         ("opacity", "Opacity", "float", 0.80, (0.5, 1.0),
-         "kitty base; rofi −0.05, other apps +0.05 (≥ 0.98 = fully opaque)"),
+         "kitty base; other apps +0.05 (≥ 0.98 = fully opaque)"),
         ("inactive_opacity", "Inactive opacity", "float", 0.95, (0.5, 1.0), "windows without focus"),
         ("dim_inactive", "Dim inactive", "bool", False, None, "darken windows without focus"),
         ("dim_strength", "Dim strength", "float", 0.5, (0.0, 1.0), "how much they darken"),
@@ -1211,7 +1211,6 @@ def unit_state(unit: str) -> tuple[bool, bool]:
 
 # Servicios de usuario que se muestran si están instalados (unit file presente)
 KNOWN_SERVICES = [
-    ("elephant.service", "Walker backend (apps, calculator, web search)"),
     ("hypridle.service", "Idle lock / screen off / suspend (see Power)"),
     ("battery-watch.timer", "Low battery notifications"),
     ("wayvnc.service", "VNC server (tablet as a monitor, see Displays)"),

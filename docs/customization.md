@@ -71,7 +71,7 @@ traducir, la notificación dice cuál (`archivo:línea`). Un `workspaces.conf` v
 [Settings](settings.md) también escribe en esa carpeta, nunca en el repo: `settings.conf`
 (input y cursor, como líneas planas `input:sensitivity = 0.2`), `autostart.conf` (tus apps de
 inicio) y `workspaces.conf` (cuántos workspaces habilitar: la línea `# count: N`, que leen
-`hyprland.lua` para los atajos, waybar, Ctrl+Tab y rofi). Se pueden editar a mano; como se cargan
+`hyprland.lua` para los atajos, waybar, Ctrl+Tab y el lanzador). Se pueden editar a mano; como se cargan
 en orden alfabético, lo que pongas en `local.conf` queda por debajo de `settings.conf`.
 
 ## zsh: aliases y funciones propias

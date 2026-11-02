@@ -3,7 +3,7 @@
 </p>
 
 **D4rkFiles** son dotfiles de Arch Linux para **Hyprland** (Wayland; las apps X11 corren en XWayland) con un
-motor de temas: cambiás de tema y cambian a la vez el borde de las ventanas, waybar, rofi, kitty, dunst,
+motor de temas: cambiás de tema y cambian a la vez el borde de las ventanas, waybar, kitty, dunst,
 Neovim, Firefox, la pantalla de login y unas veinte cosas más.
 
 Está pensado para que **cualquiera lo instale**: no asume usuario, ruta de clone, monitores, teclado,

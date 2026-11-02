@@ -359,7 +359,7 @@ class PowerView(DView):
             else:
                 r = run(["systemctl", key])
                 if r.returncode != 0:
-                    # polkit no lo dejó: con sudo en la terminal (como el menú de rofi)
+                    # polkit no lo dejó: con sudo en la terminal
                     with self.app.suspend():
                         os.system("clear")
                         subprocess.run(["sudo", "systemctl", key])

@@ -21,13 +21,8 @@
 /config/lazygit/config.yml
 /config/nvim/lua/config/colors.lua
 /config/opencode/opencode.jsonc
-/config/rofi/colors.rasi
-/config/rofi/theme-action.rasi
-/config/rofi/theme-drun.rasi
-/config/rofi/theme.rasi
 /config/sublime-text/Packages/User/Kali-Red-Hack.sublime-color-scheme
 /config/swayosd/style.css
-/config/walker/themes/dotfiles/style.css
 /config/waybar/style.css
 /config/waybar/theme.css
 /home/zsh/colors.zsh

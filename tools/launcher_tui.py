@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 launcher_tui.py — lanzador y menús rápidos con la estética de las TUIs propias.
-Reemplaza a rofi (config/rofi/scripts/*): una sola TUI con un buscador arriba y una
+Reemplazó a rofi: una sola TUI con un buscador arriba y una
 lista abajo, que se abre en frío en una kitty centrada (center-tui-launch.sh).
 
 Modos (primer argumento):

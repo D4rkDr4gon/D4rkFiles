@@ -83,4 +83,4 @@
     highlight = "@status_error@"
 
 # Reglas de No Molestar y apps silenciadas: dunstrc.d/50-dnd.conf, generado por
-# config/rofi/scripts/dnd-menu.sh (dunst carga dunstrc.d/*.conf automáticamente).
+# scripts/dnd.sh (dunst carga dunstrc.d/*.conf automáticamente).

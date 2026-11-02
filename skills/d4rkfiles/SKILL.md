@@ -59,7 +59,7 @@ Layout del repo: `config/<app>/` (→ `~/.config/<app>`), `home/zsh/`, `system/`
 | waybar | `scripts/barupdate.sh` |
 | dunst | `dunstctl reload` |
 | kitty | `theme <activo>` (colores) · `Ctrl+Shift+F5` (config) |
-| lanzador (`tools/launcher_tui.py`) / walker / dunst DND | se leen al abrirse |
+| lanzador (`tools/launcher_tui.py`) / dunst DND | se leen al abrirse |
 | zsh | `exec zsh` |
 | Unidades systemd de usuario | `systemctl --user daemon-reload` |
 | `~/.config/dotfiles/hypr/workspaces.conf` | `hyprctl reload` (Settings → Workspaces lo hace solo) |
@@ -94,7 +94,7 @@ Layout del repo: `config/<app>/` (→ `~/.config/<app>`), `home/zsh/`, `system/`
 - **"Instalá / sacá un paquete"** → `references/recetas.md#paquetes`.
 - **"Actualizá el sistema"** → `dotfiles-update` (snapshot de Timeshift + `pacman -Syu` + AUR + limpieza). Ver `docs/scripts.md`.
 - **"Algo no anda" / "revisá mi instalación"** → `scripts/dotfiles-doctor.sh` y `references/recetas.md#diagnostico`.
-- **"Cambiá cómo se ve waybar / rofi / kitty / dunst…"** → el archivo en `config/<app>/` (su `.tpl` si existe); mantené la
+- **"Cambiá cómo se ve waybar / kitty / dunst…"** → el archivo en `config/<app>/` (su `.tpl` si existe); mantené la
   regla de `docs/design-system.md` (un solo radio, sin bordes decorativos, colores por tokens).
 - **"Cambiá mi nombre / apps por defecto / teclado"** → `~/.config/dotfiles/user.conf`, luego `theme <activo>`.
   Claves en `docs/customization.md`.

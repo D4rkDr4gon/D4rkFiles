@@ -29,7 +29,7 @@ Campos opcionales de `theme.json` (defaults = como se veía todo antes; tabla en
 `border_size`, `border_style` (`solid` | `gradient` | `rotating`), `border_angle`, `gaps_in`, `gaps_out`,
 `inactive_opacity`, `dim_inactive`, `dim_strength`, `blur_noise`, `blur_contrast`, `blur_brightness`, `blur_vibrancy`,
 `blur_popups`, `shadow_enabled`, `shadow_style` (`dark` | `glow`), `shadow_range`, `shadow_power`, `animations`
-(`smooth` | `snappy` | `bouncy` | `off`), `font_size` (kitty = N, rofi = N−1, waybar/dunst/GTK = N−3), `font_ui` (GTK).
+(`smooth` | `snappy` | `bouncy` | `off`), `font_size` (kitty = N, workspaces de waybar = N−1, waybar/dunst/GTK = N−3), `font_ui` (GTK).
 
 - Lo más fácil: Settings → Appearance / Fonts & cursor. Editan una **copia** del tema en `~/.config/dotfiles/themes/`
   (nunca `themes/` del repo) y reaplican.
@@ -71,7 +71,7 @@ Para actualizar el repo: `git -C ~/.local/share/dotfiles pull` y después `./ins
    - Bloqueo: `~/.local/state/dotfiles/lock-screen.log` · wayvnc: `~/.local/state/dotfiles/wayvnc.log`
    - Batería: `~/.local/state/battery-watch/`
    - Errores de config de Hyprland: `hyprctl configerrors`
-3. Servicios de usuario: `systemctl --user status battery-watch.timer elephant hyprland-session-init`.
+3. Servicios de usuario: `systemctl --user status battery-watch.timer hyprland-session-init`.
 4. Síntomas frecuentes y soluciones: `docs/troubleshooting.md`.
 
 ## Servicios y unidades

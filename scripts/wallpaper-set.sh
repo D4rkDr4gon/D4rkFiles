@@ -2,7 +2,7 @@
 # ──────────────────────────────────────────────────────────
 # wallpaper-set.sh — aplica un wallpaper sin cambiar de tema
 # Lo usa Settings → Backgrounds (tools/settings/settings_tui.py). Es la
-# lógica que antes vivía en el menú rofi de Settings (list_backgrounds):
+# lógica que antes vivía en el viejo menú de Settings (list_backgrounds):
 #   1) guarda la ruta en ~/.local/state/dotfiles/current_theme.json (fuente
 #      única del wallpaper; start-hyprpaper.sh la lee al iniciar)
 #   2) lo aplica por IPC de hyprpaper (lo arranca si no corre)

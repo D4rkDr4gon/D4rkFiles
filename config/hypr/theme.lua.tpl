@@ -41,12 +41,11 @@ hl.config({
 dofile(os.getenv("HOME") .. "/.config/hypr/animations/@animations@.lua")
 @borderangle_anim@
 
--- Opacidad por app. Kitty usa la base; rofi un poco menos; el resto un poco más.
+-- Opacidad por app. Kitty usa la base; el resto un poco más.
 local function opacity(class, value)
     hl.window_rule({ match = { class = "^(" .. class .. ")$" }, opacity = value .. " override" })
 end
 opacity("kitty", "@opacity@")
-opacity("rofi", "@opacity_rofi@")
 for _, class in ipairs({ "obsidian", "sublime_text", "Thunar", "dunst", "remmina", "spotify" }) do
     opacity(class, "@opacity_secondary@")
 end

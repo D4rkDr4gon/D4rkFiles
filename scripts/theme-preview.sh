@@ -3,7 +3,7 @@
 # theme-preview.sh — vista previa en vivo de un tema, sin escribir nada a disco.
 # Cambia solo lo liviano y reversible: el borde de las ventanas de Hyprland
 # (hyprctl eval) y los colores de las kitty abiertas (kitty @ set-colors).
-# El resto (waybar, rofi, GTK…) recién cambia al aplicar con theme-switch.sh.
+# El resto (waybar, GTK…) recién cambia al aplicar con theme-switch.sh.
 #
 # Uso: theme-preview.sh <tema>   previsualiza themes/<tema>/theme.json
 #      theme-preview.sh --revert vuelve al tema aplicado (hyprctl reload + colors.conf)

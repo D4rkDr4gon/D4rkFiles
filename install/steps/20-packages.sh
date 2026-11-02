@@ -68,6 +68,6 @@ step_packages() {
             log "Paquetes AUR: todo instalado"
         fi
     else
-        info "AUR omitido (--no-aur): faltarán walker, hyprshell, cliamp, sublime-text, etc."
+        info "AUR omitido (--no-aur): faltarán hyprshell, cliamp, sublime-text, etc."
     fi
 }

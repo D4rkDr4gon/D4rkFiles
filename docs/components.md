@@ -52,7 +52,7 @@ la unidad `hyprland-session-init`, los widgets de escritorio y (si están instal
     no trae ningún perfil ni proveedor (ver [customization.md](customization.md#vpn)). Sin perfiles muestra "Sin
     perfiles VPN configurados".
 
-## Lanzador (reemplazo de rofi)
+## Lanzador
 
 `tools/launcher_tui.py`: una sola TUI con la estética de las demás (buscador arriba, lista abajo), que abre
 `config/waybar/scripts/launcher-launch.sh <modo>` en una kitty centrada (una clase por modo, con su tamaño en la
@@ -75,11 +75,7 @@ y funciones de `math`. Abre en frío (~0.7 s: Textual + kitty), como las demás 
 No molestar es `scripts/dnd.sh` (backend: `--status`/`--on`/`--off`/`--timer`/`--app-toggle`/`--app-add`/
 `--toggle`; sin argumentos abre Settings → Notifications, que tiene el menú).
 
-`config/rofi/` queda en el repo (el motor de temas sigue generando `colors.rasi`) pero ya no lo usa ningún atajo en
-Hyprland. **walker** (`config/walker/`, solo Wayland, backend `elephant`) queda instalado como alternativa (comando
-`walker`), fuera del atajo por una condición de carrera conocida entre walker y elephant.
-
-Settings y el historial del portapapeles (`Mod+V`) tampoco son menús de rofi: son TUIs
+Settings y el historial del portapapeles (`Mod+V`) también son TUIs
 (`tools/settings/settings_tui.py`, `tools/clipboard_tui.py`), ver [settings.md](settings.md).
 
 ## Notificaciones y OSDs
@@ -191,8 +187,7 @@ bluetui no tiene tema propio: usa la paleta ANSI de kitty.
 - **wayvnc** — usar una tablet como monitor secundario: `scripts/wayland/wayvnc-toggle.sh`
   (`init`, `on`, `off`, `status`; aliases `vnc-on`/`vnc-off`).
 - **Unidades systemd de usuario** (`system/systemd-user/`): `battery-watch.{service,timer}`
-  (notifica batería baja cada 2 min), `wayvnc.service` (manual), `hyprland-session-init.service`
-  y `elephant.service`.
+  (notifica batería baja cada 2 min), `wayvnc.service` (manual), y `hyprland-session-init.service`.
 - **hyprpolkitagent** — agente de polkit (diálogo de contraseña o huella para `pkexec` y las apps que
   piden permisos). Se tematiza con `config/hypr/hyprtoolkit.conf` (generado desde su `.tpl`).
 - **Sesión de Hyprland** — `config/hypr/scripts/hypr-session.py daemon` (exec-once) guarda cada 2 min

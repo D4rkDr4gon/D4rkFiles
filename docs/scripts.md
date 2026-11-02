@@ -18,7 +18,7 @@
 | `scripts/proton-backup.sh` | Backup incremental en Proton Drive: Settings → Backup ([customization.md](customization.md#backup-en-proton-drive)) |
 | `scripts/webapps.sh` | Webapps con firefoxpwa ([customization.md](customization.md#webapps)) |
 | `scripts/mode-switch.sh` | Aplica un modo de escritorio; sin argumentos, menú con `scripts/dmenu.sh` ([customization.md](customization.md#modos-de-escritorio)) |
-| `scripts/dmenu.sh` | Reemplazo de `rofi -dmenu`: opciones por stdin, la elegida por stdout, en la TUI del lanzador (`-p`, `--placeholder`, `--no-custom`, `--index`) |
+| `scripts/dmenu.sh` | Menú genérico para scripts: opciones por stdin, la elegida por stdout, en la TUI del lanzador (`-p`, `--placeholder`, `--no-custom`, `--index`) |
 | `scripts/dnd.sh` | No molestar de dunst (drop-in `dunstrc.d/50-dnd.conf`); sin argumentos abre Settings → Notifications |
 | `scripts/setup-sddm-theme.sh` | Instala el tema de login de SDDM |
 | `scripts/wayland/wayvnc-toggle.sh` | Monitor virtual por VNC |

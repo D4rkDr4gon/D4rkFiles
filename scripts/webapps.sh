@@ -9,7 +9,7 @@
 # webapps.conf.example del repo. Formato "nombre|manifest|página inicial|ícono";
 # manifest vacío = sitio sin PWA, se arma uno mínimo. Los .desktop quedan en
 # ~/.local/share/applications/FFPWA-<ID>.desktop, así que
-# walker/rofi las encuentran como cualquier otra app.
+# el lanzador las encuentra como cualquier otra app.
 #
 # Uso: webapps.sh [nombre]   (con nombre instala solo esa entrada)
 # ──────────────────────────────────────────────────────────

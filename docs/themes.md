@@ -51,7 +51,7 @@ define se ve igual):
 | `shadow_enabled` / `shadow_range` / `shadow_power` | Sombra: on/off, alcance (px), caída 1–4 | `true` / `8` / `3` |
 | `shadow_style` | `dark` = gris casi negro · `glow` = halo del `primary` | `dark` |
 | `animations` | Preset `smooth` · `snappy` · `bouncy` · `off` (`config/hypr/animations/<preset>.lua`) | `smooth` |
-| `font_size` | Tamaño base: kitty = N, rofi y workspaces de waybar = N−1, waybar, dunst y GTK = N−3 | `13` |
+| `font_size` | Tamaño base: kitty = N, workspaces de waybar = N−1, waybar, dunst y GTK = N−3 | `13` |
 | `font_ui` | Fuente de interfaz GTK (también por `gsettings`); vacío = `Sans 10` | vacío |
 
 Todo eso llega a Hyprland por `config/hypr/theme.lua.tpl` (`hyprland.lua` lo carga después
@@ -63,7 +63,7 @@ de su propio `hl.config`, por eso no define gaps, borde, sombra ni animaciones).
 ### Tokens derivados
 
 `@text_muted@`, `@text_dim@`, `@text_sub@` (mezclas de primer plano y fondo),
-`@radius_outer@` (radio + 4), `@opacity_secondary@`, `@opacity_rofi@`, `@opacity_tui@`,
+`@radius_outer@` (radio + 4), `@opacity_secondary@`, `@opacity_tui@`,
 `@ansi_*` (paleta de 16 colores de kitty), `@primary_hex@`/`@secondary_hex@`/`@background_hex@`/`@foreground_hex@`/`@chip_battery_hex@`/`@chip_bluetooth_hex@`
 (sin `#`; los usan Hyprland y `config/hypr/hyprtoolkit.conf.tpl`, el diálogo de polkit), `@radius_half@` (radio / 2),
 `@background_r/g/b`, `@font_mono_alt@` (variante "Mono" de Hack para gtklock y SDDM),

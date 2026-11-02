@@ -78,13 +78,12 @@ theme_load_tokens() {
     TOK[font_size]=${TOK[font_size]%.*}
     case "${TOK[animations]}" in smooth|snappy|bouncy|off) ;; *) TOK[animations]=smooth ;; esac
 
-    # Opacidad por niveles (kitty = base, rofi = base-0.05, resto = base+0.05).
+    # Opacidad por niveles (kitty = base, resto = base+0.05).
     # Con opacidad total (>=0.98) todo pasa a 1.0. Los TUI flotantes van fijos.
     if awk -v o="${TOK[opacity]}" 'BEGIN{exit !(o>=0.98)}'; then
-        TOK[opacity_secondary]=1.0; TOK[opacity_rofi]=1.0
+        TOK[opacity_secondary]=1.0
     else
         TOK[opacity_secondary]=$(awk -v o="${TOK[opacity]}" 'BEGIN{v=o+0.05; if(v>1.0)v=1.0; printf "%.2f", v}')
-        TOK[opacity_rofi]=$(awk -v o="${TOK[opacity]}" 'BEGIN{v=o-0.05; if(v<0.50)v=0.50; printf "%.2f", v}')
     fi
     TOK[opacity_tui]=0.97
 
@@ -130,7 +129,7 @@ theme_load_tokens() {
     TOK[shadow_color]="rgba(1a1a1aee)"
     [[ "${TOK[shadow_style]}" == glow ]] && TOK[shadow_color]="rgba(${TOK[primary_hex]}99)"
 
-    # Tamaños de fuente relativos a font_size (13 → 12 rofi/workspaces, 10 waybar/dunst/GTK).
+    # Tamaños de fuente relativos a font_size (13 → 12 workspaces de waybar, 10 waybar/dunst/GTK).
     TOK[font_size_m1]=$(( TOK[font_size] - 1 ))
     TOK[font_size_m3]=$(( TOK[font_size] - 3 ))
     # GTK: font_ui vacío = la fuente de siempre (Sans 10)

@@ -10,7 +10,6 @@
 home/zsh/zshrc	.zshrc	core
 config/kitty	.config/kitty	core
 config/dunst	.config/dunst	core
-config/rofi	.config/rofi	core
 config/nvim	.config/nvim	core
 config/thunar	.config/Thunar	core
 config/gtk-3.0	.config/gtk-3.0	core
@@ -26,7 +25,6 @@ config/sublime-text/Packages/User/Kali-Red-Hack.sublime-color-scheme	.config/sub
 config/sublime-text/Packages/User/Package Control.sublime-settings	.config/sublime-text/Packages/User/Package Control.sublime-settings	core
 config/hypr	.config/hypr	hyprland
 config/waybar	.config/waybar	hyprland
-config/walker	.config/walker	hyprland
 config/swayosd	.config/swayosd	hyprland
 config/hyprshell	.config/hyprshell	hyprland
 config/fprint-osd	.config/fprint-osd	hyprland
@@ -36,7 +34,6 @@ system/systemd-user/battery-watch.service	.config/systemd/user/battery-watch.ser
 system/systemd-user/battery-watch.timer	.config/systemd/user/battery-watch.timer	core
 system/systemd-user/wayvnc.service	.config/systemd/user/wayvnc.service	hyprland
 system/systemd-user/hyprland-session-init.service	.config/systemd/user/hyprland-session-init.service	hyprland
-system/systemd-user/elephant.service	.config/systemd/user/elephant.service	hyprland
 skills/d4rkfiles	.claude/skills/d4rkfiles	skills
 skills/d4rkfiles	.config/opencode/skills/d4rkfiles	skills
 config/claude/statusline-command.sh	.claude/statusline-command.sh	skills

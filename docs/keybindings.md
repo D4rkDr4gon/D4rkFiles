@@ -9,7 +9,7 @@ todos los atajos (y permite reasignar su combinación).
 |---|---|
 | `Super+Return` | Terminal (`TERMINAL`) |
 | `Super+Shift+Return` | herdr (multiplexor de terminal) en kitty |
-| `Super+Space` | Lanzador: apps, cuenta en vivo, comandos y búsqueda web; `tab` + `f` marca favoritas (`tools/launcher_tui.py`, [components.md](components.md#lanzador-reemplazo-de-rofi)) |
+| `Super+Space` | Lanzador: apps, cuenta en vivo, comandos y búsqueda web; `tab` + `f` marca favoritas (`tools/launcher_tui.py`, [components.md](components.md#lanzador)) |
 | `Super+Shift+Space` | Settings: TUI con todas las opciones del entorno ([settings.md](settings.md)) |
 | `Super+B` | Navegador (`BROWSER`) |
 | `Super+F` | Gestor de archivos (`FILE_MANAGER`) |

@@ -31,7 +31,6 @@ timeshift
 
 # Terminal, launcher, notificaciones y archivos
 kitty
-rofi
 dunst
 thunar
 firefox

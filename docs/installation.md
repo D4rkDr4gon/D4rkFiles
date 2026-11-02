@@ -71,7 +71,7 @@ Viven en `install/packages/`, un nombre por línea (`#` comenta):
 | Archivo | Contenido |
 |---|---|
 | `base.txt`, `base.aur.txt` | Shell, terminal, audio, red, fuentes, iconos, TUIs |
-| `hyprland.txt`, `hyprland.aur.txt` | Sesión Hyprland, waybar, gtklock, sddm, walker… |
+| `hyprland.txt`, `hyprland.aur.txt` | Sesión Hyprland, waybar, gtklock, sddm, hyprshell… |
 | `gpu-*.txt` | Espacio de usuario de la GPU detectada |
 
 El CI verifica que cada nombre exista en los repos (o en el AUR para `*.aur.txt`).

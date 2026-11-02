@@ -40,7 +40,7 @@ step_system() {
         && [[ -d /sys/class/power_supply ]] && ls /sys/class/power_supply/BAT* >/dev/null 2>&1; then
         run systemctl --user enable battery-watch.timer 2>/dev/null || true
     fi
-    run systemctl --user enable hyprland-session-init.service elephant.service 2>/dev/null || true
+    run systemctl --user enable hyprland-session-init.service 2>/dev/null || true
 
     # Brillo sin root (brightnessctl) y directorios de usuario.
     if getent group video >/dev/null 2>&1 && ! id -nG | grep -qw video; then

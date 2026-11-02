@@ -40,8 +40,8 @@ DEFAULT_MONO, DEFAULT_SIZE = "Hack Nerd Font", 13
 
 # Qué toca cada ajuste (se muestra al seleccionar la fila)
 APPLIES = {
-    "font": "kitty, rofi, dunst, waybar, gtklock — and every TUI inside kitty (herdr, opencode, btop…)",
-    "fsize": "base size: kitty = size, rofi and waybar workspaces −1, waybar and dunst −3, GTK −3",
+    "font": "kitty, dunst, waybar, gtklock — and every TUI inside kitty (herdr, opencode, btop…)",
+    "fsize": "base size: kitty = size, waybar workspaces −1, waybar and dunst −3, GTK −3",
     "ui": "GTK apps (Thunar, dialogs…) at font size −3; (unchanged) leaves GTK's font alone",
     "icons": "Thunar and GTK apps; falls back to the themes it inherits from",
     "cursor": "applied live (hyprctl setcursor + gsettings) and saved in ~/.config/dotfiles/hypr/settings.conf",
@@ -314,7 +314,7 @@ class FontsView(DView):
         t = Text()
         t.append(APPLIES.get(key, "") + "\n\n", style=muted)
         s, ui = c["size"], c["ui_set"]
-        for app, pt, note in [("kitty", s, "base"), ("rofi", s - 1, ""), ("waybar workspaces", s - 1, ""),
+        for app, pt, note in [("kitty", s, "base"), ("waybar workspaces", s - 1, ""),
                               ("waybar", s - 3, ""), ("dunst", s - 3, ""),
                               ("GTK", s - 3, ui if ui else "(unchanged)")]:
             t.append(f"{app:<20}", style=muted)

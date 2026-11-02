@@ -3,7 +3,7 @@
 # Toggle global, temporizador con auto-desactivación, y silenciar apps
 # específicas (skip_display) sin tocar el resto de las notificaciones.
 # La interfaz es Settings → Notifications (tools/settings/settings_tui.py);
-# sin argumentos abre esa sección. Antes era config/rofi/scripts/dnd-menu.sh.
+# sin argumentos abre esa sección. Antes era dnd-menu.sh (menús de rofi).
 STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/dotfiles"
 DROPIN="${XDG_CONFIG_HOME:-$HOME/.config}/dunst/dunstrc.d/50-dnd.conf"
 STATE_LIST="$STATE_DIR/dunst-blocked-apps.conf"   # "<1|0>\t<app>" por línea

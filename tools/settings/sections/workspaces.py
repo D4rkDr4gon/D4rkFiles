@@ -70,7 +70,7 @@ def write_ws_conf(n: int) -> None:
     lines = ["# workspaces.conf — generado por Settings → Workspaces (tools/settings/sections/workspaces.py).",
              "# No editar a mano: se reescribe al cambiar la cantidad. La línea count la leen",
              "# config/hypr/hyprland.lua (atajos Super+N y Super+Shift+N), el indicador de",
-             "# waybar, workspace-cycle.sh y el switcher de rofi.",
+             "# waybar, workspace-cycle.sh y el selector de workspaces del lanzador.",
              f"# count: {n}"]
     atomic_write(WS_CONF, "\n".join(lines) + "\n")
 

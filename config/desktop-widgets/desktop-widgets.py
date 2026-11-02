@@ -649,7 +649,7 @@ BROWSERS = {"firefox", "chromium", "chrome", "google-chrome", "brave", "brave-br
 # Procesos que nunca son "la app" (si el navegador se abrió desde una terminal
 # o un lanzador, subir por el árbol no tiene que terminar en ellos)
 LAUNCHERS = {"kitty", "foot", "alacritty", "wezterm", "wezterm-gui", "ghostty", "konsole", "gnome-terminal",
-             "xterm", "hyprland", "uwsm", "walker", "rofi", "elephant", "dbus-daemon", "systemd", "init",
+             "xterm", "hyprland", "uwsm", "dbus-daemon", "systemd", "init",
              "sh", "bash", "zsh", "fish", "dash", "env", "setsid", "nohup", "sudo", "tmux", "herdr"}
 FFPWA_RE = re.compile(r"FFPWA-([0-9A-Z]{26})|--pwa[= ]([0-9A-Z]{26})|site launch ([0-9A-Z]{26})")
 
