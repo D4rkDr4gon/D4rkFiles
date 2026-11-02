@@ -57,6 +57,6 @@ El instalador es idempotente y **no borra nada**: lo que reemplaza queda en
 |---|---|---|
 | WM | Hyprland + hyprpaper + hyprshell | Qtile + picom |
 | Barra | waybar | polybar |
-| Launcher | rofi (+ walker/elephant) | rofi |
+| Launcher | TUI propia (`tools/launcher_tui.py`) | rofi |
 | Bloqueo / login | gtklock · SDDM | betterlockscreen / i3lock · SDDM |
 | Común | kitty · zsh + powerlevel10k · dunst · Neovim (LazyVim) · herdr · lazygit · Thunar | |

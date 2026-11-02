@@ -151,13 +151,19 @@ local dialogs = {
     clipboard = { 1200, 680 },   -- tools/clipboard_tui.py, Mod+V
     expenses  = { 1560, 960 },   -- tools/expenses_tui.py, Mod+G
     ["spotify-tui"] = { 1300, 800 }, -- tools/spotify_tui.py, Mod+Y
+    -- Lanzador y menús rápidos (tools/launcher_tui.py, reemplazo de rofi)
+    launcher             = { 920, 560 },  -- Mod+Space
+    ["launcher-emoji"]   = { 760, 560 },  -- Mod+E
+    ["launcher-power"]   = { 560, 300 },  -- Mod+L
+    ["launcher-ws"]      = { 760, 400 },  -- clic en los workspaces de waybar
+    ["launcher-dmenu"]   = { 760, 440 },  -- scripts/dmenu.sh (menú de modos, etc.)
 }
 for class, size in pairs(dialogs) do
     hl.window_rule({ match = { class = "^(" .. class .. ")$" }, float = true, center = true,
                      size = size, opacity = "0.97 override" })
 end
 
--- Ventana del menú Update (rofi/scripts/update-menu.sh): terminal centrada, sin pin,
+-- Ventana de las tareas de dotfiles-update.sh: terminal centrada, sin pin,
 -- porque corre tareas largas con sudo/huella.
 hl.window_rule({ match = { class = "^(dotfiles-update)$" }, float = true, center = true, size = { 1000, 620 } })
 
@@ -184,7 +190,7 @@ end
 -- ===================== APLICATION SHORTCUTS =====================
 exec(mainMod .. " + Return",         terminal)
 exec(mainMod .. " + SHIFT + Return", dotfiles .. "/config/herdr/launch.sh")
-exec(mainMod .. " + Space",          "rofi -show drun -theme " .. home .. "/.config/rofi/theme-drun.rasi")  -- walker/elephant tiene una race condition: ver docs/components.md
+exec(mainMod .. " + Space",          home .. "/.config/waybar/scripts/launcher-launch.sh")          -- lanzador (tools/launcher_tui.py)
 exec(mainMod .. " + B",              browser)
 exec(mainMod .. " + F",              "cd /tmp && " .. file_manager)  -- cwd=/tmp: hyprfm-git ignora su theme si cwd == $HOME (bug upstream)
 exec(mainMod .. " + K",              "bash " .. home .. "/.config/waybar/scripts/shortcuts-launch.sh")  -- cheatsheet de shortcuts, ver + editar
@@ -192,7 +198,7 @@ exec(mainMod .. " + S",              editor)
 exec(mainMod .. " + V",              home .. "/.config/waybar/scripts/clipboard-launch.sh")  -- historial de portapapeles (cliphist + TUI)
 exec(mainMod .. " + G",              home .. "/.config/waybar/scripts/expenses-launch.sh")   -- gestor de gastos (TUI)
 exec(mainMod .. " + Y",              home .. "/.config/waybar/scripts/spotify-launch.sh")    -- Spotify (TUI sobre spotify_player)
-exec(mainMod .. " + E",              home .. "/.config/rofi/scripts/emoji.sh")               -- selector de emojis (copia al portapapeles)
+exec(mainMod .. " + E",              home .. "/.config/waybar/scripts/launcher-launch.sh emoji")    -- selector de emojis (copia al portapapeles)
 exec(mainMod .. " + SHIFT + M",      dotfiles .. "/scripts/mode-switch.sh")  -- modos de escritorio (~/.config/dotfiles/modes.conf)
 
 -- ===================== CLOSE / WINDOW TOGGLE =====================
@@ -236,7 +242,7 @@ exec("CTRL + Tab",         SCRIPTS .. "/workspace-cycle.sh next")  -- Ctrl+Tab s
 exec("CTRL + SHIFT + Tab", SCRIPTS .. "/workspace-cycle.sh prev")  -- Ctrl+Shift+Tab anterior
 
 -- ===================== SYSTEM / UTILITIES =====================
-exec(mainMod .. " + L",             home .. "/.config/rofi/scripts/action-menu.sh")
+exec(mainMod .. " + L",             home .. "/.config/waybar/scripts/launcher-launch.sh power")   -- bloquear / suspender / apagar / reiniciar
 exec(mainMod .. " + SHIFT + Space", home .. "/.config/waybar/scripts/settings-launch.sh")
 hl.bind(mainMod .. " + CTRL + R", function()  -- recarga waybar y la config
     hl.exec_cmd(dotfiles .. "/scripts/barupdate.sh")

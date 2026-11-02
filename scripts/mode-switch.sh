@@ -3,11 +3,11 @@
 # mode-switch.sh — Modos de escritorio (ej: TRABAJO, ESTUDIO, JUGAR)
 # Lee ~/.config/dotfiles/modes.conf y ubica cada app en su workspace:
 # si ya está abierta la mueve, si no la abre ahí en silencio. No cierra
-# nada. Sin argumentos muestra un menú rofi con los modos y la entrada
+# nada. Sin argumentos muestra un menú (scripts/dmenu.sh) con los modos y la entrada
 # para gestionarlos (scripts/mode-manager.sh). Requiere Hyprland y jq.
 #
 # El modo activo vive en $XDG_RUNTIME_DIR (se borra al reiniciar): al arrancar no hay
-# ninguno. `--none` (o "Sin modo" en el menú) lo desactiva sin tocar las ventanas.
+# ninguno. `--none` (o "No mode" en el menú) lo desactiva sin tocar las ventanas.
 #
 # Uso: mode-switch.sh [modo | --none]
 # ──────────────────────────────────────────────────────────
@@ -17,10 +17,10 @@ set -uo pipefail
 source "$(dirname "$(readlink -f "$0")")/lib/env.sh"
 CONF="$DOTFILES_CONF_DIR/modes.conf"
 STATE="${XDG_RUNTIME_DIR:-/tmp}/desktop-mode"
-NONE="󰜺  Sin modo"
+NONE="󰜺  No mode"
 MANAGER_LAUNCH="$HOME/.config/waybar/scripts/modes-launch.sh"
-ROFI_THEME="$HOME/.config/rofi/theme.rasi"
-MANAGE="󰒓  Gestionar modos..."
+DMENU="$DOTFILES_DIR/scripts/dmenu.sh"
+MANAGE="󰒓  Manage modes…"
 WAIT_SECS=30   # cuánto esperar a que aparezca una app recién lanzada
 
 [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]] || { echo "Requiere Hyprland" >&2; exit 1; }
@@ -42,14 +42,12 @@ choose_mode() {
         !($1 in icon) { order[++n] = $1; icon[$1] = "" }
         $2 != "" && icon[$1] == "" { icon[$1] = $2 }
         END { for (i = 1; i <= n; i++) { m = order[i]
-            printf "%s  %s%s\n", (icon[m] == "" ? "󰕮" : icon[m]), m, (m == cur ? "  (activo)" : "") } }')"
+            printf "%s  %s%s\n", (icon[m] == "" ? "󰕮" : icon[m]), m, (m == cur ? "  (active)" : "") } }')"
     none="$NONE"
-    [[ -z "$current" ]] && none+="  (activo)"
+    [[ -z "$current" ]] && none+="  (active)"
     menu="$none${menu:+$'\n'$menu}"$'\n'"$MANAGE"
     printf '%s\n' "$menu" \
-        | rofi -dmenu -i -p "Modo" -theme "$ROFI_THEME" \
-            -theme-str "listview { lines: $(wc -l <<<"$menu"); }" \
-            -theme-str 'entry { placeholder: "Elegí un modo..."; }'
+        | bash "$DMENU" -p "󰕮  Mode" --placeholder "pick a mode…" --no-custom
 }
 
 clear_mode() {
@@ -88,7 +86,7 @@ else
     [[ -n "$choice" ]] || exit 0
     [[ "$choice" == "$MANAGE" ]] && exec bash "$MANAGER_LAUNCH"
     [[ "$choice" == "$NONE"* ]] && clear_mode
-    MODE="$(sed -E 's/^[^ ]+  //; s/  \(activo\)$//' <<<"$choice")"
+    MODE="$(sed -E 's/^[^ ]+  //; s/  \(active\)$//' <<<"$choice")"
 fi
 
 found=0

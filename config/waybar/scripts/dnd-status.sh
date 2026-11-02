@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Modulo waybar: estado de No Molestar (regla dnd_global de dunst, que
-# maneja rofi/scripts/dnd-menu.sh). No usa `dunstctl is-paused`: el DND de
+# maneja scripts/dnd.sh). No usa `dunstctl is-paused`: el DND de
 # estos dotfiles es una regla skip_display, no la pausa de dunst.
 # Se refresca por polling y al instante con `pkill -RTMIN+9 waybar`.
 

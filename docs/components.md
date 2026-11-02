@@ -53,7 +53,7 @@ Barra: polybar; compositor: picom.
     y que el instalador enlaza y activa en
     `~/.claude/settings.json` solo si no tenés una); el de opencode se lee directo de su storage.
   - **No molestar** (`custom/dnd`, al lado del audio): `󰂛` activado (color `@alert`), `󰂚` desactivado.
-    Click hace toggle (`dnd-menu.sh --toggle`), click derecho abre el menú. Lee la regla `dnd_global` de dunst
+    Click hace toggle (`scripts/dnd.sh --toggle`), click derecho abre Settings → Notifications. Lee la regla `dnd_global` de dunst
     (`config/waybar/scripts/dnd-status.sh`) y se refresca al instante con `pkill -RTMIN+9 waybar`.
   - **VPN** (`custom/vpn`): estado de tus perfiles de NetworkManager (y de Tailscale si está conectado); click abre `tools/vpn_tui.py`. **Viene vacío**:
     no trae ningún perfil ni proveedor (ver [customization.md](customization.md#vpn)). Sin perfiles muestra "Sin
@@ -61,23 +61,34 @@ Barra: polybar; compositor: picom.
 - **polybar** (`config/polybar/`, X11): módulos en `modules/*.ini`. `launch.sh` autodetecta
   batería, adaptador AC y Wi-Fi y los pasa por `POLYBAR_BAT`, `POLYBAR_AC`, `POLYBAR_WLAN`.
 
-## rofi y walker
+## Lanzador (reemplazo de rofi)
 
-`config/rofi/`: `theme*.rasi` (`colors.rasi` es generado) y `scripts/`:
+`tools/launcher_tui.py`: una sola TUI con la estética de las demás (buscador arriba, lista abajo), que abre
+`config/waybar/scripts/launcher-launch.sh <modo>` en una kitty centrada (una clase por modo, con su tamaño en la
+tabla `dialogs` de `config/hypr/hyprland.lua`).
 
-| Script | Función |
-|---|---|
-| `action-menu.sh` | Bloquear, suspender, reiniciar, apagar, salir |
-| `emoji.sh` | Selector de emojis (`Mod+E`): busca por nombre y copia al portapapeles |
-| `dnd-menu.sh` | No molestar (global, por tiempo y por app); subcomandos `--status`/`--on`/`--off`/`--timer`/`--app-toggle`/`--app-add` para Settings |
-| `notification-center.sh`, `update-menu.sh`, `workspace-switcher.sh`, `web-search.sh` | Historial de notificaciones, updates, workspaces, búsqueda |
-| `spotlight-launch.sh`, `spotlight-fallback.sh` | Buscador combinado (apps + comandos + calculadora + web) |
+| Modo | Atajo | Qué hace |
+|---|---|---|
+| `apps` | `Super+Space` | Apps de los `.desktop` (favoritas `★` y más usadas arriba) + según lo escrito: resultado de una cuenta en vivo (`enter` copia), comando de `$PATH` con argumentos y búsqueda web con `BROWSER` en el workspace 5 |
+| `emoji` | `Super+E` | ~840 emojis por nombre en inglés; `enter` copia |
+| `power` | `Super+L` | Lock, Suspend, Log out, Reboot, Power off (los tres últimos piden confirmación) |
+| `workspaces` | clic en los workspaces de waybar | 1..N con sus ventanas; `enter` va |
+| `dmenu` | `scripts/dmenu.sh` | Menú genérico para scripts: opciones por stdin, la elegida por stdout (`-p`, `--placeholder`, `--no-custom`, `--index`) |
 
-`Super+Space` abre rofi (`drun`) en ambas sesiones. **walker** (`config/walker/`, solo
-Wayland) usa el backend `elephant` y queda instalado como alternativa (comando `walker`); queda
-fuera del atajo principal por una condición de carrera conocida entre walker y elephant.
+Escribir filtra, `↑↓` mueven, `enter` elige, `esc` cierra. `tab` pasa a la lista: ahí `f` marca/desmarca la app
+como favorita (desde el buscador, `ctrl+f`). Favoritas en `~/.config/dotfiles/launcher-favorites.txt` (una por
+línea, el `Name` del `.desktop`); el uso de cada app, para ordenar, en
+`~/.local/state/dotfiles/launcher-history.json`. La cuenta se evalúa con `ast` (sin `eval`): números, operadores
+y funciones de `math`. Abre en frío (~0.7 s: Textual + kitty), como las demás TUIs.
 
-Settings y el historial del portapapeles (`Mod+V`) ya no son menús de rofi: son TUIs
+No molestar es `scripts/dnd.sh` (backend: `--status`/`--on`/`--off`/`--timer`/`--app-toggle`/`--app-add`/
+`--toggle`; sin argumentos abre Settings → Notifications, que tiene el menú).
+
+`config/rofi/` queda en el repo (el motor de temas sigue generando `colors.rasi`) pero ya no lo usa ningún atajo en
+Hyprland. **walker** (`config/walker/`, solo Wayland, backend `elephant`) queda instalado como alternativa (comando
+`walker`), fuera del atajo por una condición de carrera conocida entre walker y elephant.
+
+Settings y el historial del portapapeles (`Mod+V`) tampoco son menús de rofi: son TUIs
 (`tools/settings/settings_tui.py`, `tools/clipboard_tui.py`), ver [settings.md](settings.md).
 
 ## Notificaciones y OSDs

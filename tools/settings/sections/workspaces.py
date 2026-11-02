@@ -5,7 +5,7 @@ La cantidad elegida (1–10) se guarda en la línea `# count: N` de
 en un bucle Super+1..N, traer y enfocar, y Super+Shift+1..N, mover la ventana;
 el 10 es la tecla 0), el indicador de waybar (config/hypr/scripts/hypr-workspaces.py),
 Ctrl+Tab y la rueda sobre waybar (config/hypr/scripts/workspace-cycle.sh, dan
-la vuelta en 1..N) y el switcher de rofi. Sin el archivo rigen los 9 de siempre.
+la vuelta en 1..N) y el selector del lanzador (tools/launcher_tui.py). Sin el archivo rigen los 9 de siempre.
 
 Al bajar la cantidad, si quedan ventanas en workspaces que se deshabilitan, se
 ofrece moverlas al último habilitado. En Qtile los grupos siguen fijos (1–6).

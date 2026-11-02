@@ -60,7 +60,7 @@ Layout del repo: `config/<app>/` (→ `~/.config/<app>`), `home/zsh/`, `system/`
 | dunst | `dunstctl reload` |
 | kitty | `theme <activo>` (colores) · `Ctrl+Shift+F5` (config) |
 | Qtile | `Super+Ctrl+R` |
-| rofi / walker / dunst DND | se leen al abrirse |
+| lanzador (`tools/launcher_tui.py`) / walker / dunst DND | se leen al abrirse |
 | zsh | `exec zsh` |
 | Unidades systemd de usuario | `systemctl --user daemon-reload` |
 | `~/.config/dotfiles/hypr/workspaces.conf` | `hyprctl reload` (Settings → Workspaces lo hace solo) |

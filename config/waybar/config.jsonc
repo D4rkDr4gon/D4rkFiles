@@ -17,7 +17,7 @@
         "interval": 1,
         "return-type": "json",
         "format": "{}",
-        "on-click": "bash $HOME/.config/rofi/scripts/workspace-switcher.sh",
+        "on-click": "bash $HOME/.config/waybar/scripts/launcher-launch.sh workspaces",
         "on-scroll-up": "bash $HOME/.config/waybar/scripts/workspace-switch.sh prev",
         "on-scroll-down": "bash $HOME/.config/waybar/scripts/workspace-switch.sh next"
     },
@@ -60,8 +60,8 @@
         "return-type": "json",
         "format": "{}",
         "tooltip": true,
-        "on-click": "bash $HOME/.config/rofi/scripts/dnd-menu.sh --toggle",
-        "on-click-right": "bash $HOME/.config/rofi/scripts/dnd-menu.sh"
+        "on-click": "bash $HOME/.local/share/dotfiles/scripts/dnd.sh --toggle",
+        "on-click-right": "bash $HOME/.local/share/dotfiles/scripts/dnd.sh"
     },
 
     "network": {

@@ -10,7 +10,7 @@ todos los atajos (y permite reasignar su combinación).
 |---|---|
 | `Super+Return` | Terminal (`TERMINAL`) |
 | `Super+Shift+Return` | herdr (multiplexor de terminal) en kitty |
-| `Super+Space` | Buscador (rofi: `drun` en Hyprland, `combi` con comandos, calculadora y web en Qtile) |
+| `Super+Space` | Lanzador: apps, cuenta en vivo, comandos y búsqueda web; `tab` + `f` marca favoritas (`tools/launcher_tui.py`, [components.md](components.md#lanzador-reemplazo-de-rofi)) |
 | `Super+Shift+Space` | Settings: TUI con todas las opciones del entorno ([settings.md](settings.md)) |
 | `Super+B` | Navegador (`BROWSER`) |
 | `Super+F` | Gestor de archivos (`FILE_MANAGER`) |
@@ -19,9 +19,10 @@ todos los atajos (y permite reasignar su combinación).
 | `Super+Shift+M` | Hyprland: modos de escritorio ([customization.md](customization.md#modos-de-escritorio)) |
 | `Super+Shift+D` | Modo Focus: No Molestar + oculta los widgets que distraen (música, clima, teléfono, dinero); `scripts/focus-mode.sh` |
 | `Super+V` | Historial del portapapeles (Hyprland: cliphist + `tools/clipboard_tui.py` · Qtile: CopyQ) |
+| `Super+E` | Selector de emojis (lanzador, modo `emoji`): busca por nombre en inglés y copia |
 | `Super+G` | Gestor de gastos (`tools/expenses_tui.py`, [customization.md](customization.md#gestor-de-gastos)) |
 | `Super+Y` | Spotify (`tools/spotify_tui.py`, [customization.md](customization.md#spotify)) |
-| `Super+L` | Menú de acciones: bloquear, suspender, reiniciar, apagar, salir |
+| `Super+L` | Menú de sesión: bloquear, suspender, salir, reiniciar, apagar (lanzador, modo `power`) |
 | `Print` / `Super+Shift+S` | Captura de pantalla (región; Wayland: guarda y copia) |
 | `Super+Ctrl+R` | Recargar barra (y la config del WM) |
 

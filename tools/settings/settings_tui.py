@@ -81,7 +81,7 @@ from textual.widgets import ContentSwitcher, DataTable, Static  # noqa: E402
 # Perfil: el mismo logo que waybar; el nombre, de user.conf (o la cuenta)
 LOGO = DOTFILES / "config" / "waybar" / "logo.png"
 WALLPAPER_SET = DOTFILES / "scripts" / "wallpaper-set.sh"
-DND = DOTFILES / "config" / "rofi" / "scripts" / "dnd-menu.sh"
+DND = DOTFILES / "scripts" / "dnd.sh"
 FOCUS = DOTFILES / "scripts" / "focus-mode.sh"
 IMAGE_EXT = (".jpg", ".jpeg", ".png", ".webp")
 
@@ -309,7 +309,7 @@ class BackgroundsView(DView):
 # ── Notifications ─────────────────────────────────────────
 
 class NotificationsView(DView):
-    """Historial de dunst + No Molestar (config/rofi/scripts/dnd-menu.sh)."""
+    """Historial de dunst + No Molestar (scripts/dnd.sh)."""
 
     FOCUS = "#history"
     DEFAULT_CSS = css("""
@@ -1361,6 +1361,7 @@ def binding_catalog() -> list[tuple[str, Binding]]:
     # TUIs sueltas que no son secciones (usan el mismo keymap de dtui)
     out += [("Expenses TUI", b) for b in bindings_of(load_view("expenses_tui", "ExpensesApp"))]
     out += [("Spotify TUI", b) for b in bindings_of(load_view("spotify_tui", "SpotifyView"))]
+    out += [("Launcher", b) for b in bindings_of(load_view("launcher_tui", "LauncherView"))]
     seen, uniq = set(), []
     for sec, b in out:
         if b.id not in seen:
