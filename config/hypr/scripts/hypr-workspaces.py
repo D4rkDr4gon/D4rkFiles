@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
-Workspace indicator for Hyprland → Waybar.
-Reemplaza a qtile-workspaces.py cuando se está ejecutando Hyprland.
+Workspace indicator for Hyprland → Waybar (lo llama config/waybar/scripts/workspaces.py).
 
-Usa hyprctl para obtener el estado de los workspaces y emite el mismo
-formato JSON que qtile-workspaces.py para mantener compatibilidad con Waybar.
+Usa hyprctl para obtener el estado de los workspaces y emite el JSON de un
+módulo custom de waybar.
 """
 import json
 import re

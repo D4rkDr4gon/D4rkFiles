@@ -9,7 +9,7 @@ step_summary() {
     fi
     cat <<MSG
   Próximos pasos:
-    1. Cerrá sesión y elegí Hyprland$($WITH_X11 && echo " o Qtile") en tu login manager.
+    1. Cerrá sesión y elegí Hyprland en tu login manager.
     2. Cambiá de tema:       theme            (lista)   |   theme <nombre>
     3. Tus ajustes:          ~/.config/dotfiles/user.conf y ~/.config/dotfiles/hypr/local.conf
     4. Verificar todo:       scripts/dotfiles-doctor.sh

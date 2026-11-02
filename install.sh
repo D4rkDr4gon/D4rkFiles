@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #===============================================================================
-# D4rkFiles — instalador de dotfiles para Arch Linux (Hyprland + Qtile)
+# D4rkFiles — instalador de dotfiles para Arch Linux (Hyprland)
 #
 #   Una línea (clona el repo y sigue):
 #     bash <(curl -fsSL https://raw.githubusercontent.com/D4rkDr4gon/D4rkFiles/main/install.sh)
@@ -21,8 +21,6 @@ usage() {
 Uso: install.sh [opciones]
 
 Qué instalar:
-  --no-wayland        No instala la sesión Hyprland (solo Qtile/X11)
-  --no-x11            No instala la sesión Qtile/X11 (solo Hyprland)
   --no-aur            No usa el AUR (ni instala yay)
   --no-upgrade        No ofrece `pacman -Syu` antes de instalar
   --with-ollama       Instala Ollama (IA local) sin preguntar
@@ -49,7 +47,7 @@ EOF
 #--- Argumentos ---------------------------------------------------------------
 ORIG_ARGS=("$@")   # copia para re-ejecutar el instalador del clone con las mismas opciones
 DRY_RUN=false; ASSUME_YES=false
-WITH_HYPRLAND=true; WITH_X11=true; USE_AUR=true; DO_UPGRADE=true; WITH_OLLAMA=false; WITH_NETGUARD=false; WITH_SKILLS=true
+USE_AUR=true; DO_UPGRADE=true; WITH_OLLAMA=false; WITH_NETGUARD=false; WITH_SKILLS=true
 ONLY=""; SKIP=""; CLONE_DIR="${DOTFILES_DIR:-}"
 ALL_STAGES=(preflight packages configure links herdr sublime shell system optional summary)
 
@@ -58,8 +56,6 @@ while (($#)); do
         -h|--help)      usage; exit 0 ;;
         -n|--dry-run)   DRY_RUN=true ;;
         -y|--yes)       ASSUME_YES=true ;;
-        --no-wayland)   WITH_HYPRLAND=false ;;
-        --no-x11)       WITH_X11=false ;;
         --no-aur)       USE_AUR=false ;;
         --no-upgrade)   DO_UPGRADE=false ;;
         --with-ollama)  WITH_OLLAMA=true ;;
@@ -74,7 +70,6 @@ while (($#)); do
     esac
     shift
 done
-$WITH_HYPRLAND || $WITH_X11 || { echo "Error: --no-wayland y --no-x11 juntos no dejan nada que instalar." >&2; exit 2; }
 
 #--- Ubicación del repo (y bootstrap si se ejecutó vía curl) --------------------
 SCRIPT_PATH="$(readlink -f "${BASH_SOURCE[0]:-$0}" 2>/dev/null || true)"

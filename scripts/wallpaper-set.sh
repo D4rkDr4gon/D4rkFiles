@@ -4,9 +4,8 @@
 # Lo usa Settings → Backgrounds (tools/settings/settings_tui.py). Es la
 # lógica que antes vivía en el menú rofi de Settings (list_backgrounds):
 #   1) guarda la ruta en ~/.local/state/dotfiles/current_theme.json (fuente
-#      única del wallpaper; start-hyprpaper.sh y Qtile la leen al iniciar)
-#   2) Hyprland: lo aplica por IPC de hyprpaper (lo arranca si no corre)
-#      X11/Qtile: actualiza betterlockscreen (si está) y recarga Qtile
+#      única del wallpaper; start-hyprpaper.sh la lee al iniciar)
+#   2) lo aplica por IPC de hyprpaper (lo arranca si no corre)
 #   3) reinicia la barra y avisa
 #
 # Uso: wallpaper-set.sh <ruta-al-wallpaper>
@@ -30,14 +29,6 @@ fi
 if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
     pgrep -x hyprpaper >/dev/null || { setsid -f hyprpaper >/dev/null 2>&1; sleep 0.3; }
     hyprctl hyprpaper wallpaper ",$WALLPAPER" >/dev/null 2>&1 || true
-else
-    if [[ "${XDG_SESSION_TYPE:-}" != "wayland" ]] && command -v feh &>/dev/null; then
-        feh --bg-fill "$WALLPAPER" 2>/dev/null || true
-    fi
-    if command -v betterlockscreen &>/dev/null; then
-        betterlockscreen -u "$WALLPAPER" >> "$DOTFILES_STATE_DIR/betterlockscreen.log" 2>&1 || true
-    fi
-    pgrep -x qtile >/dev/null && { qtile cmd-obj -o cmd -f reload_config 2>/dev/null || true; }
 fi
 
 bash "$DOTFILES_DIR/scripts/barupdate.sh" 2>/dev/null || true

@@ -1,7 +1,7 @@
 # Instalación
 
-Soporta **Arch Linux** (y derivadas con `pacman`). Instala dos sesiones: **Hyprland**
-(Wayland) y **Qtile** (X11); podés elegir solo una.
+Soporta **Arch Linux** (y derivadas con `pacman`). Instala una sesión **Hyprland** (Wayland);
+las apps X11 corren en XWayland.
 
 ## Una línea
 
@@ -32,7 +32,6 @@ El repo puede estar en **cualquier ruta**: el instalador crea el symlink estable
 | `--only a,b` / `--skip a,b` | Corre solo (o salta) esas etapas |
 | `--configure` | Atajo de `--only configure`: crea `user.conf` y renderiza el tema |
 | `--dir RUTA` | Dónde está o se clonará el repo |
-| `--no-wayland` / `--no-x11` | Omite la sesión Hyprland / Qtile |
 | `--no-aur` | No usa el AUR (ni instala `yay`) |
 | `--no-upgrade` | No ofrece `pacman -Syu` antes de instalar |
 | `--with-ollama` | Instala Ollama sin preguntar |
@@ -73,7 +72,6 @@ Viven en `install/packages/`, un nombre por línea (`#` comenta):
 |---|---|
 | `base.txt`, `base.aur.txt` | Shell, terminal, audio, red, fuentes, iconos, TUIs |
 | `hyprland.txt`, `hyprland.aur.txt` | Sesión Hyprland, waybar, gtklock, sddm, walker… |
-| `x11.txt`, `x11.aur.txt` | Sesión Qtile: qtile, polybar, picom, feh… |
 | `gpu-*.txt` | Espacio de usuario de la GPU detectada |
 
 El CI verifica que cada nombre exista en los repos (o en el AUR para `*.aur.txt`).

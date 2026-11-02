@@ -46,11 +46,10 @@ Campos opcionales de `theme.json` (defaults = como se veía todo antes; tabla en
   monitor=DP-1,2560x1440@144,1920x0,1
   ```
   Luego `hyprctl reload`. Gráfico: `hyprmon` (Settings → DISPLAYS).
-- **Qtile/X11:** `xrandr` o `arandr`; poné el comando en `~/.xprofile`. Qtile y polybar detectan los monitores solos.
 
 ## Paquetes
 
-1. Decidí el grupo: `install/packages/base.txt` (todas las sesiones), `hyprland.txt`, `x11.txt`; el sufijo `.aur.txt` para el AUR.
+1. Decidí el grupo: `install/packages/base.txt` (shell, terminal, TUIs…), `hyprland.txt` (la sesión); el sufijo `.aur.txt` para el AUR.
 2. Agregá una línea con el nombre exacto (el CI verifica que exista).
 3. Instalalo: `sudo pacman -S --needed <pkg>` o `yay -S --needed <pkg>` (**pedí confirmación**), o `./install.sh --only packages`.
 4. Quitar: sacá la línea y `sudo pacman -Rns <pkg>` (confirmá antes). Settings → Update → `v` (Installed) lista todo lo
@@ -86,7 +85,7 @@ Settings → Workspaces: `←/→` elige cuántos (1–10) y `enter` aplica. Gen
 `unbind` de los atajos que sobran (el repo trae `Super+1…9`), el bind del 10 (`Super+0`) si hace falta y la línea
 `# count: N`, que leen el indicador de waybar (`config/hypr/scripts/hypr-workspaces.py`), `Ctrl+Tab` y la rueda
 (`config/hypr/scripts/workspace-cycle.sh`, dan la vuelta en 1..N) y el selector de workspaces del lanzador. Sin el archivo rigen 9.
-Si quedan ventanas en workspaces que se deshabilitan, Settings ofrece moverlas. Qtile: 6 grupos fijos.
+Si quedan ventanas en workspaces que se deshabilitan, Settings ofrece moverlas.
 
 ## Luz nocturna
 

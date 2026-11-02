@@ -8,11 +8,11 @@
 | `scripts/logo.sh` (alias `logo`) | Muestra el dragón y el banner del proyecto en la terminal |
 | `scripts/dotfiles-doctor.sh` | Diagnóstico de solo lectura |
 | `scripts/dotfiles-update.sh` | Actualización del sistema con snapshot y rollback |
-| `scripts/lock-screen.sh` | Bloqueo (gtklock / betterlockscreen / i3lock) |
+| `scripts/lock-screen.sh` | Bloqueo (gtklock) |
 | `scripts/screenshot.sh` | Captura de región; guarda en `~/Pictures/Screenshots` y copia |
 | `scripts/cliphist.sh` | Wrapper único de cliphist (la base vive en `$XDG_RUNTIME_DIR`, no toca el disco) |
 | `scripts/battery-watch.sh` | Notificaciones de batería (15/10/5 %) |
-| `scripts/barupdate.sh` | Reinicia la barra (waybar o polybar según la sesión) |
+| `scripts/barupdate.sh` | Reinicia waybar |
 | `scripts/welcome.sh` | Notificación de bienvenida con tu nombre |
 | `scripts/install-netguard.sh` | Instala [netguard](netguard.md) (opcional) en su versión fijada: `git` + `makepkg`; `--setup` lo configura |
 | `scripts/proton-backup.sh` | Backup incremental en Proton Drive: Settings → Backup ([customization.md](customization.md#backup-en-proton-drive)) |
@@ -22,7 +22,7 @@
 | `scripts/dnd.sh` | No molestar de dunst (drop-in `dunstrc.d/50-dnd.conf`); sin argumentos abre Settings → Notifications |
 | `scripts/setup-sddm-theme.sh` | Instala el tema de login de SDDM |
 | `scripts/wayland/wayvnc-toggle.sh` | Monitor virtual por VNC |
-| `scripts/bluetooth-status.sh` | Ícono de estado de bluetooth (waybar y polybar) |
+| `scripts/bluetooth-status.sh` | Ícono de estado de bluetooth (waybar) |
 | `scripts/usbguard-notify.py` | Notificación cuando USBGuard bloquea un USB, con botones para permitirlo (exec-once; sale solo si no hay usbguard) ([settings.md](settings.md)) |
 | `scripts/phone-proximity.py` | Bloquea la sesión cuando el teléfono (KDE Connect) queda fuera de alcance; off por defecto, Settings → Phone |
 | `config/hypr/scripts/hypr-session.py` | Guarda las ventanas abiertas y las reabre cada una en su workspace (`save`, `restore`, `status`, `daemon`); Settings → Workspaces → Session |

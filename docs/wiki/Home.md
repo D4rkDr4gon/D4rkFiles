@@ -2,7 +2,7 @@
 <img src="https://raw.githubusercontent.com/D4rkDr4gon/D4rkFiles/main/config/waybar/logo.png" alt="Logo de D4rkFiles" width="140">
 </p>
 
-**D4rkFiles** son dotfiles de Arch Linux con dos sesiones —**Hyprland** (Wayland) y **Qtile** (X11)— y un
+**D4rkFiles** son dotfiles de Arch Linux para **Hyprland** (Wayland; las apps X11 corren en XWayland) con un
 motor de temas: cambiás de tema y cambian a la vez el borde de las ventanas, waybar, rofi, kitty, dunst,
 Neovim, Firefox, la pantalla de login y unas veinte cosas más.
 
@@ -53,10 +53,10 @@ El instalador es idempotente y **no borra nada**: lo que reemplaza queda en
 
 ## Stack
 
-| Área | Hyprland (Wayland) | Qtile (X11) |
-|---|---|---|
-| WM | Hyprland + hyprpaper + hyprshell | Qtile + picom |
-| Barra | waybar | polybar |
-| Launcher | TUI propia (`tools/launcher_tui.py`) | rofi |
-| Bloqueo / login | gtklock · SDDM | betterlockscreen / i3lock · SDDM |
-| Común | kitty · zsh + powerlevel10k · dunst · Neovim (LazyVim) · herdr · lazygit · Thunar | |
+| Área | |
+|---|---|
+| WM | Hyprland + hyprpaper + hyprshell |
+| Barra | waybar |
+| Launcher | TUI propia (`tools/launcher_tui.py`) |
+| Bloqueo / login | gtklock · SDDM |
+| Común | kitty · zsh + powerlevel10k · dunst · Neovim (LazyVim) · herdr · lazygit · Thunar |

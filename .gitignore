@@ -21,7 +21,6 @@
 /config/lazygit/config.yml
 /config/nvim/lua/config/colors.lua
 /config/opencode/opencode.jsonc
-/config/polybar/colors.ini
 /config/rofi/colors.rasi
 /config/rofi/theme-action.rasi
 /config/rofi/theme-drun.rasi

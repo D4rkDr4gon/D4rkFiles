@@ -1,6 +1,6 @@
 # Manifiesto de enlaces simbólicos: fuente única para install.sh y dotfiles-doctor.sh.
 # Columnas separadas por TAB:  origen (relativo al repo)  destino (relativo a $HOME)  grupo
-# Grupos: core (siempre) | hyprland | x11 | skills (skill de IA; se omite con --no-skills).
+# Grupos: core (siempre) | hyprland (siempre al instalar; el doctor lo exige si hay Hyprland) | skills (skill de IA; se omite con --no-skills).
 # Un origen "." es el propio repo.
 # Los directorios completos se enlazan con `ln -sfT`; lo que existía antes se
 # mueve a ~/.local/state/dotfiles/backups/<fecha>/ (nunca se borra).
@@ -32,9 +32,6 @@ config/hyprshell	.config/hyprshell	hyprland
 config/fprint-osd	.config/fprint-osd	hyprland
 config/desktop-widgets	.config/desktop-widgets	hyprland
 config/gtklock	.config/gtklock	hyprland
-config/qtile	.config/qtile	x11
-config/polybar	.config/polybar	x11
-config/picom	.config/picom	x11
 system/systemd-user/battery-watch.service	.config/systemd/user/battery-watch.service	core
 system/systemd-user/battery-watch.timer	.config/systemd/user/battery-watch.timer	core
 system/systemd-user/wayvnc.service	.config/systemd/user/wayvnc.service	hyprland

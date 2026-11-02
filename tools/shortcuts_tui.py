@@ -2,7 +2,7 @@
 """
 shortcuts_tui.py — Cheatsheet de shortcuts, ver + editar.
 
-Junta los atajos de Hyprland, kitty, herdr, Qtile (X11), los defaults de
+Junta los atajos de Hyprland, kitty, herdr, los defaults de
 LazyVim y las teclas de las propias TUIs (Settings y sus secciones: keymap
 de dtui en ~/.config/dotfiles/keymap.json; lo de finanzas — Settings →
 Finances y la TUI de gastos — en su propia tab) en una tab por app (no una lista
@@ -15,7 +15,7 @@ A propósito, "editar" solo reasigna la COMBINACIÓN de teclas — nunca la
 acción/comando que dispara (eso sigue siendo un cambio de código, no un
 rebind, y es mucho más riesgoso de tocar a ciegas desde una TUI).
 
-Atajo: SUPER+K (Hyprland y Qtile) abre esto en una ventana flotante de
+Atajo: SUPER+K abre esto en una ventana flotante de
 kitty (ver config/waybar/scripts/float-tui-launch.sh).
 """
 
@@ -50,7 +50,6 @@ HYPRSHELL_CONF = CONFIG / "hyprshell" / "config.ron"
 KITTY_CONF = CONFIG / "kitty" / "kitty.conf"
 # config.toml de herdr se genera desde la plantilla: los atajos se editan en el .tpl.
 HERDR_CONF = CONFIG / "herdr" / "config.toml.tpl"
-QTILE_KEYS = CONFIG / "qtile" / "modules" / "keys.py"
 # Los keymaps custom del usuario (config/nvim/lua/config/keymaps.lua, en este
 # repo) están vacíos hoy — los shortcuts "de LazyVim" que la gente realmente
 # usa a diario (<leader>ff, <leader>e, etc.) son los defaults que trae el
@@ -275,41 +274,6 @@ def parse_herdr() -> list[Shortcut]:
     return out
 
 
-def parse_qtile() -> list[Shortcut]:
-    out = []
-    if not QTILE_KEYS.exists():
-        return out
-    lines = QTILE_KEYS.read_text().splitlines()
-    pat = re.compile(r'^(\s*Key\(\[)([^\]]*)(\],\s*)"([^"]+)"(,\s*.+?,\s*desc\s*=\s*")([^"]*)("\),?)\s*$')
-    for i, line in enumerate(lines, start=1):
-        m = pat.match(line)
-        if not m:
-            continue
-        prefix, mods, mid, key, mid2, desc, suffix = m.groups()
-        combo = f"{mods.strip()}, {key}".replace('"', "").strip(", ")
-
-        def rewrite(orig_line: str, new_combo: str) -> str:
-            new_mods_raw, _, new_key = new_combo.rpartition(",")
-            new_key = new_key.strip()
-            # Cada token de modificador que no sea la variable `mod` necesita
-            # comillas (es un string de libqtile, ej. "shift") — sin esto
-            # queda un identificador Python suelto (NameError al recargar).
-            tokens = [t.strip().strip('"') for t in new_mods_raw.split(",") if t.strip()]
-            new_mods = ", ".join(t if t == "mod" else f'"{t}"' for t in tokens)
-            return re.sub(
-                r'^(\s*Key\(\[)([^\]]*)(\],\s*)"([^"]+)"',
-                lambda mm: f'{mm.group(1)}{new_mods}{mm.group(3)}"{new_key}"',
-                orig_line, count=1,
-            )
-
-        out.append(Shortcut(
-            app="Qtile", combo=combo, action=desc, description=desc,
-            file=QTILE_KEYS, line_no=i, rewrite=rewrite,
-            reload_hint="qtile cmd-obj -o cmd -f reload_config",
-        ))
-    return out
-
-
 def parse_lazyvim() -> list[Shortcut]:
     """Solo lectura: son defaults del plugin instalado (LazyVim/LazyVim),
     no un archivo de este repo — no hay dónde "guardar" un rebind de forma
@@ -431,12 +395,12 @@ def save_settings_key(s: Shortcut, combo: str, all_rows: list[Shortcut]) -> Opti
     return None
 
 
-APP_ORDER = ["Hyprland", "kitty", "herdr", "Qtile", "LazyVim", "Settings", "Finances"]
+APP_ORDER = ["Hyprland", "kitty", "herdr", "LazyVim", "Settings", "Finances"]
 
 
 def load_all() -> list[Shortcut]:
     return (
-        parse_hyprland() + parse_kitty() + parse_herdr() + parse_qtile()
+        parse_hyprland() + parse_kitty() + parse_herdr()
         + parse_lazyvim() + parse_settings()
     )
 
@@ -458,7 +422,6 @@ FORMATS = {
     "Hyprland": "format: SUPER SHIFT, F  (or SUPER, K)",
     "kitty": "format: ctrl+shift+enter",
     "herdr": "format: prefix+alt+g",
-    "Qtile": 'format: mod, shift, f   (quotes for mods other than "mod" are added automatically)',
     "Settings": "format: a · ctrl+s · f5 · slash · left — several: left,minus · empty = back to default",
 }
 FORMATS["Finances"] = FORMATS["Settings"]

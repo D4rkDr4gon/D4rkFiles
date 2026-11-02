@@ -131,7 +131,7 @@ Rectangle {
         }
     }
 
-    // ── Sesión (Hyprland / Qtile / …) abajo-izquierda ──
+    // ── Sesión abajo-izquierda ──
     ComboBox {
         id: session
         anchors.left: parent.left

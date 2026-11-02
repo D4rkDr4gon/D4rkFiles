@@ -1,11 +1,11 @@
 ---
 name: d4rkfiles
-description: Use when the user wants to customize, theme, fix, update or manage their Arch Linux desktop installed from the D4rkFiles dotfiles (Hyprland or Qtile) - changing or creating themes (colors and shape: borders, gaps, blur, shadows, animations, fonts), wallpapers, keybindings (including the keys of the Settings TUI), monitors, workspaces count, night light, firewall, VPN/Tailscale, waybar/polybar, rofi, kitty, dunst, zsh, packages, services, updates, security audits, firmware, diagnostics, backups, the Settings TUI and its sections, or the install itself. Knows the repo layout, the template/theme engine, the safe way to edit each component and how to reload it.
+description: Use when the user wants to customize, theme, fix, update or manage their Arch Linux desktop installed from the D4rkFiles dotfiles (Hyprland) - changing or creating themes (colors and shape: borders, gaps, blur, shadows, animations, fonts), wallpapers, keybindings (including the keys of the Settings TUI), monitors, workspaces count, night light, firewall, VPN/Tailscale, waybar, the launcher, kitty, dunst, zsh, packages, services, updates, security audits, firmware, diagnostics, backups, the Settings TUI and its sections, or the install itself. Knows the repo layout, the template/theme engine, the safe way to edit each component and how to reload it.
 ---
 
 # d4rkfiles — gestionar el rice de Arch
 
-Skill para administrar un escritorio Arch instalado con **D4rkFiles** (Hyprland + Qtile). Es la puerta de
+Skill para administrar un escritorio Arch instalado con **D4rkFiles** (Hyprland). Es la puerta de
 entrada: te dice dónde está cada cosa, cómo cambiarla sin romper nada y cómo recargarla. El detalle vive en
 la documentación del repo; **leela bajo demanda, no la reescribas de memoria**.
 
@@ -56,10 +56,9 @@ Layout del repo: `config/<app>/` (→ `~/.config/<app>`), `home/zsh/`, `system/`
 |---|---|
 | Un tema / colores / fuentes / radio | `theme <nombre>` (regenera plantillas y recarga lo recargable) |
 | `hyprland.lua` o `~/.config/dotfiles/hypr/*.conf` / `*.lua` | `hyprctl reload` (validar antes: `Hyprland --verify-config -c ~/.config/hypr/hyprland.lua`) |
-| waybar / polybar | `scripts/barupdate.sh` |
+| waybar | `scripts/barupdate.sh` |
 | dunst | `dunstctl reload` |
 | kitty | `theme <activo>` (colores) · `Ctrl+Shift+F5` (config) |
-| Qtile | `Super+Ctrl+R` |
 | lanzador (`tools/launcher_tui.py`) / walker / dunst DND | se leen al abrirse |
 | zsh | `exec zsh` |
 | Unidades systemd de usuario | `systemctl --user daemon-reload` |
@@ -71,8 +70,8 @@ Layout del repo: `config/<app>/` (→ `~/.config/<app>`), `home/zsh/`, `system/`
 ## Qué hacer ante cada pedido
 
 - **"Cambiá / creá un tema", "poné otro wallpaper"** → `references/recetas.md#temas-y-wallpapers` y `docs/themes.md`.
-- **"Agregá / cambiá un atajo"** → `docs/keybindings.md`; Hyprland: `config/hypr/hyprland.lua` (o un `.conf`/`.lua` propio en
-  `~/.config/dotfiles/hypr/`), Qtile: `config/qtile/modules/keys.py`. `Super+K` abre la cheatsheet.
+- **"Agregá / cambiá un atajo"** → `docs/keybindings.md`; `config/hypr/hyprland.lua` (o un `.conf`/`.lua` propio en
+  `~/.config/dotfiles/hypr/`). `Super+K` abre la cheatsheet.
 - **"Configurá mis monitores"** → `references/recetas.md#monitores`.
 - **Casi todo tiene una sección en Settings** (`Super+Shift+Space`, `tools/settings/settings_tui.py`): antes de editar a mano,
   ofrecé la sección que lo hace (y que valida). Tabla completa: `docs/settings.md`.

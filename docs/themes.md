@@ -17,8 +17,8 @@ También desde `Super+Shift+Space → THEMES` (con preview).
 1. Lee `themes/<tema>/theme.json` y calcula los **tokens** (colores, forma y derivados).
 2. Renderiza **todas las plantillas** `*.tpl` de `config/`, `home/` y `system/` a su archivo
    hermano sin `.tpl` (ignorado por git).
-3. Escribe el estado del tema en `~/.local/state/dotfiles/current_theme.json` (Qtile y las
-   TUIs lo leen) y aplica los temas de apps externas (Firefox, HyprFM, cliamp, SDDM).
+3. Escribe el estado del tema en `~/.local/state/dotfiles/current_theme.json` (lo leen las
+   TUIs y los scripts) y aplica los temas de apps externas (Firefox, HyprFM, cliamp, SDDM).
 4. Cambia el wallpaper y recarga lo que se puede recargar (Hyprland, dunst, kitty, waybar,
    swayosd, herdr…).
 

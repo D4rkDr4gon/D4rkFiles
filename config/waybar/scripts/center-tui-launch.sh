@@ -7,8 +7,7 @@
 # Uso: center-tui-launch.sh <class> <titulo> <comando...>
 #
 # Toggle: si la ventana ya está abierta y enfocada la cierra, si está abierta
-# sin foco la trae al frente, si no la abre. En Qtile/X11 abre la kitty y
-# config/qtile/modules/hooks.py (FLOAT_GEOMETRY con márgenes None) la centra.
+# sin foco la trae al frente, si no la abre.
 CLASS="$1"; shift
 TITLE="$1"; shift
 

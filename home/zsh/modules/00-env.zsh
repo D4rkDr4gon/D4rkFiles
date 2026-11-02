@@ -1,6 +1,6 @@
 # ====== ENTORNO ======
 
-# Configuración por usuario (KEY=VALUE), la misma que usan los scripts y Hyprland/Qtile.
+# Configuración por usuario (KEY=VALUE), la misma que usan los scripts y Hyprland.
 _dotfiles_conf="${XDG_CONFIG_HOME:-$HOME/.config}/dotfiles/user.conf"
 [[ -r "$_dotfiles_conf" ]] && { set -a; source "$_dotfiles_conf"; set +a; }
 unset _dotfiles_conf

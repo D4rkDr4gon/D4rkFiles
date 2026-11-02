@@ -85,12 +85,11 @@ tracked() { # patrón git (pathspec)
 # LINKS
 #===============================================================================
 # Los enlaces esperados salen de manifest/links.tsv (el mismo archivo que usa install.sh).
-# El grupo "hyprland" aplica si Hyprland está instalado; "x11" si lo está Qtile.
+# El grupo "hyprland" aplica si Hyprland está instalado.
 group_applies() {
     case "$1" in
         core)     return 0 ;;
         hyprland) command -v Hyprland &>/dev/null ;;
-        x11)      command -v qtile &>/dev/null ;;
         skills)   command -v claude &>/dev/null || command -v opencode &>/dev/null ;;
         *)        return 1 ;;
     esac
@@ -161,7 +160,6 @@ section_packages() {
     local -A kind=()
     local p f groups=(base)
     command -v Hyprland &>/dev/null && groups+=(hyprland)
-    command -v qtile &>/dev/null && groups+=(x11)
     for f in "${groups[@]}"; do
         while IFS= read -r p; do kind[$p]=repo; done < <(declared "$PKG_DIR/$f.txt")
         while IFS= read -r p; do kind[$p]=aur;  done < <(declared "$PKG_DIR/$f.aur.txt")
@@ -203,7 +201,7 @@ UNITS=(
     "user|hyprland-session-init.service|Hyprland"
     "user|elephant.service|elephant"
     "user|battery-watch.timer|path:/sys/class/power_supply/BAT*"
-    "system|display-manager.service|Hyprland,qtile"
+    "system|display-manager.service|Hyprland"
     "system|bluetooth.service|bluetoothd"
     "system|power-profiles-daemon.service|powerprofilesctl"
     "system|fstrim.timer|fstrim"
@@ -368,7 +366,7 @@ section_configs() {
     primary="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["primary"])' "$cur" 2>/dev/null)"
     if [ -n "$primary" ]; then
         local generated=(config/kitty/colors.conf config/swayosd/style.css config/hyprshell/styles.css
-                         config/walker/themes/dotfiles/style.css config/waybar/theme.css config/polybar/colors.ini
+                         config/walker/themes/dotfiles/style.css config/waybar/theme.css
                          config/dunst/dunstrc config/lazygit/config.yml config/impala/config.toml config/fprint-osd/style.css)
         bad=0
         for f in "${generated[@]}"; do

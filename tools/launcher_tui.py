@@ -126,15 +126,11 @@ def spawn(cmd: str) -> None:
 def goto_workspace(ws: str) -> None:
     if HYPRLAND:
         subprocess.run([HYPR_DISPATCH, "workspace", ws], capture_output=True)
-    else:
-        subprocess.run(["qtile", "cmd-obj", "-o", "group", ws, "-f", "toscreen"], capture_output=True)
 
 
 def copy_text(text: str, osd: str = "Copied") -> None:
     if os.environ.get("WAYLAND_DISPLAY") and shutil.which("wl-copy"):
         subprocess.run(["wl-copy"], input=text.encode())
-    elif shutil.which("xclip"):
-        subprocess.run(["xclip", "-selection", "clipboard"], input=text.encode())
     if shutil.which("swayosd-client") and os.environ.get("WAYLAND_DISPLAY"):
         subprocess.Popen(["swayosd-client", "--custom-message", osd, "--custom-icon", "edit-copy-symbolic"],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -504,8 +500,7 @@ class PowerSource(Source):
             elif k == "suspend":
                 subprocess.Popen(["systemctl", "suspend"])
             elif k == "logout":
-                subprocess.Popen([HYPR_DISPATCH, "exit"] if HYPRLAND
-                                 else ["qtile", "cmd-obj", "-o", "cmd", "-f", "shutdown"])
+                subprocess.Popen([HYPR_DISPATCH, "exit"])
             elif subprocess.run(["systemctl", k], capture_output=True).returncode != 0:
                 # polkit no lo dejó: con sudo en esta misma terminal
                 with view.app.suspend():

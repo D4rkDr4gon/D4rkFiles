@@ -1,6 +1,5 @@
 -- =============================================================================
 -- Hyprland — configuración base (Hyprland >= 0.57: la config es Lua)
--- Mismos keybindings y comportamiento que la config de Qtile (Wayland).
 --
 -- Nada de acá depende del usuario o la máquina:
 --   env.lua     (generado)  terminal/navegador/teclado, desde ~/.config/dotfiles/user.conf
@@ -181,7 +180,7 @@ hl.window_rule({ match = { class = "^(proton-backup)$" }, opacity = "0.97 overri
 hl.layer_rule({ match = { namespace = "^(desktop-widgets)$" }, blur = true, ignore_alpha = 0.1 })
 
 -- -----------------------------------------------------------------------------
--- KEYBINDINGS — Replican exactamente los de Qtile (keys.py)
+-- KEYBINDINGS
 -- -----------------------------------------------------------------------------
 local function exec(keys, cmd, flags)
     hl.bind(keys, hl.dsp.exec_cmd(cmd), flags)
@@ -220,9 +219,9 @@ hl.bind(mainMod .. " + Tab", hl.dsp.window.cycle_next())
 hl.bind(mainMod .. " + N",   hl.dsp.layout("togglesplit"))  -- equivalente a normalize en dwindle
 -- Alt+Tab: lo registra hyprshell (switcher con previews, hyprshell/config.ron)
 
--- ===================== WORKSPACES (Qtile-like behavior) =====================
--- Los scripts traen el workspace N al monitor actual antes de enfocarlo, como
--- en Qtile. La cantidad (1–10, 9 por defecto; Qtile: 1..6) la elige Settings →
+-- ===================== WORKSPACES =====================
+-- Los scripts traen el workspace N al monitor actual antes de enfocarlo (no
+-- saltan al otro monitor). La cantidad (1–10, 9 por defecto) la elige Settings →
 -- Workspaces en ~/.config/dotfiles/hypr/workspaces.conf ("# count: N").
 local function ws_count()
     local f = io.open(USER_DIR .. "/workspaces.conf")

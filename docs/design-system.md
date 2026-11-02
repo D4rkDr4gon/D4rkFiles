@@ -58,7 +58,7 @@ mouse encima), barras de bloques `▓░`/`█░` y filas con hover en `chip_ba
 
 ## Arquitectura del buscador único
 
-Qtile usa `rofi -show combi` con los modos `spotlight`, `drun` y `run`; Hyprland usa `drun`.
+Historia (rofi, hoy retirado: lo reemplazó `tools/launcher_tui.py`): `rofi -show combi` con los modos `spotlight`, `drun` y `run`.
 `config/rofi/scripts/spotlight-fallback.sh` es el modo "script" que rofi invoca **solo al confirmar con
 Enter un texto sin coincidencias** (`ROFI_RETV=2`), no en cada tecla. Por eso es una
 cascada que actúa al confirmar: (1) comando existente en el `PATH` (con argumentos) → lo

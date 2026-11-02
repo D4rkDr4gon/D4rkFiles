@@ -30,7 +30,6 @@
 | Necesitás… | Editá |
 |---|---|
 | Un atajo de Hyprland | `config/hypr/hyprland.lua` (o tu `~/.config/dotfiles/hypr/*.conf` / `*.lua`) |
-| Un atajo de Qtile | `config/qtile/modules/keys.py` |
 | Colores o forma de un tema | `themes/<tema>/theme.json` |
 | Cómo se ve una app | su `*.tpl` en `config/<app>/` |
 | Un paquete | `install/packages/*.txt` |

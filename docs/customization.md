@@ -6,7 +6,7 @@ actualizar el repo con `git pull` sin conflictos.
 ## `user.conf`
 
 `~/.config/dotfiles/user.conf` (`KEY=VALUE`; plantilla en [`user.conf.example`](../user.conf.example)).
-Lo leen los scripts, zsh, Hyprland y Qtile. Todo es opcional: lo que falta se autodetecta.
+Lo leen los scripts, zsh y Hyprland. Todo es opcional: lo que falta se autodetecta.
 
 | Clave | Para qué | Por defecto |
 |---|---|---|
@@ -14,7 +14,7 @@ Lo leen los scripts, zsh, Hyprland y Qtile. Todo es opcional: lo que falta se au
 | `USER_TITLE` | Título/alias junto al nombre | vacío |
 | `BANNER_ART_FILE` | Arte del banner (por defecto el DARKDRAGON del proyecto, `assets/banner-art.txt`); `none` = solo tu nombre | — |
 | `TERMINAL`, `BROWSER`, `FILE_MANAGER`, `EDITOR_GUI` | Apps de los atajos | kitty, firefox, thunar, subl |
-| `KB_LAYOUT`, `KB_VARIANT` | Teclado de Hyprland/Qtile | `localectl` → `vconsole.conf` → `us` |
+| `KB_LAYOUT`, `KB_VARIANT` | Teclado de Hyprland | `localectl` → `vconsole.conf` → `us` |
 | `DISPLAY_MANAGER` | Login manager a habilitar | `sddm` |
 | `DEFAULT_THEME` | Tema del instalador | `red-dark` |
 | `EXTRA_WALLPAPER_DIRS` | Carpetas extra de wallpapers (separadas por `:`) | — |
@@ -73,9 +73,6 @@ traducir, la notificación dice cuál (`archivo:línea`). Un `workspaces.conf` v
 inicio) y `workspaces.conf` (cuántos workspaces habilitar: la línea `# count: N`, que leen
 `hyprland.lua` para los atajos, waybar, Ctrl+Tab y rofi). Se pueden editar a mano; como se cargan
 en orden alfabético, lo que pongas en `local.conf` queda por debajo de `settings.conf`.
-
-**Qtile/X11:** los monitores se configuran con `xrandr` (o `arandr`); poné el comando en tu
-`~/.xprofile` o en `local.zsh`. Qtile y polybar detectan los monitores conectados solos.
 
 ## zsh: aliases y funciones propias
 

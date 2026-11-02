@@ -10,13 +10,13 @@
 # El arte del banner (DARKDRAGON, assets/banner-art.txt) es la identidad del proyecto.
 # Para otro arte: BANNER_ART_FILE=/ruta/a/tu-arte.txt  ("none" = solo tu nombre, con figlet)
 #BANNER_ART_FILE=
-# --- Aplicaciones por defecto (atajos de Hyprland/Qtile) ---
+# --- Aplicaciones por defecto (atajos de Hyprland) ---
 #TERMINAL=kitty
 #BROWSER=firefox
 #FILE_MANAGER=thunar
 #EDITOR_GUI=subl
 
-# --- Teclado (Hyprland/Qtile) ---
+# --- Teclado (Hyprland) ---
 #KB_LAYOUT=latam                    # por defecto: localectl / vconsole.conf / us
 #KB_VARIANT=
 

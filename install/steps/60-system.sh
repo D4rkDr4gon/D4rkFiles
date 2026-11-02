@@ -15,22 +15,20 @@ step_system() {
     _enable_system bluetooth.service
 
     # Display manager: solo si no hay uno ya habilitado (no pisa el tuyo).
-    if $WITH_HYPRLAND; then
-        if systemctl is-enabled display-manager.service >/dev/null 2>&1; then
-            log "Display manager ya configurado: $(basename "$(readlink -f /etc/systemd/system/display-manager.service)")"
-        elif [[ "$DISPLAY_MANAGER" != "none" ]] && ask "Habilitar $DISPLAY_MANAGER como login manager?" s; then
-            _enable_system "$DISPLAY_MANAGER.service"
-        fi
-        # Entrada de sesión propia: NO pisa la que instala el paquete hyprland.
-        local session="$DOTFILES_DIR/system/sessions/hyprland.desktop"
-        if [[ -f "$session" && ! -e /usr/share/wayland-sessions/hyprland-dotfiles.desktop ]] \
-            && ask "Agregar la sesión 'Hyprland (dotfiles)' al login manager (usa sudo)?" s; then
-            run sudo install -Dm644 "$session" /usr/share/wayland-sessions/hyprland-dotfiles.desktop
-        fi
-        if command -v sddm >/dev/null 2>&1 && [[ "$DISPLAY_MANAGER" == "sddm" ]] \
-            && ask "Instalar el tema de login de SDDM (usa sudo)?" s; then
-            run "$DOTFILES_DIR/scripts/setup-sddm-theme.sh" || warn "Reintentá con scripts/setup-sddm-theme.sh"
-        fi
+    if systemctl is-enabled display-manager.service >/dev/null 2>&1; then
+        log "Display manager ya configurado: $(basename "$(readlink -f /etc/systemd/system/display-manager.service)")"
+    elif [[ "$DISPLAY_MANAGER" != "none" ]] && ask "Habilitar $DISPLAY_MANAGER como login manager?" s; then
+        _enable_system "$DISPLAY_MANAGER.service"
+    fi
+    # Entrada de sesión propia: NO pisa la que instala el paquete hyprland.
+    local session="$DOTFILES_DIR/system/sessions/hyprland.desktop"
+    if [[ -f "$session" && ! -e /usr/share/wayland-sessions/hyprland-dotfiles.desktop ]] \
+        && ask "Agregar la sesión 'Hyprland (dotfiles)' al login manager (usa sudo)?" s; then
+        run sudo install -Dm644 "$session" /usr/share/wayland-sessions/hyprland-dotfiles.desktop
+    fi
+    if command -v sddm >/dev/null 2>&1 && [[ "$DISPLAY_MANAGER" == "sddm" ]] \
+        && ask "Instalar el tema de login de SDDM (usa sudo)?" s; then
+        run "$DOTFILES_DIR/scripts/setup-sddm-theme.sh" || warn "Reintentá con scripts/setup-sddm-theme.sh"
     fi
 
     # Sesión de usuario: PipeWire y unidades del repo.
@@ -42,9 +40,7 @@ step_system() {
         && [[ -d /sys/class/power_supply ]] && ls /sys/class/power_supply/BAT* >/dev/null 2>&1; then
         run systemctl --user enable battery-watch.timer 2>/dev/null || true
     fi
-    if $WITH_HYPRLAND; then
-        run systemctl --user enable hyprland-session-init.service elephant.service 2>/dev/null || true
-    fi
+    run systemctl --user enable hyprland-session-init.service elephant.service 2>/dev/null || true
 
     # Brillo sin root (brightnessctl) y directorios de usuario.
     if getent group video >/dev/null 2>&1 && ! id -nG | grep -qw video; then

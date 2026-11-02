@@ -19,7 +19,7 @@
 <sub>por <a href="https://github.com/D4rkDr4gon">D4rkDr4gon</a></sub>
 </div>
 
-Dotfiles de Arch Linux con dos sesiones —**Hyprland** (Wayland) y **Qtile** (X11)— y un
+Dotfiles de Arch Linux para **Hyprland** (Wayland; las apps X11 corren en XWayland) con un
 motor de temas: cambiás de tema y cambian a la vez el borde de las ventanas, waybar, rofi,
 kitty, dunst, Neovim, Firefox, la pantalla de login y unas veinte cosas más.
 
@@ -78,14 +78,14 @@ configuran en `~/.config/dotfiles/user.conf`; el instalador te los pregunta.
 
 ## Stack
 
-| Área | Hyprland (Wayland) | Qtile (X11) |
-|---|---|---|
-| WM | Hyprland + hyprpaper + hyprshell | Qtile + picom |
-| Barra | waybar | polybar |
-| Launcher | TUI propia (`tools/launcher_tui.py`) | rofi |
-| Bloqueo / login | gtklock · SDDM | betterlockscreen / i3lock · SDDM |
-| Escritorio vacío | widgets propios (reloj, música, clima, sistema, agenda, pomodoro…), ubicables desde Settings | |
-| Común | kitty · zsh + powerlevel10k · dunst · Neovim (LazyVim) · herdr · lazygit · Thunar | |
+| Área | |
+|---|---|
+| WM | Hyprland + hyprpaper + hyprshell |
+| Barra | waybar |
+| Launcher | TUI propia (`tools/launcher_tui.py`) |
+| Bloqueo / login | gtklock · SDDM |
+| Escritorio vacío | widgets propios (reloj, música, clima, sistema, agenda, pomodoro…), ubicables desde Settings |
+| Común | kitty · zsh + powerlevel10k · dunst · Neovim (LazyVim) · herdr · lazygit · Thunar |
 
 ## Skill de IA
 
@@ -111,7 +111,7 @@ Toda la documentación está en la **[wiki](https://github.com/D4rkDr4gon/D4rkFi
 | [Estructura](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Estructura) | Layout del repo y archivos generados |
 | [Temas](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Temas) | Motor de temas, `theme.json`, plantillas, crear un tema |
 | [Sistema de diseño](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Sistema-de-diseño) | Reglas de diseño compartidas |
-| [Atajos](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Atajos) | Atajos de Hyprland, Qtile, kitty y herdr |
+| [Atajos](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Atajos) | Atajos de Hyprland, kitty y herdr |
 | [Componentes](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Componentes) | Qué hace cada pieza |
 | [Scripts](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Scripts) | Herramientas: doctor, update, theme, gen-assets… |
 | [Zonas de red](https://github.com/D4rkDr4gon/D4rkFiles/wiki/Zonas-de-red) | Opcional ([netguard](https://github.com/D4rkDr4gon/netguard)): modo seguro/inseguro por red, VPN obligatoria con kill switch, pool de VPNs, huella para Bluetooth/USB |

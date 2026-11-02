@@ -47,9 +47,5 @@ fi
 # 3) Fallback: búsqueda web (mismo patrón que rofi/scripts/web-search.sh —
 #    cambia al workspace 5, reservado para navegador, y abre ahí la búsqueda)
 encoded=$(echo "$query" | sed 's/ /+/g')
-if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
-    "$HOME/.config/hypr/scripts/hypr-dispatch" workspace 5 &>/dev/null
-else
-    qtile cmd-obj -o group "5" -f toscreen &>/dev/null
-fi
+"$HOME/.config/hypr/scripts/hypr-dispatch" workspace 5 &>/dev/null
 setsid -f xdg-open "https://www.google.com/search?q=$encoded" &>/dev/null

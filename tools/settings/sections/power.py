@@ -10,7 +10,7 @@
   su línea `# settings:`) y reinicia hypridle.service si corre.
 - Session: bloquear, suspender, cerrar sesión, reiniciar, apagar (los tres
   últimos piden confirmación; reboot/poweroff por systemctl y, si polkit no lo
-  deja, con sudo en la terminal como el menú de rofi).
+  deja, con sudo en la terminal).
 
 Batería y brillo se refrescan en un worker cada 10 s mientras se ve.
 """
@@ -355,7 +355,7 @@ class PowerView(DView):
             elif key == "suspend":
                 run(["systemctl", "suspend"])
             elif key == "logout":
-                run([HYPR_DISPATCH, "exit"] if HYPRLAND else ["qtile", "cmd-obj", "-o", "cmd", "-f", "shutdown"])
+                run([HYPR_DISPATCH, "exit"])
             else:
                 r = run(["systemctl", key])
                 if r.returncode != 0:

@@ -26,7 +26,7 @@ Qué hace cada pieza y dónde está su config. Todo vive en `config/<app>/` y se
   logind, guarda logs en `~/.local/state/hyprland/`). Lo usa la sesión "Hyprland (dotfiles)".
 - `config/hypr/scripts/start-hyprpaper.sh` — arranca hyprpaper con el wallpaper del tema activo.
 - `config/hypr/scripts/move-and-focus-workspace.sh`, `move-window-to-workspace.sh` — `Super+N` trae el
-  workspace N al monitor actual (mismo comportamiento que Qtile).
+  workspace N al monitor actual (no salta al otro monitor).
 - `config/hypr/scripts/workspace-cycle.sh` — `Ctrl+Tab` / rueda sobre waybar: siguiente/anterior dando la
   vuelta en los workspaces habilitados (`# count: N` de `~/.config/dotfiles/hypr/workspaces.conf`, 9 si no está).
 - `config/hypr/scripts/hypr-workspaces.py` — indicador de waybar; muestra los N habilitados.
@@ -34,16 +34,9 @@ Qué hace cada pieza y dónde está su config. Todo vive en `config/<app>/` y se
 Autostart: waybar, dunst, swayosd, historial de portapapeles (cliphist), hyprpaper, hyprshell,
 la unidad `hyprland-session-init`, los widgets de escritorio y (si están instalados) fprint-osd y KDE Connect.
 
-## Qtile (X11)
+## waybar
 
-`config/qtile/` — `config.py` importa `modules/`: `keys`, `groups` (6 workspaces), `layouts`,
-`screens`, `mouse`, `hooks` (autostart y opacidad por app). `modules/user.py` lee
-`user.conf` y el tema activo; los `Screen` se generan según los monitores detectados.
-Barra: polybar; compositor: picom.
-
-## waybar y polybar
-
-- **waybar** (`config/waybar/`, Wayland): logo → Settings ([settings.md](settings.md)), workspaces, reloj, brillo,
+- **waybar** (`config/waybar/`): logo → Settings ([settings.md](settings.md)), workspaces, reloj, brillo,
   **Agentes IA**, audio (cliamp), **No molestar**, red (impala), **VPN**, bluetooth (bluetui), batería. Los paneles se abren como
   **popups flotantes** con `config/waybar/scripts/float-tui-launch.sh` (abre / enfoca / cierra).
   `config.jsonc` no lleva batería ni interfaz fijas: waybar autodetecta.
@@ -58,8 +51,6 @@ Barra: polybar; compositor: picom.
   - **VPN** (`custom/vpn`): estado de tus perfiles de NetworkManager (y de Tailscale si está conectado); click abre `tools/vpn_tui.py`. **Viene vacío**:
     no trae ningún perfil ni proveedor (ver [customization.md](customization.md#vpn)). Sin perfiles muestra "Sin
     perfiles VPN configurados".
-- **polybar** (`config/polybar/`, X11): módulos en `modules/*.ini`. `launch.sh` autodetecta
-  batería, adaptador AC y Wi-Fi y los pasa por `POLYBAR_BAT`, `POLYBAR_AC`, `POLYBAR_WLAN`.
 
 ## Lanzador (reemplazo de rofi)
 
@@ -148,8 +139,8 @@ Settings y el historial del portapapeles (`Mod+V`) tampoco son menús de rofi: s
 ## Pantalla de bloqueo y login
 
   El **modo Focus** (`Super+Shift+D`, `scripts/focus-mode.sh`) prende No Molestar y oculta música, clima, teléfono y dinero.
-- **gtklock** (`config/gtklock/`) — bloqueo en Wayland (`scripts/lock-screen.sh`). Muestra el
-  banner del proyecto con tu nombre y título; en X11 se usa `betterlockscreen` o `i3lock`.
+- **gtklock** (`config/gtklock/`) — bloqueo de pantalla (`scripts/lock-screen.sh`). Muestra el
+  banner del proyecto con tu nombre y título.
 - **SDDM** (`system/sddm/dotfiles-ascii/`) — tema de login (fondo negro + el mismo banner). Se instala
   con `scripts/setup-sddm-theme.sh`; el PAM con huella es **opcional**
   (`--with-fingerprint-pam`, requiere `fprintd`).
@@ -195,7 +186,7 @@ bluetui no tiene tema propio: usa la paleta ANSI de kitty.
 ## Herramientas y servicios
 
 - **`tools/shortcuts_tui.py`** — cheatsheet (`Super+K`) con los atajos de Hyprland, kitty,
-  herdr, Qtile y los defaults de LazyVim; permite reasignar combinaciones. Panel **Buscar**
+  herdr y los defaults de LazyVim; permite reasignar combinaciones. Panel **Buscar**
   (`/`), **Apps** con la cantidad de atajos y la tabla de la app elegida (`tab` cambia).
 - **wayvnc** — usar una tablet como monitor secundario: `scripts/wayland/wayvnc-toggle.sh`
   (`init`, `on`, `off`, `status`; aliases `vnc-on`/`vnc-off`).

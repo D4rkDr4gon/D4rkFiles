@@ -8,7 +8,7 @@ Ctrl+Tab y la rueda sobre waybar (config/hypr/scripts/workspace-cycle.sh, dan
 la vuelta en 1..N) y el selector del lanzador (tools/launcher_tui.py). Sin el archivo rigen los 9 de siempre.
 
 Al bajar la cantidad, si quedan ventanas en workspaces que se deshabilitan, se
-ofrece moverlas al último habilitado. En Qtile los grupos siguen fijos (1–6).
+ofrece moverlas al último habilitado.
 
 Session: config/hypr/scripts/hypr-session.py guarda las ventanas abiertas (autosave cada
 2 min, desde su daemon exec-once) y las reabre cada una en su workspace (a mano o
@@ -33,7 +33,6 @@ from textual.widgets import DataTable
 
 WS_CONF = HYPR_USER_DIR / "workspaces.conf"
 MIN_WS, MAX_WS, DEFAULT_WS = 1, 10, 9
-QTILE_WS = 6
 SESSION_PY = DOTFILES / "config" / "hypr" / "scripts" / "hypr-session.py"
 SESSION_CONF = Path(os.environ.get("SESSION_CONF", CONF_DIR / "session.conf"))
 
@@ -90,8 +89,6 @@ def hypr_state() -> tuple[dict[int, dict], Optional[int], list[dict]]:
 def goto_workspace(ws: int) -> None:
     if HYPRLAND:
         run([HYPR_DISPATCH, "workspace", str(ws)])
-    else:
-        run(["qtile", "cmd-obj", "-o", "group", str(ws), "-f", "toscreen"])
 
 
 class WorkspacesView(DView):
@@ -123,7 +120,7 @@ class WorkspacesView(DView):
         t.add_column("Keys", key="keys", width=12)
         t.add_column("Windows", key="n", width=9)
         t.add_column("Last window", key="extra", width=60)
-        self.saved = self.draft = ws_count() if HYPRLAND else QTILE_WS
+        self.saved = self.draft = ws_count()
         self.info: dict[int, dict] = {}
         self.active: Optional[int] = None
         self.clients: list[dict] = []
@@ -163,14 +160,11 @@ class WorkspacesView(DView):
             t.append(f" {i % 10 if i == 10 else i} " if on else " · ", style=style)
             t.append(" ")
         t.append("\n\n")
-        if not HYPRLAND:
-            t.append(f"Qtile: {QTILE_WS} fixed groups (the count is configured for Hyprland)", style=muted)
-        else:
-            t.append(f"{self.draft} enabled", style="bold")
-            t.append(f" · Super+1…{self.draft % 10 if self.draft == 10 else self.draft} go, "
-                     f"Super+Shift+N move window, Ctrl+Tab cycles 1–{self.draft}", style=muted)
-            if self.draft != self.saved:
-                t.append(f"\nchanged from {self.saved} · enter to apply", style=f"bold {THEME['status_warn']}")
+        t.append(f"{self.draft} enabled", style="bold")
+        t.append(f" · Super+1…{self.draft % 10 if self.draft == 10 else self.draft} go, "
+                 f"Super+Shift+N move window, Ctrl+Tab cycles 1–{self.draft}", style=muted)
+        if self.draft != self.saved:
+            t.append(f"\nchanged from {self.saved} · enter to apply", style=f"bold {THEME['status_warn']}")
         self.query_one("#ws-count", Card).update(t)
         self.query_one("#ws-count-panel").border_subtitle = (" ←/→ how many · enter apply " if HYPRLAND else "")
 

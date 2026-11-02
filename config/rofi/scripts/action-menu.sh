@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Action Menu — Dual-WM (Qtile + Hyprland)
+# Action Menu (rofi, respaldo: lo reemplazó tools/launcher_tui.py power)
 
 DOTFILES="${DOTFILES_DIR:-$HOME/.local/share/dotfiles}"
 
@@ -22,10 +22,6 @@ case "$CHOICE" in
   systemctl poweroff
   ;;
 "Logout")
-  if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
-    "$HOME/.config/hypr/scripts/hypr-dispatch" exit
-  else
-    qtile cmd-obj -o cmd -f shutdown
-  fi
+  "$HOME/.config/hypr/scripts/hypr-dispatch" exit
   ;;
 esac

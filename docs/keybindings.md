@@ -1,10 +1,9 @@
 # Atajos
 
-`Super` es el modificador (`Mod`). Los atajos de Hyprland y Qtile se parecen pero **no son
-idénticos**; las diferencias están marcadas. `Super+K` abre una cheatsheet interactiva con
+`Super` es el modificador (`Mod`). Los atajos están en `config/hypr/hyprland.lua`. `Super+K` abre una cheatsheet interactiva con
 todos los atajos (y permite reasignar su combinación).
 
-## Aplicaciones (ambas sesiones)
+## Aplicaciones
 
 | Atajo | Acción |
 |---|---|
@@ -16,53 +15,50 @@ todos los atajos (y permite reasignar su combinación).
 | `Super+F` | Gestor de archivos (`FILE_MANAGER`) |
 | `Super+S` | Editor (`EDITOR_GUI`) |
 | `Super+K` | Cheatsheet de atajos |
-| `Super+Shift+M` | Hyprland: modos de escritorio ([customization.md](customization.md#modos-de-escritorio)) |
+| `Super+Shift+M` | Modos de escritorio ([customization.md](customization.md#modos-de-escritorio)) |
 | `Super+Shift+D` | Modo Focus: No Molestar + oculta los widgets que distraen (música, clima, teléfono, dinero); `scripts/focus-mode.sh` |
-| `Super+V` | Historial del portapapeles (Hyprland: cliphist + `tools/clipboard_tui.py` · Qtile: CopyQ) |
+| `Super+V` | Historial del portapapeles (cliphist + `tools/clipboard_tui.py`) |
 | `Super+E` | Selector de emojis (lanzador, modo `emoji`): busca por nombre en inglés y copia |
 | `Super+G` | Gestor de gastos (`tools/expenses_tui.py`, [customization.md](customization.md#gestor-de-gastos)) |
 | `Super+Y` | Spotify (`tools/spotify_tui.py`, [customization.md](customization.md#spotify)) |
 | `Super+L` | Menú de sesión: bloquear, suspender, salir, reiniciar, apagar (lanzador, modo `power`) |
-| `Print` / `Super+Shift+S` | Captura de pantalla (región; Wayland: guarda y copia) |
+| `Print` / `Super+Shift+S` | Captura de pantalla (región: guarda y copia) |
 | `Super+Ctrl+R` | Recargar barra (y la config del WM) |
 
 ## Ventanas
 
-| Atajo | Hyprland | Qtile |
-|---|---|---|
-| Cerrar | `Super+Q` | `Super+Q` |
-| Pantalla completa | `Super+Shift+F` (`Super+M` también) | `Super+Shift+F` |
-| Flotante | `Super+T` | `Super+T` |
-| Mover ventana | `Super+Shift+H/J/K/L` | `Super+Shift+←↓↑→` |
-| Redimensionar | `Super+Ctrl+H/J/K/L` (±30 px) | `Super+Ctrl+←↓↑→` |
-| Siguiente foco | `Super+Tab` (`cyclenext`) | `Alt+Tab` (`layout.next`) |
-| Cambiar de layout | — | `Super+Tab` |
-| Normalizar / alternar split | `Super+N` (`togglesplit`) | `Super+N` (`normalize`) |
-| Arrastrar / redimensionar con mouse | `Super+clic izq. / der.` | `Super+clic izq. / der.` (ventanas flotantes) |
-| Alt+Tab con previews | `Alt+Tab` (hyprshell) | — |
-| Overview de workspaces | `Super+W` o 3 dedos hacia arriba | — |
-| Stacks (layout `Stack`) | — | `Super+Alt+S` agregar · `Super+Alt+D` quitar · `Super+Alt+M/N` mover la ventana al stack siguiente / anterior |
-| Reordenar en el layout | — | `Super+Ctrl+J/K` |
+| Acción | Atajo |
+|---|---|
+| Cerrar | `Super+Q` |
+| Pantalla completa | `Super+Shift+F` (`Super+M` también) |
+| Flotante | `Super+T` |
+| Mover ventana | `Super+Shift+H/J/K/L` |
+| Redimensionar | `Super+Ctrl+H/J/K/L` (±30 px) |
+| Siguiente foco | `Super+Tab` (`cyclenext`) |
+| Alternar split | `Super+N` (`togglesplit`) |
+| Arrastrar / redimensionar con mouse | `Super+clic izq. / der.` |
+| Alt+Tab con previews | `Alt+Tab` (hyprshell) |
+| Overview de workspaces | `Super+W` o 3 dedos hacia arriba |
 
 ## Workspaces
 
-Hyprland tiene atajos para los workspaces 1–9 (la cantidad, de 1 a 10, se cambia en Settings →
-Workspaces); Qtile, para sus 6 grupos.
+Hay atajos para los workspaces 1–9 (la cantidad, de 1 a 10, se cambia en Settings →
+Workspaces).
 
 | Atajo | Acción |
 |---|---|
-| `Super+1…N` | Ir al workspace (lo trae al monitor actual, como Qtile); el 10 es `Super+0` |
+| `Super+1…N` | Ir al workspace (lo trae al monitor actual); el 10 es `Super+0` |
 | `Super+Shift+1…N` | Mover la ventana al workspace |
-| `Ctrl+Tab` / `Ctrl+Shift+Tab` | Hyprland: workspace siguiente / anterior (da la vuelta en 1..N) · Qtile: foco abajo / arriba en el layout |
-| `Super+-` | Hyprland: ir a un workspace vacío |
-| gesto de 3 dedos ←→ | Hyprland: cambiar de workspace |
+| `Ctrl+Tab` / `Ctrl+Shift+Tab` | Workspace siguiente / anterior (da la vuelta en 1..N) |
+| `Super+-` | Ir a un workspace vacío |
+| gesto de 3 dedos ←→ | Cambiar de workspace |
 
 ## Monitores
 
 | Atajo | Acción |
 |---|---|
 | `Super+.` / `Super+,` | Foco al monitor siguiente / anterior |
-| `Super+Shift+.` / `Super+Shift+,` | Hyprland: mover la ventana al monitor siguiente / anterior |
+| `Super+Shift+.` / `Super+Shift+,` | Mover la ventana al monitor siguiente / anterior |
 
 ## Multimedia
 
@@ -93,7 +89,7 @@ mascota (mostrar/ajustes) · `Shift+r`/`Shift+q` cuotas de agentes (refrescar/aj
 
 ## Personalizar
 
-Editá `config/hypr/hyprland.lua` o `config/qtile/modules/keys.py`, o agregá los tuyos en
+Editá `config/hypr/hyprland.lua`, o agregá los tuyos en
 `~/.config/dotfiles/hypr/*.conf` o `*.lua` (ver [customization.md](customization.md)).
 
 ## Teclas de Settings y las TUIs

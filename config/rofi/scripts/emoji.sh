@@ -3,7 +3,7 @@
 # emoji.sh — Selector de emojis con rofi (Mod+E)
 # Grilla de emojis grandes; se busca por nombre en inglés (el nombre va
 # como término invisible, `meta` de rofi) y al elegir uno se copia al
-# portapapeles (wl-copy en Wayland, xclip en X11). Requiere una fuente de
+# portapapeles (wl-copy). Requiere una fuente de
 # emojis a color (noto-fonts-emoji).
 # ──────────────────────────────────────────────────────────
 THEME="$HOME/.config/rofi/theme.rasi"
@@ -901,9 +901,5 @@ emoji="$(emojis | awk '{ e = $1; $1 = ""; sub(/^ /, ""); printf "%s\0meta\x1f%s\
         -theme-str "inputbar, prompt, entry { font: \"$FONT\"; }")" || exit 0
 [[ -n "$emoji" ]] || exit 0
 
-if [[ -n "${WAYLAND_DISPLAY:-}" ]] && command -v wl-copy >/dev/null; then
-    printf '%s' "$emoji" | wl-copy
-else
-    printf '%s' "$emoji" | xclip -selection clipboard
-fi
+printf '%s' "$emoji" | wl-copy
 notify-send "Emoji copiado" "$emoji" -t 1000

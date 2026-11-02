@@ -2,10 +2,9 @@
 # =============================================================================
 # move-and-focus-workspace.sh
 # =============================================================================
-# Comportamiento tipo Qtile para workspaces multi-monitor.
-#
-# En Qtile: mod+1 en el monitor externo trae workspace 1 al monitor actual.
-# En Hyprland nativo: mod+1 solo enfoca workspace 1 donde esté (no lo mueve).
+# Workspaces multi-monitor: mod+1 en el monitor externo trae el workspace 1 al
+# monitor actual. En Hyprland nativo mod+1 solo enfoca el workspace 1 donde esté
+# (no lo mueve).
 #
 # Este script:
 #   1. Detecta el monitor actualmente enfocado

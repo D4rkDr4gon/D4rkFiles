@@ -5,7 +5,7 @@
 # Mueve la ventana enfocada al workspace N, trae ese workspace al monitor
 # actual, y lo enfoca.
 #
-# Comportamiento tipo Qtile: mod+shift+1 mueve la ventana al workspace 1
+# mod+shift+1 mueve la ventana al workspace 1
 # y trae workspace 1 al monitor actual (no se queda en el otro monitor).
 #
 # Uso: move-window-to-workspace.sh <workspace_number>

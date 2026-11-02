@@ -1,14 +1,11 @@
 #!/usr/bin/env bash
-# Etapa: packages — paquetes oficiales y AUR según las sesiones elegidas.
+# Etapa: packages — paquetes oficiales y AUR (base + sesión Hyprland + GPU).
 
 PKG_DIR="$DOTFILES_DIR/install/packages"
 
 # Grupos de paquetes activos, según flags y hardware.
 _pkg_groups() {
-    printf 'base\n'
-    $WITH_HYPRLAND && printf 'hyprland\n'
-    $WITH_X11 && printf 'x11\n'
-    return 0
+    printf 'base\nhyprland\n'
 }
 
 _gpu_groups() {

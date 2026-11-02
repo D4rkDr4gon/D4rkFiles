@@ -45,7 +45,7 @@ check_deps() {
     command -v jq >/dev/null 2>&1 || { echo "Error: jq no está instalado" >&2; exit 1; }
 }
 
-# Un solo punto para el wallpaper: hyprpaper (Hyprland), feh (X11) o Qtile.
+# Un solo punto para el wallpaper: hyprpaper por IPC (lo arranca si no corre).
 set_wallpaper() {
     local wp="${TOK[wallpaper]:-}"
     if [[ -z "$wp" ]]; then
@@ -58,13 +58,6 @@ set_wallpaper() {
             sleep 0.5
         fi
         hyprctl hyprpaper wallpaper ",$wp" >/dev/null 2>&1 || true
-    elif [[ "${XDG_SESSION_TYPE:-}" != "wayland" ]] && command -v feh >/dev/null 2>&1; then
-        feh --bg-fill "$wp" 2>/dev/null || true
-    elif pgrep -x qtile >/dev/null 2>&1; then
-        local s
-        for s in 0 1; do
-            qtile cmd-obj -o screen "$s" -f set_wallpaper -a "$wp" -a fill 2>/dev/null || true
-        done
     fi
 }
 
@@ -98,8 +91,6 @@ reload_components() {
 
     if [[ "${XDG_SESSION_TYPE:-}" == "wayland" ]]; then
         bash "$DOTFILES_CONFIG/waybar/launch.sh" >/dev/null 2>&1 || true
-    else
-        bash "$DOTFILES_CONFIG/polybar/launch.sh" >/dev/null 2>&1 || true
     fi
 
     if pgrep -x cliamp >/dev/null 2>&1; then

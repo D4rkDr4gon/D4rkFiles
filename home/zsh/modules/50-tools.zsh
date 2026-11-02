@@ -1,7 +1,7 @@
 # ====== FUNCIONES ======
 
 # extractPorts <archivo.gnmap>: IP y puertos abiertos de un escaneo de nmap; copia los
-# puertos al portapapeles (wl-copy en Wayland, xclip en X11).
+# puertos al portapapeles (wl-copy).
 extractPorts() {
   local ports ip
   ports="$(grep -oP '\d{1,5}/open' "$1" | awk '{print $1}' FS='/' | xargs | tr ' ' ',')"
@@ -9,8 +9,6 @@ extractPorts() {
   printf '\n[*] Extracting information...\n\n\t[*] IP Address: %s\n\t[*] Open ports: %s\n\n' "$ip" "$ports"
   if [[ -n "$WAYLAND_DISPLAY" ]] && command -v wl-copy >/dev/null; then
     printf '%s' "$ports" | wl-copy
-  elif command -v xclip >/dev/null; then
-    printf '%s' "$ports" | xclip -sel clip
   else
     return 0
   fi

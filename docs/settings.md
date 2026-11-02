@@ -4,11 +4,9 @@ Panel central del entorno: una TUI (`tools/settings/settings_tui.py`) con el est
 las TUIs ([design-system.md](design-system.md#tuis)). Reemplazó al menú rofi de
 Settings. Los textos de la TUI están en inglés.
 
-Se abre con `Mod + Shift + Space` (Hyprland y Qtile) o con un click en el logo de waybar o de
-polybar. `config/waybar/scripts/settings-launch.sh` la abre en una kitty flotante **centrada**
+Se abre con `Mod + Shift + Space` o con un click en el logo de waybar. `config/waybar/scripts/settings-launch.sh` la abre en una kitty flotante **centrada**
 en el monitor con foco, como un diálogo (clase `settings`, 1560×960 por `hl.window_rule`
-`center`/`size` en `config/hypr/hyprland.lua`; en Qtile, `FLOAT_GEOMETRY` de
-`config/qtile/modules/hooks.py` con márgenes `None` = centrada). Si ya está abierta, el mismo
+`center`/`size` en `config/hypr/hyprland.lua`). Si ya está abierta, el mismo
 atajo la enfoca o la cierra (`config/waybar/scripts/center-tui-launch.sh`).
 
 ## Nada de lo que cambia toca el repo
@@ -19,7 +17,7 @@ tus ajustes):
 | Qué | Dónde |
 |---|---|
 | Input (teclado, mouse, touchpad) y cursor | `~/.config/dotfiles/hypr/settings.conf`: líneas planas (`input:sensitivity = 0.2`, `env = XCURSOR_SIZE,24`). `config/hypr/hyprland.lua` los carga al final (con `lib/user_conf.lua`), así que ganan sobre el repo |
-| Distribución de teclado | Además, `KB_LAYOUT` / `KB_VARIANT` de `~/.config/dotfiles/user.conf` (de ahí salen `config/hypr/env.lua` y la sesión X11) |
+| Distribución de teclado | Además, `KB_LAYOUT` / `KB_VARIANT` de `~/.config/dotfiles/user.conf` (de ahí sale `config/hypr/env.lua`) |
 | Apps de inicio propias | `~/.config/dotfiles/hypr/autostart.conf` |
 | Temas editados (Theme editor, Appearance, Fonts) | `~/.config/dotfiles/themes/<tema>/`. Si el tema es del repo se copia ahí primero; `scripts/theme-switch.sh` busca primero ahí, así que tu copia reemplaza a la original ([themes.md](themes.md#temas-propios)) |
 | Inactividad (Power) | `config/hypr/hypridle.conf`, generado e ignorado por git |
@@ -81,10 +79,10 @@ Dentro de una sección rigen sus propias teclas (al pie); las que tienen varios 
 | Storage | Discos y pendrives con uso; `enter` monta/desmonta, `o` abre, `e` expulsa | `lsblk`, `udisksctl` |
 | Modes | Modos de escritorio: aplicar, la fila *No mode* (o `x`) deja el escritorio sin modo (tras un reinicio no hay ninguno activo), crear, editar apps | Vista de `tools/modes_tui.py` ([customization.md](customization.md#modos-de-escritorio)) |
 | Desktop widgets | Widgets de los workspaces vacíos: **Desktop widgets** (`enter` prende/apaga, `p` elige su zona en la grilla 3×3, `K`/`J` lo suben/bajan dentro de la zona; el pie dice si el daemon corre, `s` lo arranca), **Presets** (`enter` ubica todos: dashboard, columna izquierda/derecha, repartidos), **Placement** (mapa 3×3), **Options** (por widget, `enter` edita o alterna: Weather — ciudad y unidades —, Agenda — fuente `.ics`/Obsidian, URLs o vault, días —, Pomodoro — minutos y No molestar —, Phone — dispositivo de KDE Connect —, Network — IP pública —) y **Todo** (`a` agregar, `enter` tachar, `d` borrar, `c` limpiar hechas) | `tools/settings/sections/deskwidgets.py` + `config/desktop-widgets/dwlib.py`: escribe `~/.config/dotfiles/desktop-widgets.conf` y `~/.local/state/dotfiles/desktop-widgets/todo.json`; el daemon los vigila. Geocoding de Open-Meteo en un worker. Ver [components.md](components.md) |
-| Workspaces | **Cuántos habilitar** (1–10; `←/→` y `enter`; si quedan ventanas en los que se deshabilitan, ofrece moverlas) y cada workspace con atajos, ventanas y título (`enter` va). **Session**: guardar ahora, restaurar (cada app en su workspace), autosave y restaurar al iniciar sesión | `tools/settings/sections/workspaces.py`; sesión: `config/hypr/scripts/hypr-session.py` (daemon exec-once; config `~/.config/dotfiles/session.conf`, estado en `~/.local/state/hypr-session/`). Además, escribe `~/.config/dotfiles/hypr/workspaces.conf` (`unbind` de los que sobran, bind del 10, `# count: N`), que leen el indicador de waybar, `config/hypr/scripts/workspace-cycle.sh` (Ctrl+Tab y rueda dan la vuelta en 1..N) y el switcher de rofi; `hyprctl reload` + `configerrors`. Qtile: 6 grupos fijos |
+| Workspaces | **Cuántos habilitar** (1–10; `←/→` y `enter`; si quedan ventanas en los que se deshabilitan, ofrece moverlas) y cada workspace con atajos, ventanas y título (`enter` va). **Session**: guardar ahora, restaurar (cada app en su workspace), autosave y restaurar al iniciar sesión | `tools/settings/sections/workspaces.py`; sesión: `config/hypr/scripts/hypr-session.py` (daemon exec-once; config `~/.config/dotfiles/session.conf`, estado en `~/.local/state/hypr-session/`). Además, escribe `~/.config/dotfiles/hypr/workspaces.conf` (`unbind` de los que sobran, bind del 10, `# count: N`), que leen el indicador de waybar, `config/hypr/scripts/workspace-cycle.sh` (Ctrl+Tab y rueda dan la vuelta en 1..N) y el switcher de rofi; `hyprctl reload` + `configerrors` |
 | Webapps | Abrir, crear, reinstalar y borrar webapps | Vista de `tools/webapps_tui.py` ([customization.md](customization.md#webapps)) |
 | Default apps | Navegador, archivos, editor, PDF, imágenes, video, música, mail | `xdg-mime`, `xdg-settings` |
-| Shortcuts | Cheatsheet y edición de atajos de Hyprland, kitty, herdr, Qtile y LazyVim, y pestaña **Settings**: las teclas de Settings y de cada sección, reasignables | Vista de `tools/shortcuts_tui.py`; keymap en `~/.config/dotfiles/keymap.json` |
+| Shortcuts | Cheatsheet y edición de atajos de Hyprland, kitty, herdr y LazyVim, y pestaña **Settings**: las teclas de Settings y de cada sección, reasignables | Vista de `tools/shortcuts_tui.py`; keymap en `~/.config/dotfiles/keymap.json` |
 | Themes | Temas (los tuyos marcados *yours*) con preview y paleta; `enter` aplica. Al quedarte 0,35 s en un tema se **previsualiza en vivo** (borde de las ventanas y colores de kitty, sin escribir a disco); `v` lo apaga y al salir vuelve al tema aplicado | `scripts/theme-switch.sh` y `scripts/theme-preview.sh`; Settings se reabre sola para tomar los colores |
 | Theme editor | Borrador de un tema con preview; `w` arma los colores desde un wallpaper (conserva la forma del tema base), `n` lo guarda como tema nuevo (con `preview.png` si salió de un wallpaper), `s` guarda el base (como copia tuya si es del repo) | `~/.config/dotfiles/themes/`; paleta: `tools/settings/sections/wallpalette.py` (PIL) |
 | Appearance | Forma del tema activo en grupos: **Shape** (radio, grosor y estilo del borde —sólido, gradiente o giratorio—, ángulo, gaps), **Transparency** (opacidad, opacidad inactiva, oscurecer inactivas), **Blur** (tamaño, pasadas, ruido, contraste, brillo, vibrancia, popups), **Shadow** (dark/glow, alcance, caída) y **Motion** (preset de animaciones); `r` vuelve al default | Copia del tema en `~/.config/dotfiles/themes/` + `theme-switch.sh` (campos en [themes.md](themes.md#themejson)) |

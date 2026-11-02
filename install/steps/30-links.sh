@@ -8,9 +8,7 @@ manifest_each() {
     while IFS=$'\t' read -r src dst group; do
         [[ -z "$src" || "$src" == \#* ]] && continue
         case "$group" in
-            core) ;;
-            hyprland) $WITH_HYPRLAND || continue ;;
-            x11) $WITH_X11 || continue ;;
+            core|hyprland) ;;
             skills) $WITH_SKILLS || continue ;;
             *) continue ;;
         esac

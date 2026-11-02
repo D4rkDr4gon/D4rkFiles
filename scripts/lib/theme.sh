@@ -230,7 +230,7 @@ render_all_templates() {
 }
 
 # Genera el JSON del tema activo con el wallpaper ya resuelto (lo leen
-# Qtile y las TUIs). Vive en el directorio de estado, no en el repo.
+# las TUIs y los scripts). Vive en el directorio de estado, no en el repo.
 write_current_theme() {
     local json="$1"
     mkdir -p "$DOTFILES_STATE_DIR"

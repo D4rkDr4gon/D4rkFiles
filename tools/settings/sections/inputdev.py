@@ -4,8 +4,8 @@ Cada cambio se aplica en vivo (`hyprctl eval`, common.hypr_apply) y se guarda
 como línea plana en ~/.config/dotfiles/hypr/settings.conf (common.hypr_set), así
 sobrevive al reinicio sin tocar el repo. Sin override se muestra el valor vivo
 de Hyprland. La distribución y la variante de teclado además van a
-KB_LAYOUT / KB_VARIANT de user.conf (de ahí salen config/hypr/env.lua y la
-sesión de X11). enter edita (o alterna los on/off).
+KB_LAYOUT / KB_VARIANT de user.conf (de ahí sale config/hypr/env.lua).
+enter edita (o alterna los on/off).
 """
 
 from __future__ import annotations

@@ -7,16 +7,5 @@ query=$(rofi -dmenu -p "🌐 Search" -theme $HOME/.config/rofi/theme.rasi \
 
 encoded=$(echo "$query" | sed 's/ /+/g')
 
-if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
-    "$HOME/.config/hypr/scripts/hypr-dispatch" workspace 5
-else
-    qtile cmd-obj -o group "5" -f toscreen
-fi
+"$HOME/.config/hypr/scripts/hypr-dispatch" workspace 5
 xdg-open "https://www.google.com/search?q=$encoded" &
-
-if [ "$XDG_SESSION_TYPE" != "wayland" ]; then
-    for _ in {1..10}; do
-        wmctrl -a firefox 2>/dev/null && break
-        sleep 0.1
-    done
-fi
