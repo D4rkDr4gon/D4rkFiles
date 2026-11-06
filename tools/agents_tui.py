@@ -8,7 +8,10 @@ codex, antigravity): límites de uso (ventanas de 5 h / 7 d o cuota por
 modelo) y el contexto de cada sesión abierta, con barras que pasan a
 amarillo/rojo al 50/80 %. `c` abre claude, `o` opencode. En Settings se
 suma el panel Providers para prender/apagar cada uno (manage=True); el
-popup de waybar y el módulo de la barra leen la misma config.
+popup de waybar y el módulo de la barra leen la misma config. También en
+Settings, entre Providers y los paneles de uso: Skills y Agents (cuáles se cargan en
+Claude Code y opencode, más lo que Claude trae por su cuenta; backend en agent_skills.py).
+`f` abre las carpetas de origen (la primera gana).
 
 Fuentes (las escriben otros programas, acá solo se leen):
 - Claude Code: ~/.claude/usage-cache.json (5h/7d) y usage-cache.d/*.json (una
@@ -42,13 +45,17 @@ from pathlib import Path
 from typing import Optional
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from dtui import THEME, DView, Panel, Table, ViewApp, css  # noqa: E402
+from dtui import THEME, ConfirmModal, DView, Field, FormModal, KeyHints, Panel, Table, ViewApp, css  # noqa: E402
+import agent_skills as sk  # noqa: E402
+import provider_sources as ps  # noqa: E402
 
 from rich.text import Text  # noqa: E402
 from textual.app import ComposeResult  # noqa: E402
 from textual.binding import Binding  # noqa: E402
-from textual.containers import VerticalScroll  # noqa: E402
-from textual.widgets import DataTable, Static  # noqa: E402
+from textual.containers import Vertical, VerticalScroll  # noqa: E402
+from textual.screen import ModalScreen  # noqa: E402
+from textual import work  # noqa: E402
+from textual.widgets import DataTable, Label, Static  # noqa: E402
 
 # Raíz del repo: DOTFILES_DIR si está exportado; si no, un nivel arriba de tools/
 DOTFILES = Path(os.environ.get("DOTFILES_DIR") or Path(__file__).resolve().parents[1])
@@ -397,6 +404,137 @@ def agy_sessions(entries: list[dict]) -> list[tuple[str, float | None, str]]:
     return out
 
 
+# ── Popup de carpetas de skills ───────────────────────────
+
+class FoldersModal(ModalScreen[None]):
+    """Carpetas de origen de skills y agentes (skills.conf): a agregar, d sacar, K/J prioridad."""
+
+    DEFAULT_CSS = css("""
+    FoldersModal .modal { width: 90%%; }
+    FoldersModal DataTable { height: auto; max-height: 12; }
+    FoldersModal #detected { margin-top: 1; max-height: 10; }
+    FoldersModal .sub { color: %(muted)s; margin-top: 1; }
+    """)
+    BINDINGS = [
+        Binding("escape", "close", "close"),
+        Binding("a", "add", "add folder"),
+        Binding("d", "remove", "remove folder"),
+        Binding("K", "move(-1)", "priority up"),
+        Binding("J", "move(1)", "priority down"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        with Vertical(classes="modal") as box:
+            box.border_title = " Skills & agents folders "
+            box.border_subtitle = " the first folder wins on repeated names "
+            yield Table(id="folders", show_header=False)
+            yield Label("Detected in your active providers (read-only: managed by each provider)", classes="sub")
+            yield Table(id="detected", show_header=False)
+            yield KeyHints([("a", "add"), ("d", "remove"), ("K/J", "priority"), ("esc", "close")])
+
+    def on_mount(self) -> None:
+        self.query_one(".modal").styles.width = "90%"   # el .modal global (CSS de la app) pisa el DEFAULT_CSS
+        t = self.query_one("#folders", Table)
+        t.add_column("", key="n", width=3)
+        t.add_column("", key="path", width=58)
+        t.add_column("", key="info", width=30)
+        d = self.query_one("#detected", Table)
+        d.can_focus = False
+        d.cursor_type = "none"
+        d.add_column("", key="what", width=30)
+        d.add_column("", key="path", width=44)
+        d.add_column("", key="info", width=24)
+        home = str(Path.home())
+        rows = []
+        for prov, path, kind, n_s, n_a, st in ps.sources(enabled_providers()):
+            kind = f"{prov} · {kind}"
+            bits = ([f"{n_s} skills"] if n_s else []) + ([f"{n_a} agents"] if n_a else [])
+            info = Text(" · ".join(bits) + ("" if st == "on" else " · disabled"),
+                        style=THEME["muted"] if st == "off" else THEME["status_ok"])
+            # los buckets de sync llevan UUIDs: se acortan para que la ruta se entienda
+            short = "/".join(c if len(c) <= 30 else c[:8] + "…" for c in str(path).replace(home, "~", 1).split("/"))
+            short = short if len(short) <= 44 else "…" + short[-43:]
+            rows.append((str(path), [Text(kind, style=THEME["muted"]), Text(short), info]))
+        d.set_rows(rows)
+        self.reload()
+        t.focus()
+
+    def reload(self, select: str = "") -> None:
+        dirs, _ = sk.read_conf()
+        found = sk.scan(dirs)
+        agents = sk.scan_agents(dirs)
+        rows = []
+        for i, d in enumerate(dirs, 1):
+            if (err := sk.validate_dir(d)):
+                info = Text(f"✗ {err}", style=THEME["status_error"])
+            else:
+                n_s = sum(1 for s in found if s.root == d)
+                n_a = sum(1 for a in agents if a.root == d)
+                info = Text(f"● {n_s} skills · {n_a} agents", style=THEME["status_ok"])
+            rows.append((d, [Text(str(i), style=THEME["muted"]), Text(d.replace(str(Path.home()), "~", 1)), info]))
+        t = self.query_one("#folders", Table)
+        t.set_rows(rows)
+        self.query_one(".modal").border_subtitle = (" the first folder wins on repeated names " if dirs else
+                                                    " no folders yet: press a to add one with a SKILLS/ subfolder ")
+        if select in dirs:
+            t.move_cursor(row=dirs.index(select))
+
+    def changed(self) -> None:
+        self.app.folders_changed = True
+
+    def action_close(self) -> None:
+        self.dismiss(None)
+
+    def action_add(self) -> None:
+        def validate(v: dict) -> Optional[str]:
+            p = v.get("path", "").strip()
+            if not p:
+                return "enter a folder"
+            if sk._expand(p) in sk.read_conf()[0]:
+                return "already in the list"
+            return sk.validate_dir(p)
+
+        def done(vals) -> None:
+            if not vals:
+                return
+            dirs, off = sk.read_conf()
+            new = sk._expand(vals["path"])
+            sk.write_conf(dirs + [new], off)
+            self.changed()
+            self.reload(new)
+        self.app.push_screen(FormModal("Add folder", [Field("path", "Folder", paths=True,
+                                                            placeholder="/path/with/SKILLS/")],
+                                       hint="needs a SKILLS/ subfolder · enter add · esc cancel",
+                                       validate=validate), done)
+
+    def action_remove(self) -> None:
+        t = self.query_one("#folders", Table)
+        if (d := t.selected_key()) is None:
+            return
+
+        def done(yes: bool) -> None:
+            if yes:
+                dirs, off = sk.read_conf()
+                sk.write_conf([x for x in dirs if x != d], off)
+                self.changed()
+                self.reload()
+        self.app.push_screen(ConfirmModal("Remove folder", f"Stop loading skills and agents from {d}?\n"
+                                          "The folder itself is not deleted."), done)
+
+    def action_move(self, delta: int) -> None:
+        t = self.query_one("#folders", Table)
+        if (d := t.selected_key()) is None:
+            return
+        dirs, off = sk.read_conf()
+        i, j = dirs.index(d), dirs.index(d) + delta
+        if not 0 <= j < len(dirs):
+            return
+        dirs[i], dirs[j] = dirs[j], dirs[i]
+        sk.write_conf(dirs, off)
+        self.changed()
+        self.reload(d)
+
+
 # ── Vista ─────────────────────────────────────────────────
 
 class AgentsView(DView):
@@ -409,18 +547,28 @@ class AgentsView(DView):
     AgentsView .panel { height: auto; }
     AgentsView .panel Static { height: auto; }
     #providers { height: auto; }
+    #skill-list { height: auto; max-height: 14; }
+    #agent-list { height: auto; max-height: 9; }
     #updated { color: %(muted)s; height: 1; padding: 0 2; }
     """)
 
+    TABLES = ["providers", "skill-list", "agent-list"]   # tab/shift+tab las recorre (manage=True)
+
     BINDINGS = [
+        Binding("tab", "cycle(1)", show=False, description="next panel"),
+        Binding("shift+tab", "cycle(-1)", show=False, description="previous panel"),
         Binding("c", "run('claude')", "claude code"),
         Binding("o", "run('opencode')", "opencode"),
-        Binding("r", "refresh_all", "refresh"),
+        Binding("r", "refresh_manual", "refresh"),
+        Binding("f", "folders", "skills folders", show=False),
+        Binding("A", "items_all(True)", "enable all", show=False),
+        Binding("N", "items_all(False)", "disable all", show=False),
     ]
 
     def __init__(self, manage: bool = False, **kw) -> None:
         super().__init__(**kw)
         self.manage = manage
+        self.prov_items: dict = {}
         if manage:
             self.FOCUS = "#providers"
 
@@ -429,12 +577,21 @@ class AgentsView(DView):
             if self.manage:
                 yield Panel(Table(id="providers", show_header=False), title="  Providers",
                             id="providers-panel")
+                yield Panel(Table(id="skill-list", show_header=False), title="󱁤  Skills", id="skills-panel")
+                yield Panel(Table(id="agent-list", show_header=False), title="󰭻  Agents", id="agents-panel")
             for pid, name, icon, _bin in PROVIDERS:
                 yield Panel(Static(id=f"{pid}-text"), title=f"{icon}  {name}", id=f"{pid}-panel")
             yield Static(id="updated")
 
     def hints(self) -> list[tuple[str, str]]:
-        h = [("enter", "show/hide provider")] if self.manage else []
+        h: list[tuple[str, str]] = []
+        if self.manage:
+            fid = getattr(self.app.focused, "id", "")
+            if fid in ("skill-list", "agent-list"):
+                h = [("enter", "on/off"), ("A", "all on"), ("N", "all off"), ("f", "folders")]
+            else:
+                h = [("enter", "show/hide provider")]
+            h = h + [("tab", "panel")]
         return h + [("c", "claude code"), ("o", "opencode"), ("r", "refresh"), ("q", "quit")]
 
     def on_mount(self) -> None:
@@ -443,8 +600,33 @@ class AgentsView(DView):
             t.add_column("", key="name", width=26)
             t.add_column("", key="state", width=12)
             t.add_column("", key="inst", width=56)
+            k = self.query_one("#skill-list", Table)
+            k.add_column("", key="state", width=11)
+            k.add_column("", key="name", width=34)
+            k.add_column("", key="desc", width=48)
+            k.add_column("", key="root", width=34)
+            g = self.query_one("#agent-list", Table)
+            g.add_column("", key="state", width=11)
+            g.add_column("", key="name", width=34)
+            g.add_column("", key="desc", width=48)
+            g.add_column("", key="root", width=34)
+            self.refresh_skills()
+            self.load_builtin()
         self.action_refresh_all()
         self.set_interval(5, self.tick)
+
+    def action_cycle(self, step: int) -> None:
+        if not self.manage:
+            return
+        f = self.app.focused
+        i = self.TABLES.index(f.id) if getattr(f, "id", None) in self.TABLES else 0
+        self.query_one(f"#{self.TABLES[(i + step) % len(self.TABLES)]}", Table).focus()
+        self.update_hints()
+
+    def action_refresh_manual(self) -> None:
+        if self.manage:
+            self.refresh_skills()
+        self.action_refresh_all()
 
     def tick(self) -> None:
         if self.visible_now:
@@ -506,7 +688,126 @@ class AgentsView(DView):
             f"claude updated {u['updated_at']}" if "claude" in on and u.get("updated_at") else "")
         self.update_hints()
 
+    # ── Skills y Agents (solo con manage=True) ──────────────
+
+    def refresh_skills(self) -> None:
+        """Relee skills.conf, las carpetas y lo externo, y redibuja Skills y Agents (sin parpadeo)."""
+        dirs, off = sk.read_conf()
+        agent_off = sk.read_agent_off()
+        muted, ok, warn = THEME["muted"], THEME["status_ok"], THEME["status_warn"]
+        found = sk.scan(dirs)
+
+        def short(t: str, n: int) -> str:
+            return t[:n] + ("…" if len(t) > n else "")
+
+        def row_state(on: bool, shadowed: bool = False) -> Text:
+            if shadowed:
+                return Text("– shadowed", style=muted)
+            return Text("● on", style=f"bold {ok}") if on else Text("○ off", style=muted)
+
+        # skills y agentes propios de los proveedores activos (los que trae o preconfigura cada uno)
+        items = ps.discover(enabled_providers())
+        self.prov_items = {i.key: i for i in items}
+        # una skill que está en tu carpeta y también en el sync de claude.ai se lista una sola vez (la tuya)
+        own = {s.name for s in found}
+        synced_dup = {i.name for i in items if i.origin == "claude.ai sync" and i.name in own}
+
+        def prov_row(i) -> tuple[str, list]:
+            st = row_state(i.on) if i.toggle else Text("● fixed", style=muted)
+            return (i.key, [st, Text(i.name, style="" if (i.toggle and i.on) else muted),
+                            Text(short(i.desc, 46), style=muted), Text(f"{i.provider} · {i.origin}", style=muted)])
+
+        rows = []
+        for s in found:
+            on = not s.shadowed_by and s.name not in off
+            desc = Text(short(s.desc, 46)) if s.desc else Text("no frontmatter in SKILL.md", style=warn)
+            src = Path(s.root).name + (" +claude.ai" if s.name in synced_dup else "")
+            rows.append((f"{s.root}|{s.name}", [row_state(on, bool(s.shadowed_by)),
+                                               Text(s.name, style="" if on else muted), desc,
+                                               Text(src, style=muted)]))
+        prov_skills = [i for i in items if i.kind == "skill" and i.name not in synced_dup]
+        rows += [prov_row(i) for i in prov_skills]
+        self.query_one("#skill-list", Table).set_rows(rows)
+        n_on = sum(1 for s in found if not s.shadowed_by and s.name not in off)
+        self.query_one("#skills-panel").border_subtitle = \
+            f" {n_on} of {len(found)} loaded · {len(prov_skills)} from providers · f folders "
+
+        agents = sk.scan_agents(dirs)
+        rows = []
+        for a in agents:
+            on = a.name not in agent_off
+            rows.append((a.name, [row_state(on), Text(a.name, style="" if on else muted),
+                                  Text(short(a.desc, 46)), Text(Path(a.root).name + "  " + a.formats, style=muted)]))
+        prov_agents = [i for i in items if i.kind == "agent"]
+        rows += [prov_row(i) for i in prov_agents]
+        self.query_one("#agent-list", Table).set_rows(rows)
+        n_on = sum(1 for a in agents if a.name not in agent_off)
+        self.query_one("#agents-panel").border_subtitle = \
+            f" {n_on} of {len(agents)} loaded · {len(prov_agents)} from providers · f folders "
+
+    @work(thread=True, exclusive=True, group="agents-builtin")
+    def load_builtin(self) -> None:
+        """Skills integradas de opencode: `opencode debug skill` tarda unos segundos, va en un hilo."""
+        if "opencode" in enabled_providers() and not ps.BUILTIN_CACHE.exists():
+            ps.opencode_builtin(refresh=True)
+            self.app.call_from_thread(self.refresh_skills)
+
+    def skills_apply(self, msg: str) -> None:
+        """Escribe los symlinks/config según skills.conf y refresca."""
+        try:
+            sk.apply()
+        except OSError as e:
+            self.app.notify_err(f"Could not apply: {e}")
+        else:
+            self.app.notify_ok(msg)
+        self.refresh_skills()
+
+    def action_folders(self) -> None:
+        if getattr(self.app.focused, "id", "") not in ("skill-list", "agent-list"):
+            return
+        self.app.folders_changed = False
+        self.app.push_screen(FoldersModal(), lambda _r: self.skills_apply("Folders updated")
+                             if getattr(self.app, "folders_changed", False) else self.refresh_skills())
+
+    def action_items_all(self, on: bool) -> None:
+        fid = getattr(self.app.focused, "id", "")
+        dirs, off = sk.read_conf()
+        if fid == "skill-list":
+            sk.write_conf(dirs, set() if on else {s.name for s in sk.scan(dirs)})
+            self.skills_apply("All skills enabled" if on else "All skills disabled")
+        elif fid == "agent-list":
+            sk.write_conf(dirs, off, set() if on else {a.name for a in sk.scan_agents(dirs)})
+            self.skills_apply("All agents enabled" if on else "All agents disabled")
+
+    def toggle_item(self, table: str, key: str) -> None:
+        if key.count("|") >= 2 and key.split("|", 1)[0] in ps.PROVIDER_IDS:
+            item = self.prov_items.get(key)
+            if item is None:
+                return
+            if (err := ps.set_enabled(item, not item.on)):
+                return self.app.notify_err(err)
+            self.app.notify_ok(f"{item.name} {'disabled' if item.on else 'enabled'} in {item.provider}")
+            return self.refresh_skills()
+        dirs, off = sk.read_conf()
+        if table == "skill-list":
+            root, _, name = key.partition("|")
+            owner = next((s for s in sk.scan(dirs) if s.name == name and not s.shadowed_by), None)
+            if owner is None or owner.root != root:
+                return self.app.notify_err(f"{name} is shadowed by {owner.root if owner else 'another folder'}")
+            on = name in off
+            (off.discard if on else off.add)(name)
+            sk.write_conf(dirs, off)
+        else:
+            name = key
+            agent_off = sk.read_agent_off()
+            on = name in agent_off
+            (agent_off.discard if on else agent_off.add)(name)
+            sk.write_conf(dirs, off, agent_off)
+        self.skills_apply(f"{name} {'enabled' if on else 'disabled'}")
+
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        if event.data_table.id in ("skill-list", "agent-list"):
+            return self.toggle_item(event.data_table.id, str(event.row_key.value))
         if event.data_table.id == "providers":
             pid = str(event.row_key.value)
             on = pid not in enabled_providers()
@@ -514,6 +815,8 @@ class AgentsView(DView):
             name = next(n for p, n, *_ in PROVIDERS if p == pid)
             self.app.notify_ok(f"{name} {'shown' if on else 'hidden'}")
             self.action_refresh_all()
+            self.refresh_skills()
+            self.load_builtin()
 
     def action_run(self, cmd: str) -> None:
         # La TUI se reemplaza por el agente en la misma ventana (exec al salir);

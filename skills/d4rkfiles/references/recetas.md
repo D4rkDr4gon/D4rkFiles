@@ -108,6 +108,22 @@ Con Docker, reiniciarlo después de prender firewalld.
 operator (`tailscale set --operator=$USER`, así up/down no piden sudo) y hace el login (URL en la terminal). `enter`
 levanta/baja este equipo, usa otro de exit node o copia su IP; `d` cierra la sesión.
 
+## Skills y agentes de IA
+
+Config en `~/.config/dotfiles/skills.conf` (`dir=`, `off=`, `agent_off=`; plantilla `skills.conf.example`). Settings → AI Agents la
+escribe: `f` administra carpetas (gana la primera si hay nombres repetidos), `enter` en Skills/Agents activa o
+desactiva y aplica. Sin TUI:
+
+```bash
+python3 ~/.local/share/dotfiles/tools/agent_skills.py status   # qué hay enlazado
+python3 ~/.local/share/dotfiles/tools/agent_skills.py apply    # rehace los symlinks desde skills.conf
+```
+
+Enlaza `~/.claude/skills/<n>`, `~/.claude/agents/<n>.md` (de `AGENTS-CLAUDE-CODE/`) y `~/.config/opencode/agents/<n>.md`
+(de `AGENTS/`); solo toca symlinks que apuntan a una carpeta configurada. Los skills y agentes propios de un proveedor
+activo (plugins de Claude Code, built-in de opencode, skills de Codex) se ven en las mismas tablas y se apagan con el
+mecanismo de cada uno (`tools/provider_sources.py`); lo que no tiene mecanismo queda `● fixed`.
+
 ## Teclas de las TUIs
 
 Settings → Shortcuts → Settings lista todas las teclas de Settings y sus secciones (y de las TUIs sueltas). `enter`

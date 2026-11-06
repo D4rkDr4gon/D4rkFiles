@@ -269,6 +269,33 @@ agregan con `a` en la TUI. Por defecto no hay ninguna.
 
 Desde la terminal: `scripts/proton-backup.sh start|run [id...]|cancel|running`.
 
+## Skills y agentes de IA
+
+Settings → **AI Agents** administra qué skills y agentes cargan Claude Code y opencode. Config en
+`~/.config/dotfiles/skills.conf` (fuera del repo; plantilla en [`skills.conf.example`](../skills.conf.example)):
+
+```
+dir=~/ai/mis-skills        # carpeta con SKILLS/<nombre>/SKILL.md (y AGENTS/, AGENTS-CLAUDE-CODE/)
+off=una-skill              # desactivada
+agent_off=un-agente        # agente desactivado
+```
+
+- `f` abre las carpetas (`a` agregar, `d` quitar, `K`/`J` prioridad: si un nombre se repite gana la primera).
+  El popup también lista, solo lectura, lo que se detectó en los proveedores activos.
+- En **Skills** y **Agents**, `enter` activa/desactiva y aplica al instante; `A`/`N` activan/desactivan todas
+  las propias; `tab` cambia de panel.
+- Al aplicar se rehacen symlinks: `~/.claude/skills/<n>`, `~/.claude/agents/<n>.md` (desde
+  `AGENTS-CLAUDE-CODE/`) y `~/.config/opencode/agents/<n>.md` (desde `AGENTS/`). opencode lee
+  `~/.claude/skills`, así que la selección vale para los dos. Solo se tocan symlinks que apuntan a una carpeta
+  configurada: nada ajeno.
+- **Propios de cada proveedor** (al activar uno en Providers aparecen sus skills y agentes): plugins de Claude
+  Code (`enabledPlugins` de `settings.json`), skills y agentes de opencode (`opencode.json` junto a
+  `opencode.jsonc`: `permission.skill.<n>="deny"`, `agent.<n>.disable`; los built-in `build/plan/general/explore`
+  y las skills internas salen de `opencode debug skill`, cacheadas), skills de Codex (`[[skills.config]]` en
+  `~/.codex/config.toml`). Lo que el proveedor no permite apagar (skills sincronizadas de claude.ai, sueltas) se
+  ve como `● fixed`; Antigravity no tiene mecanismo.
+- CLI sin Textual: `python3 tools/agent_skills.py status|apply|list|agents|dir`.
+
 ## Teclas de las TUIs
 
 `~/.config/dotfiles/keymap.json` guarda las teclas de Settings y de las TUIs que reasignaste en

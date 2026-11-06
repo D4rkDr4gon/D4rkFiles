@@ -98,6 +98,8 @@ Layout del repo: `config/<app>/` (→ `~/.config/<app>`), `home/zsh/`, `system/`
   regla de `docs/design-system.md` (un solo radio, sin bordes decorativos, colores por tokens).
 - **"Cambiá mi nombre / apps por defecto / teclado"** → `~/.config/dotfiles/user.conf`, luego `theme <activo>`.
   Claves en `docs/customization.md`.
+- **"Activá/desactivá skills o agentes de IA"** → Settings → AI Agents (`f` carpetas, `enter` en Skills/Agents) o
+  `~/.config/dotfiles/skills.conf` + `python3 tools/agent_skills.py apply`. Ver `references/recetas.md#skills-y-agentes-de-ia`.
 - **"Volvé a mi config anterior"** → `~/.local/state/dotfiles/backups/<fecha>/` (conservan la ruta relativa; es un `mv`).
 - **"Reinstalá / reenlazá"** → `./install.sh --only links` (o `--only configure`, `--dry-run` primero).
 

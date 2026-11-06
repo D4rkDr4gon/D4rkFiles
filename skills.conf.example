@@ -1,0 +1,17 @@
+# ~/.config/dotfiles/skills.conf — carpetas de skills y agentes de IA.
+#
+# Lo crea Settings → AI Agents (tecla f) al agregar la primera carpeta; no hace
+# falta copiar este archivo. Vive FUERA del repo.
+#
+#   dir=<carpeta>   carpeta con SKILLS/<nombre>/SKILL.md (y opcionalmente
+#                   AGENTS/ para opencode y AGENTS-CLAUDE-CODE/ para Claude Code).
+#                   Puede haber varias: si un nombre se repite, gana la primera.
+#   off=<skill>     skill desactivada (no se enlaza en ~/.claude/skills)
+#   agent_off=<n>   agente desactivado (no se enlaza en ~/.claude/agents ni en
+#                   ~/.config/opencode/agents)
+#
+# Los enlaces se rehacen solos al cambiar algo en Settings; opencode también lee
+# ~/.claude/skills, así que la selección vale para los dos.
+
+dir=~/ai/mis-skills
+off=una-skill-que-no-quiero

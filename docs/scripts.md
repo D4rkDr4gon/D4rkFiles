@@ -40,6 +40,8 @@
 | `tools/expenses_tui.py` | Gestor de gastos (`Super+G`) y la sección Settings → Finances; base en `tools/expenses_db.py`, cotizaciones en `tools/expenses_rates.py`, import de Money Manager en `tools/expenses_import.py` ([customization.md](customization.md#gestor-de-gastos)) |
 | `tools/spotify_tui.py` | Reproductor de Spotify (`Super+Y`) y la sección Settings → Spotify; backend sin Textual en `tools/spotify_api.py` (`--autostart` lo corre el exec-once de Hyprland) ([customization.md](customization.md#spotify)) |
 | `tools/agents_tui.py` | Panel "AI Agents" de waybar y de Settings; proveedores visibles en `~/.config/dotfiles/agents.conf` ([components.md](components.md)) |
+| `tools/agent_skills.py` | Backend sin Textual de skills y agentes: lee `skills.conf`, enlaza la selección en `~/.claude/skills`, `~/.claude/agents` y `~/.config/opencode/agents`. CLI: `dir`, `list`, `agents`, `status`, `apply` ([customization.md](customization.md#skills-y-agentes-de-ia)) |
+| `tools/provider_sources.py` | Detecta skills, agentes y plugins propios de cada proveedor activo (Claude Code, opencode, Codex) y los apaga con el mecanismo de cada uno. CLI: `list`, `sources`, `refresh-builtin` |
 | `scripts/wallpaper-set.sh` | Aplica un wallpaper sin cambiar de tema (Settings → Backgrounds) |
 
 ## dotfiles-doctor
