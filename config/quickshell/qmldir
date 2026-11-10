@@ -1,0 +1,11 @@
+singleton Theme 1.0 Theme.qml
+singleton Motion 1.0 Motion.qml
+singleton Backend 1.0 Backend.qml
+singleton Drawers 1.0 Drawers.qml
+Launcher 1.0 Launcher.qml
+Settings 1.0 Settings.qml
+SectionPage 1.0 SectionPage.qml
+Toggle 1.0 Toggle.qml
+Segmented 1.0 Segmented.qml
+Slider 1.0 Slider.qml
+ToolWindow 1.0 ToolWindow.qml
