@@ -5,19 +5,26 @@
 - Skills / Agents: cuáles se cargan (agent_skills: carpetas de skills.conf, la primera gana) y los
   propios de cada proveedor activo (provider_sources); prender/apagar, todos on/off.
 - Folders: carpetas de origen (agregar con validación, quitar con confirmación, subir/bajar
-  prioridad) y lo detectado en los proveedores (solo lectura). Cambiarlas aplica (sk.apply)."""
+  prioridad) y lo detectado en los proveedores (solo lectura). Cambiarlas aplica (sk.apply).
+- MCPs / LSPs: servidores de Claude Code y opencode (backend agent_tools.py): prender/apagar con el
+  mecanismo de cada uno, agregar/sacar MCPs, chequear salud (a mano: levanta los servidores locales)
+  e instalar los plugins LSP de Claude (job con log)."""
 
 from __future__ import annotations
 
 import sys
 import threading
+import time
 from pathlib import Path
 
 from . import _lib as L
 
 UI: dict = {}
-TABS = [("usage", "Usage"), ("providers", "Providers"), ("skills", "Skills"), ("agents", "Agents"), ("folders", "Folders")]
-STATE: dict = {"items": {}, "builtin": False}
+TABS = [("usage", "Usage"), ("providers", "Providers"), ("skills", "Skills"), ("agents", "Agents"),
+        ("mcp", "MCPs"), ("lsp", "LSPs"), ("folders", "Folders")]
+STATE: dict = {"items": {}, "builtin": False, "tools": {}, "health": False}
+TOOL_PROVIDERS = (("claude", "Claude Code", "󰚩"), ("opencode", "opencode", "󰘦"))
+WHERE = [["Claude Code and opencode", "both"], ["Claude Code", "claude"], ["opencode", "opencode"]]
 
 
 def A():
@@ -174,16 +181,82 @@ def page_folders() -> list:
             L.group("Detected in your active providers (managed by each provider)", det or [L.info("nodet", "Nothing detected", "")])]
 
 
+def page_tools(kind: str) -> list:
+    a = A()
+    at = a.at
+    on_prov = a.enabled_providers()
+    items = (at.mcp_list if kind == "mcp" else at.lsp_list)(on_prov)
+    STATE["tools"].update({t.key: t for t in items})
+    q = (UI.get("search") or "").lower()
+    groups = []
+    if kind == "mcp":
+        hc = at.health().get("at")
+        groups.append(L.group("MCP servers", [
+            L.button("addmcp", "Add MCP server", f"URL (remote) or command (local) · Claude user scope and/or {at._oc_mcp_file().name}", "Add"),
+            L.button("health", "Check health", "checking…" if STATE["health"] else
+                     (f"last check {a.short_ago(time.time() - hc)} · starts local servers" if hc
+                      else "Starts local servers (e.g. Docker) to test them"), "Check")]))
+    else:
+        groups += L.job_group("lspinstall")
+    for pid, name, icon in TOOL_PROVIDERS:
+        if pid not in on_prov:
+            continue
+        rows = []
+        mine = [t for t in items if t.provider == pid]
+        for t in mine:
+            if q and q not in t.name.lower() and q not in t.desc.lower():
+                continue
+            extra = []
+            if t.warn:
+                extra.append("⚠ " + t.warn)
+            elif kind == "mcp" and t.extra.get("health"):
+                extra.append(at.health_label(t.extra["health"])[0])
+            sub = " · ".join([t.desc[:80], t.origin] + extra)
+            k = f"tool:{t.key}"
+            if not t.toggle:
+                rows.append(L.info(k, t.name, "fixed · " + sub))
+            elif t.toggle == "claude-lsp-install":
+                rows.append(L.item(k, t.name, sub=sub, glyph="󰏓", on=False,
+                                   actions=[L.action(f"install:{t.key}", "Install")]))
+            elif kind == "mcp" and t.removable:
+                rows.append(L.item(k, t.name, sub=sub, glyph="󰒍", on=t.on,
+                                   actions=[L.action(f"flip:{t.key}", "Turn off" if t.on else "Turn on"),
+                                            L.action(f"rmmcp:{t.key}", "Remove", True)]))
+            else:
+                rows.append(L.toggle(k, t.name, sub, t.on))
+        n_on = sum(1 for t in mine if t.on)
+        groups.append(L.group(f"{icon}  {name} · {n_on} of {len(mine)} on",
+                              rows or [L.info(f"none:{pid}", "Nothing configured", "")]))
+    if kind == "lsp":
+        groups.append(L.group("Bulk", [L.button("tall:lsp:on", "Enable all", "Never installs: only what is already there", "All on"),
+                                       L.button("tall:lsp:off", "Disable all", "", "All off")]))
+    else:
+        groups.append(L.group("Bulk", [L.button("tall:mcp:on", "Enable all", "", "All on"),
+                                       L.button("tall:mcp:off", "Disable all", "Restart open sessions to apply", "All off")]))
+    return groups
+
+
+def fresh_tools(kind: str) -> list:
+    """MCPs o LSPs releídos (el cache de STATE puede tener el estado de antes de un cambio)."""
+    a = A()
+    items = (a.at.mcp_list if kind == "mcp" else a.at.lsp_list)(a.enabled_providers())
+    STATE["tools"].update({t.key: t for t in items})
+    return items
+
+
 def get() -> dict:
     tab = UI.get("tab") or "usage"
     if tab in ("skills", "agents"):
         load_builtin()
     groups = {"usage": page_usage, "providers": page_providers, "skills": lambda: page_items("skills"),
-              "agents": lambda: page_items("agents"), "folders": page_folders}[tab]()
-    p = L.page("AI Agents", "Usage, providers, skills and agents", groups,
-               refresh=5 if tab == "usage" else (2 if STATE["builtin"] else 0))
+              "agents": lambda: page_items("agents"), "folders": page_folders,
+              "mcp": lambda: page_tools("mcp"), "lsp": lambda: page_tools("lsp")}[tab]()
+    busy = STATE["builtin"] or STATE["health"] or L.job_running("lspinstall")
+    p = L.page("AI Agents", "Usage, providers, skills, agents, MCPs and LSPs", groups,
+               refresh=5 if tab == "usage" else (2 if busy else 0))
     p.update(tabs=[{"key": k, "label": lbl} for k, lbl in TABS], tab=tab,
-             search="Filter skills…" if tab == "skills" else ("Filter agents…" if tab == "agents" else ""))
+             search={"skills": "Filter skills…", "agents": "Filter agents…", "mcp": "Filter MCPs…",
+                     "lsp": "Filter LSPs…"}.get(tab, ""))
     return p
 
 
@@ -204,6 +277,13 @@ def set_value(key, value):
         name = next(n for p, n, *_ in a.PROVIDERS if p == arg)
         load_builtin()
         return L.ok(f"{name} {'shown' if value else 'hidden'}")
+    if op == "tool":
+        t = STATE["tools"].get(arg)
+        if t is None:
+            return L.fail("Not found: reload")
+        if err := a.at.set_enabled(t, bool(value)):
+            return L.fail(err)
+        return L.ok(f"{t.name} {'enabled' if value else 'disabled'} in {t.provider}")
     if op == "pi":
         item = STATE["items"].get(arg)
         if item is None:
@@ -233,6 +313,70 @@ def act(key, text=None):
     sk = a.sk
     op, _, arg = key.partition(":")
     dirs, off = sk.read_conf()
+    at = a.at
+    if op == "log" and arg == "lspinstall":
+        return L.text_view("LSP plugin install", L.job_text("lspinstall"))
+    if op == "flip":
+        t = next((x for x in fresh_tools(arg.split("|")[1]) if x.key == arg), None)
+        if t is None:
+            return L.fail("Not found: reload")
+        return set_value(f"tool:{arg}", not t.on)
+    if op == "install":
+        t = STATE["tools"].get(arg)
+        if t is None:
+            return L.fail("Not found: reload")
+        if not L.yes(text):
+            return L.confirm(key, "Install LSP plugin", f"Install {t.ref} for Claude Code (claude plugin install, user scope)?"
+                             + (f"\n\n{t.extra.get('about')}" if t.extra.get("about") else "")
+                             + (f"\n\nIt {t.warn}: install it with pacman/yay or Claude Code will not start it." if t.warn else ""),
+                             danger=False, ok_label="Install")
+        exe = at.claude_bin()
+        if not exe:
+            return L.fail("claude is not installed")
+        return L.job_start("lspinstall", f"Install {t.ref}", [("user", [exe, "plugin", "install", "-s", "user", t.ref], t.ref)])
+    if op == "rmmcp":
+        t = STATE["tools"].get(arg)
+        if t is None:
+            return L.fail("Not found: reload")
+        if not L.yes(text):
+            where = "~/.claude.json (user scope)" if t.provider == "claude" else t.origin
+            return L.confirm(key, "Remove MCP server", f"Remove {t.name} from {where}?\nTo keep its config, turn it off instead.",
+                             ok_label="Remove")
+        err = at.remove_mcp(t)
+        return L.fail(err) if err else L.ok(f"{t.name} removed")
+    if op == "addmcp":
+        def fields(v: dict) -> list:
+            return [{"name": "name", "label": "NAME", "text": v.get("name", "")},
+                    {"name": "target", "label": "URL OR COMMAND", "text": v.get("target", "")},
+                    {"name": "where", "label": "ADD TO", "text": v.get("where", "both"), "choices": WHERE},
+                    {"name": "header", "label": "HEADER (OPTIONAL)", "text": v.get("header", "")}]
+        if text is None:
+            return L.form("addmcp", "Add MCP server", fields({}),
+                          hint="https://… (remote) or npx -y @scope/server (local) · header: Authorization: Bearer {env:TOKEN}")
+        v = L.parse_form(text)
+        v["name"] = v.get("name", "").strip()
+        if err := at.validate_new(v["name"], v.get("target", ""), v.get("where") or "both", v.get("header", "")):
+            return L.form("addmcp", "Add MCP server", fields(v), error=err)
+        err = at.add_mcp(v["name"], v["target"], v.get("where") or "both", v.get("header", ""))
+        return L.fail(err) if err else L.ok(f"{v['name']} added")
+    if op == "health":
+        if not STATE["health"]:
+            STATE["health"] = True
+
+            def run():
+                try:
+                    at.check_health()
+                finally:
+                    STATE["health"] = False
+            threading.Thread(target=run, daemon=True).start()
+        return L.ok("Checking MCP health…")
+    if op == "tall":
+        kind, _, state = arg.partition(":")
+        on = state == "on"
+        todo = [t for t in fresh_tools(kind) if t.kind == kind and t.toggle and t.toggle != "claude-lsp-install"
+                and t.on != on and t.provider in a.enabled_providers()]
+        errs = [e for t in todo if (e := at.set_enabled(t, on))]
+        return L.fail(errs[0]) if errs else L.ok(f"{len(todo)} {'enabled' if on else 'disabled'}" if todo else "Nothing to change")
     if op == "run":
         path = a.find_bin(arg)
         if not path:

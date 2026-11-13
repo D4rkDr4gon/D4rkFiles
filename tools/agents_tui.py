@@ -11,7 +11,8 @@ suma el panel Providers para prender/apagar cada uno (manage=True); el
 popup de waybar y el módulo de la barra leen la misma config. También en
 Settings, entre Providers y los paneles de uso: Skills y Agents (cuáles se cargan en
 Claude Code y opencode, más lo que Claude trae por su cuenta; backend en agent_skills.py).
-`f` abre las carpetas de origen (la primera gana).
+`f` abre las carpetas de origen (la primera gana). Settings lo muestra en páginas (tab / 1-5):
+Usage (Providers + uso), Skills, Agents, MCPs y LSPs (backend de estas dos en agent_tools.py).
 
 Fuentes (las escriben otros programas, acá solo se leen):
 - Claude Code: ~/.claude/usage-cache.json (5h/7d) y usage-cache.d/*.json (una
@@ -47,6 +48,7 @@ from typing import Optional
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dtui import THEME, ConfirmModal, DView, Field, FormModal, KeyHints, Panel, Table, ViewApp, css  # noqa: E402
 import agent_skills as sk  # noqa: E402
+import agent_tools as at  # noqa: E402
 import provider_sources as ps  # noqa: E402
 
 from rich.text import Text  # noqa: E402
@@ -55,7 +57,7 @@ from textual.binding import Binding  # noqa: E402
 from textual.containers import Vertical, VerticalScroll  # noqa: E402
 from textual.screen import ModalScreen  # noqa: E402
 from textual import work  # noqa: E402
-from textual.widgets import DataTable, Label, Static  # noqa: E402
+from textual.widgets import ContentSwitcher, DataTable, Label, Static  # noqa: E402
 
 # Raíz del repo: DOTFILES_DIR si está exportado; si no, un nivel arriba de tools/
 DOTFILES = Path(os.environ.get("DOTFILES_DIR") or Path(__file__).resolve().parents[1])
@@ -81,6 +83,10 @@ PROVIDERS = [
     ("antigravity", "Antigravity", "󰫢", "agy"),
 ]
 DEFAULT_ON = {"claude", "opencode"}
+# páginas de Settings (manage=True): id del contenedor, rótulo, tabla que recibe el foco
+PAGES = [("body", "Usage", "providers"), ("skills-page", "Skills", "skill-list"),
+         ("agents-page", "Agents", "agent-list"), ("mcp-page", "MCPs", "mcp-list"), ("lsp-page", "LSPs", "lsp-list")]
+TOOL_PROVIDERS = (("claude", "Claude Code", "󰚩"), ("opencode", "opencode", "󰘦"))   # los que tienen MCP/LSP
 
 
 # ── providers.conf ────────────────────────────────────────
@@ -547,52 +553,87 @@ class AgentsView(DView):
     AgentsView .panel { height: auto; }
     AgentsView .panel Static { height: auto; }
     #providers { height: auto; }
-    #skill-list { height: auto; max-height: 14; }
-    #agent-list { height: auto; max-height: 9; }
+    #ag-tabs { height: 1; padding: 0 1; }
+    #ag-pages { height: 1fr; }
+    #skills-panel, #agents-panel, #mcp-panel, #lsp-panel { height: 1fr; }
+    #skill-list, #agent-list, #mcp-list, #lsp-list { height: 1fr; }
     #updated { color: %(muted)s; height: 1; padding: 0 2; }
     """)
 
-    TABLES = ["providers", "skill-list", "agent-list"]   # tab/shift+tab las recorre (manage=True)
-
     BINDINGS = [
-        Binding("tab", "cycle(1)", show=False, description="next panel"),
-        Binding("shift+tab", "cycle(-1)", show=False, description="previous panel"),
+        Binding("tab", "next_page(1)", show=False, description="next page"),
+        Binding("shift+tab", "next_page(-1)", show=False, description="previous page"),
+        Binding("1", "page('body')", show=False, description="usage page"),
+        Binding("2", "page('skills-page')", show=False, description="skills page"),
+        Binding("3", "page('agents-page')", show=False, description="agents page"),
+        Binding("4", "page('mcp-page')", show=False, description="MCPs page"),
+        Binding("5", "page('lsp-page')", show=False, description="LSPs page"),
         Binding("c", "run('claude')", "claude code"),
         Binding("o", "run('opencode')", "opencode"),
         Binding("r", "refresh_manual", "refresh"),
         Binding("f", "folders", "skills folders", show=False),
         Binding("A", "items_all(True)", "enable all", show=False),
         Binding("N", "items_all(False)", "disable all", show=False),
+        Binding("a", "add_mcp", "add MCP", show=False),
+        Binding("d", "remove_mcp", "remove MCP", show=False),
+        Binding("h", "health", "check MCP health", show=False),
     ]
 
     def __init__(self, manage: bool = False, **kw) -> None:
         super().__init__(**kw)
         self.manage = manage
         self.prov_items: dict = {}
+        self.tools: dict = {}            # clave → at.Tool (MCPs y LSPs)
+        self.busy: set[str] = set()      # claves con un cambio lento en curso
+        self.checking = False
+        self.page = "body"
         if manage:
             self.FOCUS = "#providers"
 
     def compose(self) -> ComposeResult:
-        with VerticalScroll(id="body"):
-            if self.manage:
-                yield Panel(Table(id="providers", show_header=False), title="  Providers",
+        if not self.manage:
+            with VerticalScroll(id="body"):
+                yield from self.usage_panels()
+            return
+        yield Static(id="ag-tabs")
+        with ContentSwitcher(initial="body", id="ag-pages"):
+            with VerticalScroll(id="body"):
+                yield Panel(Table(id="providers", show_header=False), title="  Providers",
                             id="providers-panel")
+                yield from self.usage_panels()
+            with Vertical(id="skills-page"):
                 yield Panel(Table(id="skill-list", show_header=False), title="󱁤  Skills", id="skills-panel")
+            with Vertical(id="agents-page"):
                 yield Panel(Table(id="agent-list", show_header=False), title="󰭻  Agents", id="agents-panel")
-            for pid, name, icon, _bin in PROVIDERS:
-                yield Panel(Static(id=f"{pid}-text"), title=f"{icon}  {name}", id=f"{pid}-panel")
-            yield Static(id="updated")
+            with Vertical(id="mcp-page"):
+                yield Panel(Table(id="mcp-list", show_header=False), title="\U000f048d  MCP servers", id="mcp-panel")
+            with Vertical(id="lsp-page"):
+                yield Panel(Table(id="lsp-list", show_header=False), title="\U000f0169  Language servers",
+                            id="lsp-panel")
+
+    def usage_panels(self) -> ComposeResult:
+        for pid, name, icon, _bin in PROVIDERS:
+            yield Panel(Static(id=f"{pid}-text"), title=f"{icon}  {name}", id=f"{pid}-panel")
+        yield Static(id="updated")
 
     def hints(self) -> list[tuple[str, str]]:
         h: list[tuple[str, str]] = []
         if self.manage:
-            fid = getattr(self.app.focused, "id", "")
-            if fid in ("skill-list", "agent-list"):
+            if self.page in ("skills-page", "agents-page"):
                 h = [("enter", "on/off"), ("A", "all on"), ("N", "all off"), ("f", "folders")]
+            elif self.page == "mcp-page":
+                h = [("enter", "on/off"), ("a", "add"), ("d", "remove"), ("h", "health"), ("A/N", "all on/off")]
+            elif self.page == "lsp-page":
+                h = [("enter", "on/off · install"), ("A/N", "all on/off")]
             else:
                 h = [("enter", "show/hide provider")]
-            h = h + [("tab", "panel")]
+            h = h + [("tab", "page"), ("1-5", "jump")]
         return h + [("c", "claude code"), ("o", "opencode"), ("r", "refresh"), ("q", "quit")]
+
+    def check_action(self, action: str, parameters: tuple) -> bool | None:
+        if action in ("next_page", "page") and not self.manage:
+            return False
+        return True
 
     def on_mount(self) -> None:
         if self.manage:
@@ -610,26 +651,56 @@ class AgentsView(DView):
             g.add_column("", key="name", width=34)
             g.add_column("", key="desc", width=48)
             g.add_column("", key="root", width=34)
+            for tid in ("mcp-list", "lsp-list"):
+                m = self.query_one(f"#{tid}", Table)
+                m.add_column("", key="state", width=13)
+                m.add_column("", key="name", width=26)
+                m.add_column("", key="desc", width=46 if tid == "mcp-list" else 40)
+                m.add_column("", key="origin", width=24)
+                m.add_column("", key="info", width=60 if tid == "mcp-list" else 48)
+            self.render_tabs()
             self.refresh_skills()
             self.load_builtin()
         self.action_refresh_all()
         self.set_interval(5, self.tick)
 
-    def action_cycle(self, step: int) -> None:
-        if not self.manage:
-            return
-        f = self.app.focused
-        i = self.TABLES.index(f.id) if getattr(f, "id", None) in self.TABLES else 0
-        self.query_one(f"#{self.TABLES[(i + step) % len(self.TABLES)]}", Table).focus()
+    # ── páginas (solo manage=True) ──
+
+    def render_tabs(self) -> None:
+        t = Text()
+        for i, (pid, label, _tid) in enumerate(PAGES, 1):
+            on = pid == self.page
+            t.append(f" {i} {label} ", style=f"bold reverse {THEME['primary']}" if on else THEME["muted"])
+            t.append("  ")
+        self.query_one("#ag-tabs", Static).update(t)
+
+    def action_page(self, name: str) -> None:
+        self.page = name
+        self.query_one("#ag-pages", ContentSwitcher).current = name
+        self.render_tabs()
+        if name in ("mcp-page", "lsp-page"):
+            self.refresh_tools()
+        elif name in ("skills-page", "agents-page"):
+            self.refresh_skills()
+        tid = next(t for p, _l, t in PAGES if p == name)
+        tbl = self.query_one(f"#{tid}", Table)
+        tbl.focus()
+        if tid in ("mcp-list", "lsp-list") and tbl.row_count and tbl.cursor_row == 0:
+            tbl.first_selectable()
         self.update_hints()
+
+    def action_next_page(self, step: int) -> None:
+        ids = [p for p, _l, _t in PAGES]
+        self.action_page(ids[(ids.index(self.page) + step) % len(ids)])
 
     def action_refresh_manual(self) -> None:
         if self.manage:
             self.refresh_skills()
+            self.refresh_tools()
         self.action_refresh_all()
 
     def tick(self) -> None:
-        if self.visible_now:
+        if self.visible_now and self.page == "body":
             self.action_refresh_all()
 
     def action_refresh_all(self) -> None:
@@ -771,6 +842,8 @@ class AgentsView(DView):
 
     def action_items_all(self, on: bool) -> None:
         fid = getattr(self.app.focused, "id", "")
+        if fid in ("mcp-list", "lsp-list"):
+            return self.tools_all(fid, on)
         dirs, off = sk.read_conf()
         if fid == "skill-list":
             sk.write_conf(dirs, set() if on else {s.name for s in sk.scan(dirs)})
@@ -805,7 +878,225 @@ class AgentsView(DView):
             sk.write_conf(dirs, off, agent_off)
         self.skills_apply(f"{name} {'enabled' if on else 'disabled'}")
 
+    # ── MCPs y LSPs (solo con manage=True; backend en agent_tools.py) ──
+
+    def refresh_tools(self) -> None:
+        """Relee MCPs y LSPs de los proveedores activos y redibuja las dos tablas (sin parpadeo)."""
+        on_prov = enabled_providers()
+        muted, ok, warn, err = THEME["muted"], THEME["status_ok"], THEME["status_warn"], THEME["status_error"]
+        level = {"ok": ok, "warn": warn, "error": err}
+
+        def short(t: str, n: int) -> str:
+            return t[:n - 1] + "…" if len(t) > n else t
+
+        def state(t: at.Tool) -> Text:
+            if t.key in self.busy:
+                return Text("… working", style=warn)
+            if not t.toggle:
+                return Text("● fixed" if t.on else "○ off (fixed)", style=muted)
+            if t.toggle == "claude-lsp-install":
+                return Text("○ available", style=muted)
+            return Text("● on", style=f"bold {ok}") if t.on else Text("○ off", style=muted)
+
+        for kind, tid, panel, lister in (("mcp", "mcp-list", "#mcp-panel", at.mcp_list),
+                                         ("lsp", "lsp-list", "#lsp-panel", at.lsp_list)):
+            try:
+                items = lister(on_prov)
+            except Exception as e:  # noqa: BLE001 — una config rota no tiene que tirar Settings
+                items = []
+                self.app.notify_err(f"Could not read {kind.upper()}s: {e}")
+            for t in items:
+                self.tools[t.key] = t
+            rows = []
+            for pid, name, icon in TOOL_PROVIDERS:
+                mine = [t for t in items if t.provider == pid]
+                if pid not in on_prov:
+                    continue
+                n_on = sum(1 for t in mine if t.on)
+                rows.append((f"hdr:{kind}:{pid}", [Text(icon, style=f"bold {THEME['primary']}"),
+                                                   Text(name, style=f"bold {THEME['primary']}"),
+                                                   Text(f"{n_on} of {len(mine)} on", style=muted),
+                                                   Text(""), Text("")]))
+                if not mine:
+                    rows.append((f"gap:{kind}:{pid}", [Text(""), Text("nothing configured", style=muted),
+                                                       Text(""), Text(""), Text("")]))
+                for t in mine:
+                    if t.warn:
+                        info = Text(f"⚠ {t.warn}", style=warn)
+                    elif kind == "mcp":
+                        lbl, lv = at.health_label(t.extra.get("health", ""))
+                        info = Text(lbl, style=level.get(lv, muted))
+                    else:
+                        info = Text(short(t.extra.get("command", ""), 46), style=muted)
+                    rows.append((t.key, [state(t), Text(short(t.name, 26), style="" if t.on else muted),
+                                         Text(short(t.desc, 46 if kind == "mcp" else 40), style=muted),
+                                         Text(short(t.origin, 24), style=muted), info]))
+                rows.append((f"gap:{kind}:{pid}:end", [Text("")] * 5))
+            self.query_one(f"#{tid}", Table).set_rows(rows)
+            n_on, n = sum(1 for t in items if t.on), len(items)
+            if kind == "mcp":
+                hc = at.health().get("at")
+                sub = f" {n_on} of {n} on · " + ("checking health… " if self.checking else
+                                                  (f"health {short_ago(time.time() - hc)} · h recheck " if hc
+                                                   else "h checks health "))
+            else:
+                sub = f" {n_on} of {n} on · opencode starts them when it opens a matching file "
+            self.query_one(panel).border_subtitle = sub
+
+    def selected_tool(self, tid: str) -> Optional[at.Tool]:
+        if getattr(self.app.focused, "id", "") != tid:
+            return None
+        k = self.query_one(f"#{tid}", Table).selected_key()
+        return self.tools.get(k) if k else None
+
+    def toggle_tool(self, key: str) -> None:
+        t = self.tools.get(key)
+        if t is None or key in self.busy:
+            return
+        if not t.toggle:
+            return self.app.notify_err(f"{t.name}: {t.why or 'read-only'}")
+        if t.toggle == "claude-lsp-install":
+            def go(yes: bool) -> None:
+                if yes:
+                    self.tool_change(t, True)
+            return self.app.push_screen(ConfirmModal(
+                "Install LSP plugin",
+                f"Install {t.ref} for Claude Code (claude plugin install, user scope)?"
+                + (f"\n\n{t.extra.get('about')}" if t.extra.get("about") else "")
+                + (f"\n\nIt {t.warn}: install it with pacman/yay or Claude Code will not start it."
+                   if t.warn else "")), go)
+        self.tool_change(t, not t.on)
+
+    def tool_change(self, t: at.Tool, on: bool) -> None:
+        if t.slow:
+            self.busy.add(t.key)
+            self.refresh_tools()
+            return self.tool_change_bg(t, on)
+        if (e := at.set_enabled(t, on)):
+            return self.app.notify_err(e)
+        self.app.notify_ok(f"{t.name} {'enabled' if on else 'disabled'} in {t.provider}"
+                           + (" · restart open sessions to apply" if t.kind == "mcp" else ""))
+        self.refresh_tools()
+
+    @work(thread=True, group="agents-tools")
+    def tool_change_bg(self, t: at.Tool, on: bool) -> None:
+        e = at.set_enabled(t, on)
+
+        def done() -> None:
+            self.busy.discard(t.key)
+            if e:
+                self.app.notify_err(e)
+            elif t.toggle == "claude-lsp-install":
+                self.app.notify_ok(f"{t.ref} installed")
+            else:
+                self.app.notify_ok(f"{t.name} {'enabled' if on else 'disabled'} in {t.provider}")
+            self.refresh_tools()
+        self.app.call_from_thread(done)
+
+    def tools_all(self, tid: str, on: bool) -> None:
+        # nunca instala (eso es de a uno, con confirmación): solo prende/apaga lo que ya está
+        todo = [t for t in self.tools.values() if t.kind == tid[:3] and t.toggle
+                and t.toggle != "claude-lsp-install" and t.on != on
+                and (t.provider in enabled_providers())]
+        if not todo:
+            return self.app.notify_ok("Nothing to change")
+        fast = [t for t in todo if not t.slow]
+        errs = [e for t in fast if (e := at.set_enabled(t, on))]
+        slow = [t for t in todo if t.slow]
+        for t in slow:
+            self.busy.add(t.key)
+        if slow:
+            self.tools_all_bg(slow, on)
+        if errs:
+            self.app.notify_err(errs[0])
+        else:
+            self.app.notify_ok(f"{len(todo)} {'enabled' if on else 'disabled'}")
+        self.refresh_tools()
+
+    @work(thread=True, group="agents-tools")
+    def tools_all_bg(self, items: list, on: bool) -> None:
+        errs = [e for t in items if (e := at.set_enabled(t, on))]
+
+        def done() -> None:
+            for t in items:
+                self.busy.discard(t.key)
+            if errs:
+                self.app.notify_err(errs[0])
+            self.refresh_tools()
+        self.app.call_from_thread(done)
+
+    def action_add_mcp(self) -> None:
+        if self.page != "mcp-page":
+            return
+        where = [("Claude Code and opencode", "both"), ("Claude Code", "claude"), ("opencode", "opencode")]
+
+        def validate(v: dict) -> Optional[str]:
+            return at.validate_new(v.get("name", "").strip(), v.get("target", ""), v.get("where") or "both",
+                                   v.get("header", ""))
+
+        def done(v) -> None:
+            if v:
+                self.add_mcp_bg(v["name"].strip(), v["target"], v.get("where") or "both", v.get("header", ""))
+        self.app.push_screen(FormModal("Add MCP server", [
+            Field("name", "Name", placeholder="microsoft-learn"),
+            Field("target", "URL or command", placeholder="https://… (remote) or npx -y @scope/server (local)"),
+            Field("where", "Add to", value="both", choices=where),
+            Field("header", "Header (optional)", placeholder="Authorization: Bearer {env:MY_TOKEN}")],
+            hint=f"user scope in Claude Code · {at._oc_mcp_file().name} · ctrl+s save · esc cancel", validate=validate), done)
+
+    @work(thread=True, group="agents-tools")
+    def add_mcp_bg(self, name: str, target: str, where: str, header: str) -> None:
+        e = at.add_mcp(name, target, where, header)
+        self.app.call_from_thread(lambda: (self.app.notify_err(e) if e else
+                                           self.app.notify_ok(f"{name} added · h checks its health"),
+                                           self.refresh_tools()))
+
+    def action_remove_mcp(self) -> None:
+        if self.page != "mcp-page" or (t := self.selected_tool("mcp-list")) is None:
+            return
+        if not t.removable:
+            return self.app.notify_err(f"{t.name}: {t.why or 'cannot be removed from here'}")
+
+        def go(yes: bool) -> None:
+            if yes:
+                self.busy.add(t.key)
+                self.refresh_tools()
+                self.remove_mcp_bg(t)
+        where = "~/.claude.json (user scope)" if t.provider == "claude" else t.origin
+        self.app.push_screen(ConfirmModal("Remove MCP server", f"Remove {t.name} from {where}?\n"
+                                          "To keep its config, turn it off instead."), go)
+
+    @work(thread=True, group="agents-tools")
+    def remove_mcp_bg(self, t: at.Tool) -> None:
+        e = at.remove_mcp(t)
+
+        def done() -> None:
+            self.busy.discard(t.key)
+            self.tools.pop(t.key, None)
+            self.app.notify_err(e) if e else self.app.notify_ok(f"{t.name} removed")
+            self.refresh_tools()
+        self.app.call_from_thread(done)
+
+    def action_health(self) -> None:
+        if self.page != "mcp-page" or self.checking:
+            return
+        self.checking = True
+        self.refresh_tools()
+        self.health_bg()
+
+    @work(thread=True, exclusive=True, group="agents-health")
+    def health_bg(self) -> None:
+        at.check_health()
+
+        def done() -> None:
+            self.checking = False
+            self.app.notify_ok("MCP health updated")
+            self.refresh_tools()
+        self.app.call_from_thread(done)
+
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
+        if event.data_table.id in ("mcp-list", "lsp-list"):
+            return self.toggle_tool(str(event.row_key.value))
         if event.data_table.id in ("skill-list", "agent-list"):
             return self.toggle_item(event.data_table.id, str(event.row_key.value))
         if event.data_table.id == "providers":
@@ -816,6 +1107,7 @@ class AgentsView(DView):
             self.app.notify_ok(f"{name} {'shown' if on else 'hidden'}")
             self.action_refresh_all()
             self.refresh_skills()
+            self.refresh_tools()
             self.load_builtin()
 
     def action_run(self, cmd: str) -> None:

@@ -39,6 +39,8 @@
   }
 
   // ── MCP servers ──────────────────────────────────────────
-  // Agregá los tuyos en un bloque "mcp". Las credenciales van SIEMPRE por
-  // variable de entorno ("{env:MI_API_KEY}"), nunca escritas acá.
+  // Van en ~/.config/opencode/opencode.json (Settings → AI Agents → MCPs los
+  // agrega, prende y apaga ahí). Uno definido en este archivo le gana al de
+  // opencode.json y solo se cambia acá. Las credenciales van SIEMPRE por
+  // variable de entorno ("{env:MI_API_KEY}"), nunca escritas.
 }

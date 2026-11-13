@@ -310,6 +310,30 @@ agent_off=un-agente        # agente desactivado
   ve como `● fixed`; Antigravity no tiene mecanismo.
 - CLI sin Textual: `python3 tools/agent_skills.py status|apply|list|agents|dir`.
 
+La sección tiene páginas: `tab` o `1`-`5` cambian entre **Usage**, **Skills**, **Agents**, **MCPs** y **LSPs**
+(backend `tools/agent_tools.py`, sin Textual; CLI `agent_tools.py mcp|lsp|health`). Cada cosa se apaga con el
+mecanismo de su proveedor:
+
+| Qué | Se lee de | Cómo se apaga / prende |
+|---|---|---|
+| MCP de Claude Code (user) | `~/.claude.json` → `mcpServers` | Claude no tiene un "disabled" global: apagar guarda la config en `~/.local/state/dotfiles/agent-tools.json` (0600: puede tener tokens) y corre `claude mcp remove -s user`; prender, `claude mcp add-json -s user` |
+| MCP de un plugin | `.mcp.json` / `plugin.json` del plugin | el plugin entero (`enabledPlugins`) |
+| MCP local de un proyecto, conector de claude.ai | `~/.claude.json` | solo lectura |
+| MCP de opencode | `opencode.json` → `mcp` (+ los del `opencode.jsonc` generado, solo lectura) | `"enabled"` en `opencode.json`, editado sin perder comentarios. El `.jsonc` se genera desde `config/opencode/opencode.jsonc.tpl`: un MCP definido ahí se cambia en la plantilla |
+| LSP de Claude Code | plugins del marketplace con `lspServers` (`*-lsp`) | instalar (`claude plugin install -s user`, con confirmación) y después `enabledPlugins`; avisa si falta el binario del servidor (ej. `pyright-langserver`) |
+| LSP de opencode | integrados (sacados del binario, cacheados por versión) + `lsp` de la config | `lsp.<id>.disabled = true` en `opencode.json` |
+
+En **MCPs**, `enter` prende/apaga, `a` agrega (nombre, URL remota o comando local, en Claude Code y/o opencode, header
+opcional como `Authorization: Bearer {env:TOKEN}`), `d` saca y `h` revisa la salud con `claude mcp list` y `opencode mcp
+list`. Eso **levanta los servidores locales**, así que es solo a mano y queda cacheada. Un MCP de opencode con `type`
+inválido (opencode solo acepta `local` o `remote`) se marca con ⚠: opencode lo ignora. `A`/`N` prenden/apagan todos; en
+LSPs nunca instalan nada. Los cambios valen para las sesiones nuevas. Para probar sobre copias: `CLAUDE_JSON`,
+`CLAUDE_BIN`, `OPENCODE_DIR`, `OPENCODE_BIN`, `AGENT_TOOLS_STATE`, `AGENTS_CACHE`.
+
+Ejemplo de MCP remoto, gratis y sin autenticación: la documentación oficial de Microsoft
+(`https://learn.microsoft.com/api/mcp`, Learn, Azure, Entra ID, Windows…), que se agrega con `a` o con
+`claude mcp add --transport http --scope user microsoft-learn https://learn.microsoft.com/api/mcp`.
+
 ## Teclas de las TUIs
 
 `~/.config/dotfiles/keymap.json` guarda las teclas de Settings y de las TUIs que reasignaste en

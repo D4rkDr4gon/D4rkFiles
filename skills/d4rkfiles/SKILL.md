@@ -100,6 +100,8 @@ Layout del repo: `config/<app>/` (→ `~/.config/<app>`), `home/zsh/`, `system/`
   Claves en `docs/customization.md`.
 - **"Activá/desactivá skills o agentes de IA"** → Settings → AI Agents (`f` carpetas, `enter` en Skills/Agents) o
   `~/.config/dotfiles/skills.conf` + `python3 tools/agent_skills.py apply`. Ver `references/recetas.md#skills-y-agentes-de-ia`.
+- **"Agregá/apagá un MCP o un LSP"** → Settings → AI Agents, páginas MCPs (`a`, `d`, `enter`) y LSPs, o
+  `python3 tools/agent_tools.py mcp|lsp`. Ver `references/recetas.md#skills-y-agentes-de-ia`.
 - **"Volvé a mi config anterior"** → `~/.local/state/dotfiles/backups/<fecha>/` (conservan la ruta relativa; es un `mv`).
 - **"Reinstalá / reenlazá"** → `./install.sh --only links` (o `--only configure`, `--dry-run` primero).
 

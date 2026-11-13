@@ -124,6 +124,16 @@ Enlaza `~/.claude/skills/<n>`, `~/.claude/agents/<n>.md` (de `AGENTS-CLAUDE-CODE
 activo (plugins de Claude Code, built-in de opencode, skills de Codex) se ven en las mismas tablas y se apagan con el
 mecanismo de cada uno (`tools/provider_sources.py`); lo que no tiene mecanismo queda `● fixed`.
 
+**MCPs y LSPs** (páginas `4` y `5` de la misma sección; backend `tools/agent_tools.py`): los MCP de Claude Code se
+apagan aparcando su config en `~/.local/state/dotfiles/agent-tools.json` y corriendo `claude mcp remove -s user`; los de
+opencode, con `"enabled"` en `~/.config/opencode/opencode.json` (el `.jsonc` es generado: lo definido en
+`opencode.jsonc.tpl` es solo lectura). `h` revisa la salud a mano (levanta los servidores locales). Sin TUI:
+
+```bash
+python3 ~/.local/share/dotfiles/tools/agent_tools.py mcp      # MCPs de Claude Code y opencode
+python3 ~/.local/share/dotfiles/tools/agent_tools.py lsp      # LSPs (plugins *-lsp de Claude, integrados de opencode)
+```
+
 ## Teclas de las TUIs
 
 Settings → Shortcuts → Settings lista todas las teclas de Settings y sus secciones (y de las TUIs sueltas). `enter`
