@@ -19,6 +19,7 @@ Scope {
     property string target: ""
     property string section: ""
     property string heading: ""
+    property string page: ""                // "" = SectionPage genérica; "finance" = Finance.qml (app propia)
     property int cardWidth: 760
     property int cardHeight: 640
     property bool shown: false
@@ -222,15 +223,27 @@ Scope {
 
             Loader {
                 id: page
+                focus: true                         // Finance toma el teclado (1-8, ←/→, n)
                 parent: root.drawer ? drawerSlot : cardSlot
                 anchors.fill: parent
                 active: root.loaded
                 asynchronous: true                  // se arma sin trabar la animación
-                sourceComponent: SectionPage {
+                sourceComponent: root.page === "finance" ? financePage : sectionPage
+            }
+            Component {
+                id: sectionPage
+                SectionPage {
                     bridge: root.bridge
                     section: root.section
                     active: root.shown
                     standalone: true
+                    onCloseRequested: root.close()
+                }
+            }
+            Component {
+                id: financePage
+                Finance {
+                    active: root.shown
                     onCloseRequested: root.close()
                 }
             }

@@ -1,12 +1,12 @@
-"""Expenses (GUI): paridad con la TUI tools/expenses_tui.py.
+"""Expenses (GUI): app de finanzas personales sobre la base de la TUI tools/expenses_tui.py.
 
-Pestañas Overview (mes, cuentas, presupuesto, movimientos), Installments (compras en
-cuotas y cada cuota), Recurring (fijos), Cards (resumen, ciclo, pago) y Manage
-(cuentas, categorías, cotizaciones, import de Money Manager y export CSV).
-Reusa la lógica de la TUI (validaciones, formularios, base) importando expenses_tui.py; la
-base es la misma que usa la TUI (expenses_db.py). Al abrir pide las
-cotizaciones en un hilo y después genera los fijos vencidos, igual que la TUI.
-Finances (Settings) usa manage_groups()/act() de acá.
+La dibuja config/quickshell/Finance.qml (no SectionPage): get() devuelve datos estructurados de la
+vista pedida (UI["view"]: overview, transactions, budgets, cards, plans, scheduled, reports) más la
+barra lateral de cuentas; los formularios, confirmaciones y validaciones son los de siempre (act() →
+L.form / L.confirm, misma lógica que la TUI). La vista Manage embebe la sección Finances
+(manage_groups()/act() de acá, que también usa Settings).
+Base: la de expenses_db.py (~/.local/state/dotfiles/expenses/expenses.db o $EXPENSES_DB). Al abrir
+pide las cotizaciones en un hilo y después genera los fijos vencidos, igual que la TUI.
 """
 
 from __future__ import annotations
@@ -14,7 +14,8 @@ from __future__ import annotations
 import json
 import sys
 import threading
-from datetime import date
+import calendar
+from datetime import date, timedelta
 from pathlib import Path
 
 from . import _lib as L
@@ -25,8 +26,6 @@ UI: dict = {}
 LOCK = threading.RLock()
 STATE = {"month": date.today().replace(day=1), "plan": None, "card": None, "import": None,
          "rates": "", "rates_started": False}
-TABS = [("overview", "Overview"), ("plans", "Installments"), ("rec", "Recurring"), ("cards", "Cards"),
-        ("manage", "Manage")]
 _G = None
 
 
@@ -56,11 +55,6 @@ def fld(name: str, label: str, vals: dict, choices=None, placeholder: str = "") 
     if choices is not None:
         f["choices"] = pairs(choices)
     return f
-
-
-def search_ok(*texts) -> bool:
-    q = (UI.get("search") or "").strip().lower()
-    return not q or any(q in (t or "").lower() for t in texts)
 
 
 # ════════════════════════════════════════════════════════════════
@@ -108,247 +102,6 @@ def rates_line() -> str:
     return " · ".join(parts)
 
 
-# ════════════════════════════════════════════════════════════════
-#  filas
-# ════════════════════════════════════════════════════════════════
-
-TXN_SQL = """
-    SELECT tx.*, a.name AS aname, a.currency, c.name AS cname, c.icon AS cicon,
-           ta.name AS taname, p.n AS pn
-    FROM transactions tx
-    JOIN accounts a ON a.id = tx.account_id
-    LEFT JOIN categories c ON c.id = tx.category_id
-    LEFT JOIN accounts ta ON ta.id = tx.to_account_id
-    LEFT JOIN plans p ON p.id = tx.plan_id"""
-
-KIND = {"expense": ("▼ expense", "-", "#e06c75"), "income": ("▲ income", "+", "#98c379")}
-
-
-def txn_item(r, today: str, short: bool = False):
-    kind, sign, _ = KIND.get(r["type"], ("⇄ transfer", "", ""))
-    future = r["date"] > today
-    desc = ("◷ " if future else "") + (r["description"] or "(no description)")
-    if r["plan_id"]:
-        desc += f" ({r['inst_no']}/{r['pn']})"
-    extra = []
-    if r["orig_currency"]:
-        extra.append(f"{r['orig_amount']:,.2f} {r['orig_currency']}")
-    if r["fee_of"]:
-        extra.append("fee")
-    cat = "± adjust" if r["adjust"] else (f"{r['cicon']} {r['cname']}" if r["cname"] else "no category")
-    sub = [G().ddmm(r["date"])]
-    if not short:
-        sub += [kind, r["aname"] + (f" → {r['taname']}" if r["taname"] else "")]
-    sub += [cat] + extra
-    return L.item(f"txn:edit:{r['id']}", desc, sub=" · ".join(sub), right=f"{sign}{money(r['amount'], r['currency'])}",
-                  glyph="󰁅" if r["type"] == "expense" else "󰁝" if r["type"] == "income" else "󰁔", on=not future,
-                  actions=[L.action(f"txn:edit:{r['id']}", "Edit"), L.action(f"txn:del:{r['id']}", "Delete", True)])
-
-
-def bar(pct: float, n: int = 10) -> str:
-    k = max(0, min(n, int(round(pct * n / 100))))
-    return "▓" * k + "░" * (n - k)
-
-
-# ════════════════════════════════════════════════════════════════
-#  páginas
-# ════════════════════════════════════════════════════════════════
-
-def page_overview() -> list:
-    g = G()
-    d = db()
-    m = STATE["month"]
-    ym, today = m.strftime("%Y-%m"), date.today().isoformat()
-    bal = d.balances()
-    accs = d.q("SELECT * FROM accounts ORDER BY hidden, sort, name")
-    nw = sum(d.convert(bal.get(a["id"], 0), a["currency"], g.MAIN_CURRENCY) or 0 for a in accs if not a["hidden"])
-    out = d.val("SELECT SUM(amount) FROM transactions WHERE type='expense' AND adjust=0 AND date LIKE ?", (ym + "%",))
-    inc = d.val("SELECT SUM(amount) FROM transactions WHERE type='income' AND adjust=0 AND date LIKE ?", (ym + "%",))
-    mname = f"{g.MONTHS[m.month - 1].capitalize()} {m.year}"
-    summ = [
-        L.item("month:0", mname, sub="Month shown", glyph="󰃭",
-               actions=[L.action("month:-1", "‹ Previous"), L.action("month:0", "This month"), L.action("month:1", "Next ›")]),
-        L.info("nw", "Net worth", money(nw, g.MAIN_CURRENCY)),
-        L.info("out", "Expenses", f"-{money(out)}"),
-        L.info("inc", "Income", f"+{money(inc)}"),
-        L.info("bal", "Balance", ("+" if inc >= out else "-") + money(abs(inc - out))),
-    ]
-    if rl := rates_line():
-        summ.append(L.info("rates", "Exchange rates", rl))
-    groups = [L.group(f"Summary · {mname}", summ),
-              L.group("Add", [L.button("txn:new", "New transaction", "Expense, income, transfer or balance adjustment", "New"),
-                              L.button("txn:new:inst", "New purchase in installments", "Splits the total into monthly installments", "New")])]
-
-    # cuentas por tipo
-    counts = {r[0]: r[1] for r in d.q("SELECT account_id, count(*) FROM transactions GROUP BY 1")}
-    labels = {k: lbl for k, lbl, _ in g.ACCT_TYPES}
-    order = [k for k, _, _ in g.ACCT_TYPES]
-    by: dict[str, list] = {}
-    for a in sorted(accs, key=lambda a: (a["hidden"], order.index(a["type"]) if a["type"] in order else 99, a["sort"], a["name"])):
-        grp = "Hidden" if a["hidden"] else labels.get(a["type"], a["type"])
-        b = bal.get(a["id"], 0)
-        by.setdefault(grp, []).append(L.item(
-            f"acc:edit:{a['id']}", f"{g.ACCT_ICONS.get(a['type'], '◻')} {a['name']}",
-            sub=f"{counts.get(a['id'], 0)} transactions" + ("" if b > -0.005 else " · negative"),
-            right=money(b, a["currency"]), on=b > -0.005,
-            actions=[L.action(f"acc:edit:{a['id']}", "Edit"), L.action(f"acc:del:{a['id']}", "Delete", True)]))
-    if not accs:
-        groups.append(L.group("Accounts", [L.button("acc:new", "No accounts yet", "Create one or import from Money Manager (Manage)", "New account")]))
-    for grp, rows in by.items():
-        groups.append(L.group(f"Accounts · {grp}", rows))
-
-    # presupuesto
-    spent = {r[0]: r[1] for r in d.q("""SELECT category_id, SUM(amount) FROM transactions
-                                         WHERE adjust=0 AND type IN ('expense','income') AND date LIKE ?
-                                         GROUP BY 1""", (ym + "%",))}
-    for kind, title in (("expense", f"Budget · {g.MONTHS[m.month - 1]}"), ("income", "Income by category")):
-        rows = []
-        for c in d.q("SELECT * FROM categories WHERE kind=? ORDER BY sort, name", (kind,)):
-            sp = spent.get(c["id"], 0)
-            acts = [L.action(f"cat:edit:{c['id']}", "Edit")]
-            if kind == "expense":
-                acts.append(L.action(f"cat:budget:{c['id']}", "Month budget"))
-                bud = d.budget_for(c["id"], ym)
-                if bud > 0:
-                    pct = sp / bud * 100
-                    sub = f"{bar(pct)} {pct:3.0f}% of {money(bud)}" + ("  · over budget" if pct >= 100 else "")
-                    on = pct < 100
-                else:
-                    sub, on = "no limit", True
-            else:
-                sub, on = "", True
-            acts.append(L.action(f"cat:del:{c['id']}", "Delete", True))
-            rows.append(L.item(f"cat:edit:{c['id']}", f"{c['icon']} {c['name']}", sub=sub, right=money(sp) if sp else "—",
-                               on=on, actions=acts))
-        groups.append(L.group(title, rows))
-
-    # movimientos del mes
-    rows = [txn_item(r, today) for r in d.q(TXN_SQL + " WHERE tx.date LIKE ? ORDER BY tx.date DESC, tx.time DESC, tx.id DESC",
-                                            (ym + "%",))
-            if search_ok(r["description"], r["aname"], r["cname"], r["note"])]
-    fut = d.val("SELECT count(*) FROM transactions WHERE date LIKE ? AND date > ?", (ym + "%", today))
-    groups.append(L.group(f"Transactions · {len(rows)}" + (f" · {fut} scheduled ◷" if fut else ""), rows
-                          or [L.info("none", "No transactions this month", "")]))
-    return groups
-
-
-def page_plans() -> list:
-    d = db()
-    g = G()
-    today = date.today().isoformat()
-    nm = g.add_months(date.today(), 1, 1).strftime("%Y-%m")
-    active, done = [], []
-    pending_total = next_month = 0.0
-    open_rows = []
-    for p in d.q("""
-            SELECT p.*, a.name AS aname,
-                   SUM(CASE WHEN t.date <= ? THEN 1 ELSE 0 END) AS paid, COUNT(t.id) AS cnt,
-                   SUM(CASE WHEN t.date > ? THEN t.amount ELSE 0 END) AS remaining,
-                   SUM(CASE WHEN t.date LIKE ? THEN t.amount ELSE 0 END) AS nextm,
-                   MIN(CASE WHEN t.date > ? THEN t.date END) AS nxt, MAX(t.date) AS last,
-                   (SELECT amount FROM transactions WHERE plan_id=p.id ORDER BY inst_no DESC LIMIT 1) AS each_
-            FROM plans p JOIN accounts a ON a.id = p.account_id
-            LEFT JOIN transactions t ON t.plan_id = p.id
-            GROUP BY p.id ORDER BY last, p.description""", (today, today, nm + "%", today)):
-        paid = (p["paid"] or 0) + (p["n"] - (p["cnt"] or 0))
-        pct = paid / p["n"] * 100 if p["n"] else 100
-        rem = p["remaining"] or 0
-        pending_total += rem
-        next_month += p["nextm"] or 0
-        if not search_ok(p["description"], p["aname"]):
-            continue
-        is_open = STATE["plan"] == p["id"]
-        sub = (f"{p['aname']} · {bar(pct, 8)} {paid}/{p['n']} · {money(p['each_'] or 0)} each"
-               + (f" · next {g.ddmm(p['nxt'])}" if p["nxt"] else "")
-               + (f" · ends {date.fromisoformat(p['last']).strftime('%m/%y')}" if p["last"] else ""))
-        row = L.item(f"plan:open:{p['id']}", ("▾ " if is_open else "▸ ") + p["description"], sub=sub,
-                     right=f"{money(rem)} left" if rem else "✓ done", on=bool(rem),
-                     actions=[L.action(f"plan:open:{p['id']}", "Hide" if is_open else "Installments"),
-                              L.action(f"plan:edit:{p['id']}", "Edit"), L.action(f"plan:del:{p['id']}", "Delete", True)])
-        (active if rem else done).append(row)
-        if is_open:
-            for r in d.q("SELECT * FROM transactions WHERE plan_id=? ORDER BY inst_no, date", (p["id"],)):
-                ok_ = r["date"] <= today
-                open_rows.append(L.item(f"txn:edit:{r['id']}", f"{r['inst_no']}/{p['n']}",
-                                        sub=f"{r['date']} · {'✓ paid' if ok_ else '◷ pending'}", right=money(r["amount"]), on=ok_,
-                                        actions=[L.action(f"txn:edit:{r['id']}", "Edit"),
-                                                 L.action(f"txn:del:{r['id']}", "Delete", True)]))
-            open_title = f"Installments · {p['description']} · total {money(p['total'])} in {p['n']}"
-    groups = [L.group("Installments", [
-        L.info("pend", "Pending", money(pending_total)), L.info("next", "Next month", money(next_month)),
-        L.button("txn:new:inst", "New purchase in installments", "", "New")])]
-    groups.append(L.group("Active", active))
-    if open_rows:
-        groups.append(L.group(open_title, open_rows))
-    groups.append(L.group("Finished", done))
-    return groups
-
-
-def page_rec() -> list:
-    g = G()
-    d = db()
-    rows = []
-    tot = {"expense": 0.0, "income": 0.0}
-    for r in d.q("""SELECT r.*, a.name AS aname, a.currency AS acur, ta.name AS taname, c.name AS cname, c.icon AS cicon
-                    FROM recurring r JOIN accounts a ON a.id = r.account_id
-                    LEFT JOIN accounts ta ON ta.id = r.to_account_id
-                    LEFT JOIN categories c ON c.id = r.category_id
-                    ORDER BY r.active DESC, r.next_date, r.description"""):
-        kind, sign, _ = KIND.get(r["type"], ("⇄ transfer", "", ""))
-        cur = r["currency"] or r["acur"]
-        if r["active"] and r["freq"] == "monthly" and r["type"] in tot:
-            tot[r["type"]] += d.convert(r["amount"], cur, g.MAIN_CURRENCY) or 0
-        if not search_ok(r["description"], r["aname"], r["cname"]):
-            continue
-        sub = " · ".join([kind, r["aname"] + (f" → {r['taname']}" if r["taname"] else ""),
-                          f"{r['cicon']} {r['cname']}" if r["cname"] else "no category", r["freq"],
-                          f"next {r['next_date']}" if r["active"] else "paused"])
-        rows.append(L.item(f"rec:edit:{r['id']}", r["description"], sub=sub, right=f"{sign}{money(r['amount'], cur)}",
-                           on=bool(r["active"]),
-                           actions=[L.action(f"rec:edit:{r['id']}", "Edit"),
-                                    L.action(f"rec:toggle:{r['id']}", "Pause" if r["active"] else "Resume"),
-                                    L.action(f"rec:del:{r['id']}", "Delete", True)]))
-    return [L.group("Recurring", [L.info("out", "Monthly out", money(tot["expense"])),
-                                  L.info("in", "Monthly in", money(tot["income"])),
-                                  L.button("rec:new", "New recurring", "Fixed expense, income or transfer", "New"),
-                                  L.button("rec:post", "Post due now", "Creates the transactions whose date arrived", "Post")]),
-            L.group("Items", rows or [L.info("none", "No recurring items", "")])]
-
-
-def page_cards() -> list:
-    g = G()
-    d = db()
-    today, bal = date.today(), d.balances()
-    rows, cyc, cyc_title = [], [], ""
-    for a in d.q("SELECT * FROM accounts WHERE type='card' ORDER BY hidden, sort, name"):
-        ci = d.card_status(a, today)
-        debt = -bal.get(a["id"], 0)
-        if ci:
-            left = ci["closed"] - ci["paid"]
-            sub = (f"closes {g.ddmm(ci['next_close'])} · due {g.ddmm(ci['next_due'])} · statement {money(ci['closed'])} "
-                   + ("✓ paid" if left <= 0.5 else f"({money(left)} left)")
-                   + f" · cycle {money(ci['current'])} · upcoming {money(ci['upcoming'])}")
-        else:
-            sub = "no closing day: Edit to set it"
-        is_open = STATE["card"] == a["id"]
-        rows.append(L.item(f"card:open:{a['id']}", ("▾ " if is_open else "▸ ") + a["name"] + (" (hidden)" if a["hidden"] else ""),
-                           sub=sub, right=f"owes {money(debt)}" if debt > 0.005 else money(-debt), on=debt <= 0.005,
-                           actions=[L.action(f"card:statement:{a['id']}", "Statement"), L.action(f"card:pay:{a['id']}", "Pay"),
-                                    L.action(f"txn:new:acc:{a['id']}", "Transaction"), L.action(f"acc:edit:{a['id']}", "Edit")]))
-        if is_open and ci:
-            t = today.isoformat()
-            cyc = [txn_item(r, t, short=True) for r in d.q(
-                TXN_SQL + " WHERE tx.account_id=? AND tx.type<>'transfer' AND tx.date > ? AND tx.date <= ? "
-                          "ORDER BY tx.date DESC, tx.time DESC", (a["id"], ci["last_close"].isoformat(), ci["next_close"].isoformat()))]
-            cyc_title = (f"Current cycle · {a['name']} · {g.ddmm(ci['last_close'])} → {g.ddmm(ci['next_close'])} · "
-                         f"{money(ci['current'])} · due {g.ddmm(ci['next_due'])}")
-    groups = [L.group("Credit cards", rows or [L.info("none", "No credit cards", "Account type: credit card")]),
-              L.group("Add", [L.button("acc:new:card", "New credit card", "", "New")])]
-    if cyc_title:
-        groups.insert(1, L.group(cyc_title, cyc or [L.info("none", "Nothing in this cycle", "")]))
-    return groups
-
-
 def manage_groups() -> list:
     g, rates = G(), __import__("expenses_rates")
     d = db()
@@ -357,7 +110,8 @@ def manage_groups() -> list:
     accs = [L.item(f"acc:edit:{a['id']}", f"{g.ACCT_ICONS.get(a['type'], '◻')} {a['name']}",
                    sub=f"{dict((k, l) for k, l, _ in g.ACCT_TYPES).get(a['type'], a['type'])} · {a['currency']}"
                    + (" · hidden" if a["hidden"] else ""), right=money(bal.get(a["id"], 0), a["currency"]), on=not a["hidden"],
-                   actions=[L.action(f"acc:edit:{a['id']}", "Edit"), L.action(f"acc:del:{a['id']}", "Delete", True)])
+                   actions=[L.action(f"acc:balance:{a['id']}", "Set balance"), L.action(f"acc:edit:{a['id']}", "Edit"),
+                            L.action(f"acc:del:{a['id']}", "Delete", True)])
             for a in d.q("SELECT * FROM accounts ORDER BY hidden, sort, name")]
     groups.append(L.group("Accounts", accs + [L.button("acc:new", "New account", "", "New")]))
     cats = [L.item(f"cat:edit:{c['id']}", f"{c['icon']} {c['name']}",
@@ -419,27 +173,519 @@ def import_groups() -> list:
     return groups
 
 
+# ════════════════════════════════════════════════════════════════
+#  vistas (datos para quickshell/Finance.qml)
+# ════════════════════════════════════════════════════════════════
+
+VIEWS = ["overview", "transactions", "budgets", "cards", "plans", "scheduled", "reports", "manage"]
+WD = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+MONTH_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+              "November", "December"]
+
+
+def iso(d) -> str:
+    return d.isoformat() if hasattr(d, "isoformat") else (d or "")
+
+
+def dlabel(d) -> str:
+    """Mon 09 Nov (con el año si no es el actual)."""
+    d = date.fromisoformat(d) if isinstance(d, str) else d
+    return f"{WD[d.weekday()]} {d.day:02d} {MON[d.month - 1]}" + (f" {d.year}" if d.year != date.today().year else "")
+
+
+def short_date(d) -> str:
+    d = date.fromisoformat(d) if isinstance(d, str) else d
+    return f"{d.day:02d} {MON[d.month - 1]}" + (f" {d.year % 100:02d}" if d.year != date.today().year else "")
+
+
+def days_to(d) -> int:
+    d = date.fromisoformat(d) if isinstance(d, str) else d
+    return (d - date.today()).days
+
+
+def when(d) -> str:
+    """today, tomorrow, in 5 days, 3 days ago."""
+    n = days_to(d)
+    return "today" if n == 0 else "tomorrow" if n == 1 else "yesterday" if n == -1 else \
+        f"in {n} days" if n > 0 else f"{-n} days ago"
+
+
+def compact(v: float) -> str:
+    """$1.25M / $350K / $980 (para ejes y tarjetas chicas)."""
+    a, sg = abs(v or 0), "-" if (v or 0) < -0.005 else ""
+    if a >= 1e6:
+        return f"{sg}${a / 1e6:.2f}M"
+    if a >= 1e4:
+        return f"{sg}${a / 1e3:.0f}K"
+    return f"{sg}${a:,.0f}"
+
+
+def ic(icon, name) -> str:
+    """Ícono de la categoría o, si no tiene (las importadas traen ◻), su inicial."""
+    return icon if icon and icon != "◻" else (name or "?")[:1].upper()
+
+
+def ym_of(d: date) -> str:
+    return d.strftime("%Y-%m")
+
+
+def month_list(end: date, n: int) -> list[date]:
+    return [G().add_months(end, i - n + 1, 1) for i in range(n)]
+
+
+def month_totals(d, months: list[date]) -> dict[str, dict]:
+    lo, hi = ym_of(months[0]), ym_of(months[-1])
+    out = {ym_of(m): {"income": 0.0, "expense": 0.0} for m in months}
+    for r in d.q("""SELECT substr(date,1,7) AS ym, type, SUM(amount) AS s FROM transactions
+                    WHERE adjust=0 AND type IN ('income','expense') AND substr(date,1,7) BETWEEN ? AND ?
+                    GROUP BY 1, 2""", (lo, hi)):
+        out[r["ym"]][r["type"]] = float(r["s"] or 0)
+    return out
+
+
+def cat_spend(d, ym: str, kind: str = "expense") -> dict:
+    """{category_id: gasto del mes} (None = sin categoría)."""
+    return {r[0]: float(r[1]) for r in d.q("""SELECT category_id, SUM(amount) FROM transactions
+                                             WHERE adjust=0 AND type=? AND date LIKE ? GROUP BY 1""", (kind, ym + "%"))}
+
+
+TXN_COLS = """SELECT tx.*, a.name AS aname, a.currency, a.type AS atype, c.name AS cname, c.icon AS cicon,
+                     ta.name AS taname, p.n AS pn
+              FROM transactions tx
+              JOIN accounts a ON a.id = tx.account_id
+              LEFT JOIN categories c ON c.id = tx.category_id
+              LEFT JOIN accounts ta ON ta.id = tx.to_account_id
+              LEFT JOIN plans p ON p.id = tx.plan_id"""
+
+
+def txn(r, today: str) -> dict:
+    t = r["type"]
+    sign = "-" if t == "expense" else "+" if t == "income" else ""
+    cat = "Balance adjustment" if r["adjust"] else (r["cname"] or ("Transfer" if t == "transfer" else "No category"))
+    acct = r["aname"] + (f" → {r['taname']}" if r["taname"] else "")
+    extra = []
+    if r["orig_currency"]:
+        extra.append(f"{r['orig_amount']:,.2f} {r['orig_currency']}")
+    if r["fee_of"]:
+        extra.append("fee")
+    if r["recurring_id"]:
+        extra.append("recurring")
+    return {"id": r["id"], "desc": r["description"] or "(no description)", "type": t, "cat": cat,
+            "icon": "±" if r["adjust"] else ("⇄" if t == "transfer" else ic(r["cicon"], r["cname"] or r["description"])), "acct": acct,
+            "amount": f"{sign}{money(r['amount'], r['currency'] if r['currency'] != G().MAIN_CURRENCY else '')}",
+            "value": float(r["amount"]), "future": r["date"] > today, "date": r["date"], "dlabel": short_date(r["date"]),
+            "inst": f"{r['inst_no']}/{r['pn']}" if r["plan_id"] else "", "note": r["note"] or "", "extra": " · ".join(extra),
+            "card": r["atype"] == "card"}
+
+
+def sidebar(d) -> dict:
+    g = G()
+    bal = d.balances()
+    labels = {k: lbl for k, lbl, _ in g.ACCT_TYPES}
+    order = [k for k, _, _ in g.ACCT_TYPES]
+    groups: dict[str, dict] = {}
+    nw = assets = debt = 0.0
+    for a in d.q("SELECT * FROM accounts WHERE hidden=0 ORDER BY sort, name"):
+        b = bal.get(a["id"], 0.0)
+        conv = d.convert(b, a["currency"], g.MAIN_CURRENCY) or 0.0
+        nw += conv
+        if conv < 0:
+            debt -= conv
+        elif a["type"] != "card":
+            assets += conv
+        grp = groups.setdefault(a["type"], {"key": a["type"], "name": labels.get(a["type"], a["type"]).capitalize(),
+                                            "total": 0.0, "accounts": []})
+        grp["total"] += conv
+        grp["accounts"].append({"id": a["id"], "name": a["name"], "icon": g.ACCT_ICONS.get(a["type"], "◻"),
+                                "balance": money(b), "cur": a["currency"] if a["currency"] != g.MAIN_CURRENCY else "",
+                                "neg": b < -0.005, "card": a["type"] == "card"})
+    out = sorted(groups.values(), key=lambda x: order.index(x["key"]) if x["key"] in order else 99)
+    for grp in out:
+        grp["totalFmt"] = compact(grp["total"])
+    return {"net": money(nw), "netShort": compact(nw), "assets": compact(assets), "debt": compact(debt),
+            "groups": out}
+
+
+def recurring_occurrences(d, lo: date, hi: date) -> list[dict]:
+    """Ocurrencias de los fijos activos entre lo y hi (todavía no generadas)."""
+    g = G()
+    out = []
+    for r in d.q("""SELECT r.*, a.name AS aname, a.currency AS acur, a.type AS atype, c.name AS cname, c.icon AS cicon
+                    FROM recurring r JOIN accounts a ON a.id = r.account_id
+                    LEFT JOIN categories c ON c.id = r.category_id WHERE r.active=1"""):
+        x = date.fromisoformat(r["next_date"])
+        end = date.fromisoformat(r["end_date"]) if r["end_date"] else None
+        n = 0
+        while x <= hi and (end is None or x <= end) and n < 40:
+            if x >= lo:
+                cur = r["currency"] or r["acur"]
+                sign = "-" if r["type"] == "expense" else "+" if r["type"] == "income" else ""
+                out.append({"date": x.isoformat(), "kind": "recurring", "id": r["id"], "desc": r["description"],
+                            "sub": f"{r['freq']} · {r['aname']}", "icon": ic(r["cicon"], r["cname"] or r["description"]), "type": r["type"],
+                            "amount": f"{sign}{money(r['amount'], cur if cur != g.MAIN_CURRENCY else '')}",
+                            "value": d.convert(r["amount"], cur, g.MAIN_CURRENCY) or 0.0, "card": r["atype"] == "card"})
+            x = __import__("expenses_db").next_date(x, r["freq"], r["day"])
+            n += 1
+    return out
+
+
+def card_info(d, a, today: date, bal: dict) -> dict:
+    g = G()
+    st = d.card_status(a, today)
+    debt = -bal.get(a["id"], 0.0)
+    out = {"id": a["id"], "name": a["name"], "hidden": bool(a["hidden"]), "debt": money(debt) if debt > 0.005 else money(0),
+           "owes": debt > 0.005, "closeDay": a["close_day"], "payDay": a["pay_day"], "ok": st is not None}
+    if not st:
+        return out
+    left = max(0.0, st["closed"] - st["paid"])
+    span = max(1, (st["next_close"] - st["last_close"]).days)
+    out |= {"lastClose": short_date(st["last_close"]), "nextClose": short_date(st["next_close"]),
+            "lastDue": short_date(st["last_due"]), "nextDue": short_date(st["next_due"]),
+            "toClose": days_to(st["next_close"]), "toDue": days_to(st["last_due"]), "toNextDue": days_to(st["next_due"]),
+            "closeWhen": when(st["next_close"]), "dueWhen": when(st["last_due"]),
+            "closed": money(st["closed"]), "paid": money(st["paid"]), "left": money(left), "leftValue": left,
+            "settled": left <= 0.5, "duePast": st["last_due"] < today,
+            "current": money(st["current"]), "upcoming": money(st["upcoming"]),
+            "cyclePct": min(1.0, max(0.0, (today - st["last_close"]).days / span)),
+            "cycleRange": f"{short_date(st['last_close'] + timedelta(days=1))} → {short_date(st['next_close'])}",
+            "closedRange": f"{short_date(st['prev_close'] + timedelta(days=1))} → {short_date(st['last_close'])}"}
+    return out
+
+
+def v_overview(d, month: date) -> dict:
+    g = G()
+    today = date.today()
+    ym = ym_of(month)
+    months = month_list(month, 6)
+    tot = month_totals(d, months)
+    cur = tot[ym]
+    spend = cat_spend(d, ym)
+    cats = {c["id"]: c for c in d.q("SELECT * FROM categories")}
+    by = sorted(((cats[k]["name"] if k in cats else "No category", ic(cats[k]["icon"], cats[k]["name"]) if k in cats else "?", v)
+                 for k, v in spend.items() if v > 0), key=lambda x: -x[2])
+    total_sp = sum(v for *_, v in by) or 1
+    top = [{"name": n, "icon": i, "amount": compact(v), "full": money(v), "pct": v / total_sp} for n, i, v in by[:6]]
+    if len(by) > 6:
+        rest = sum(v for *_, v in by[6:])
+        top.append({"name": f"{len(by) - 6} more", "icon": "…", "amount": compact(rest), "full": money(rest), "pct": rest / total_sp})
+    budget = spent = 0.0
+    for c in cats.values():
+        if c["kind"] == "expense" and (b := d.budget_for(c["id"], ym)) > 0:
+            budget += b
+            spent += spend.get(c["id"], 0.0)
+    # próximos 30 días: fijos, cuotas/gastos fuera de tarjeta y vencimientos de tarjetas
+    hi = date.fromordinal(today.toordinal() + 30)
+    up = [o for o in recurring_occurrences(d, today, hi) if not o["card"]]
+    t = today.isoformat()
+    for r in d.q(TXN_COLS + " WHERE tx.date > ? AND tx.date <= ? AND a.type<>'card' AND tx.recurring_id IS NULL "
+                            "ORDER BY tx.date", (t, hi.isoformat())):
+        x = txn(r, t)
+        up.append({"date": r["date"], "kind": "installment" if r["plan_id"] else "scheduled", "id": r["id"],
+                   "desc": x["desc"] + (f" ({x['inst']})" if x["inst"] else ""), "sub": f"{x['cat']} · {x['acct']}",
+                   "icon": x["icon"], "type": r["type"], "amount": x["amount"], "value": x["value"]})
+    bal = d.balances()
+    cards = []
+    for a in d.q("SELECT * FROM accounts WHERE type='card' AND hidden=0 ORDER BY sort, name"):
+        ci = card_info(d, a, today, bal)
+        cards.append(ci)
+        st = d.card_status(a, today)
+        if st:
+            if ci["leftValue"] > 0.5 and st["last_due"] >= today:
+                up.append({"date": st["last_due"].isoformat(), "kind": "card", "id": a["id"], "desc": f"{a['name']} statement",
+                           "sub": f"closed {short_date(st['last_close'])}", "icon": "💳", "type": "expense",
+                           "amount": f"-{money(ci['leftValue'])}", "value": ci["leftValue"]})
+            if st["next_due"] <= hi:
+                up.append({"date": st["next_due"].isoformat(), "kind": "card", "id": a["id"], "desc": f"{a['name']} statement",
+                           "sub": f"closes {short_date(st['next_close'])} · so far", "icon": "💳", "type": "expense",
+                           "amount": f"-{money(st['current'])}", "value": st["current"]})
+    up.sort(key=lambda o: o["date"])
+    for o in up:
+        o["when"] = when(o["date"])
+        o["dlabel"] = short_date(o["date"])
+    recent = [txn(r, t) for r in d.q(TXN_COLS + " WHERE tx.date <= ? ORDER BY tx.date DESC, tx.time DESC, tx.id DESC LIMIT 8", (t,))]
+    inc, exp = cur["income"], cur["expense"]
+    sched = 0.0
+    if ym == ym_of(today):                        # mes en curso: lo de fecha futura (cuotas, fijos) va aparte
+        sched = float(d.val("SELECT SUM(amount) FROM transactions WHERE adjust=0 AND type='expense' AND date LIKE ? "
+                            "AND date > ?", (ym + "%", t)))
+        exp -= sched
+    prev_avg = [tot[ym_of(m)]["expense"] for m in months[:-1] if tot[ym_of(m)]["expense"] or tot[ym_of(m)]["income"]]
+    return {
+        "kpis": [
+            {"label": "Income", "value": money(inc), "sub": f"{MONTH_FULL[month.month - 1]}", "tone": "ok"},
+            {"label": "Expenses", "value": money(exp), "tone": "",
+             "sub": (f"+{compact(sched)} scheduled · " if sched > 0.005 else "")
+             + (f"avg {compact(sum(prev_avg) / len(prev_avg))} / month" if prev_avg else "")},
+            {"label": "Net", "value": ("+" if inc >= exp else "-") + money(abs(inc - exp)),
+             "sub": f"saved {((inc - exp) / inc * 100):.0f}% of income" if inc > 0 else "no income yet", "tone": "ok" if inc >= exp else "error"},
+            {"label": "Budget", "value": f"{spent / budget * 100:.0f}%" if budget else "—",
+             "sub": f"{compact(spent)} of {compact(budget)}" if budget else "no budgets set",
+             "tone": "" if not budget else "error" if spent > budget else "warn" if spent > budget * pace(month) else "ok",
+             "pct": spent / budget if budget else 0}],
+        "categories": top, "trend": [{"label": MON[m.month - 1], "income": tot[ym_of(m)]["income"], "expense": tot[ym_of(m)]["expense"],
+                                      "sel": ym_of(m) == ym} for m in months],
+        "upcoming": up[:12], "upcomingTotal": money(sum(o["value"] for o in up if o["type"] == "expense")),
+        "cards": cards, "recent": recent}
+
+
+def pace(month: date) -> float:
+    """Qué parte del mes pasó (1 si ya terminó, 0 si es futuro)."""
+    today = date.today()
+    if ym_of(month) < ym_of(today):
+        return 1.0
+    if ym_of(month) > ym_of(today):
+        return 0.0
+    return today.day / calendar.monthrange(today.year, today.month)[1]
+
+
+def v_transactions(d, month: date) -> dict:
+    ym, t = ym_of(month), date.today().isoformat()
+    where, args = ["tx.date LIKE ?"], [ym + "%"]
+    f = {k: UI.get(k) or "" for k in ("q", "ftype", "facc", "fcat")}
+    if f["ftype"] in ("expense", "income", "transfer"):
+        where.append("tx.type=? AND tx.adjust=0")
+        args.append(f["ftype"])
+    elif f["ftype"] == "adjust":
+        where.append("tx.adjust=1")
+    if str(f["facc"]).isdigit():
+        where.append("(tx.account_id=? OR tx.to_account_id=?)")
+        args += [int(f["facc"])] * 2
+    if str(f["fcat"]).lstrip("-").isdigit():
+        if int(f["fcat"]) == 0:
+            where.append("tx.category_id IS NULL AND tx.type='expense'")
+        else:
+            where.append("tx.category_id=?")
+            args.append(int(f["fcat"]))
+    days: dict[str, dict] = {}
+    inc = exp = 0.0
+    n = 0
+    q = f["q"].strip().lower()
+    for r in d.q(TXN_COLS + f" WHERE {' AND '.join(where)} ORDER BY tx.date DESC, tx.time DESC, tx.id DESC", tuple(args)):
+        if q and not any(q in (x or "").lower() for x in (r["description"], r["aname"], r["cname"], r["note"], r["taname"])):
+            continue
+        x = txn(r, t)
+        day = days.setdefault(r["date"], {"date": r["date"], "label": dlabel(r["date"]), "when": when(r["date"]) if abs(days_to(r["date"])) <= 1 else "",
+                                          "future": r["date"] > t, "net": 0.0, "items": []})
+        day["items"].append(x)
+        if not r["adjust"]:
+            if r["type"] == "expense":
+                exp += r["amount"]
+                day["net"] -= r["amount"]
+            elif r["type"] == "income":
+                inc += r["amount"]
+                day["net"] += r["amount"]
+        n += 1
+    for day in days.values():
+        day["netFmt"] = ("+" if day["net"] > 0 else "") + money(day["net"]) if abs(day["net"]) > 0.005 else ""
+    accs = [{"label": "All accounts", "value": ""}] + [{"label": a["name"], "value": str(a["id"])}
+                                                      for a in d.q("SELECT id, name FROM accounts ORDER BY hidden, sort, name")]
+    cats = [{"label": "All categories", "value": ""}, {"label": "No category", "value": "0"}] + [
+        {"label": f"{c['icon']} {c['name']}", "value": str(c["id"])} for c in d.q("SELECT * FROM categories ORDER BY kind DESC, sort, name")]
+    return {"days": list(days.values()), "count": n, "income": money(inc), "expense": money(exp),
+            "filters": f, "accounts": accs, "cats": cats}
+
+
+def v_budgets(d, month: date) -> dict:
+    g = G()
+    ym = ym_of(month)
+    spend = cat_spend(d, ym)
+    prev = [ym_of(g.add_months(month, -i, 1)) for i in (1, 2, 3)]
+    avg = {r[0]: float(r[1]) / 3 for r in d.q(f"""SELECT category_id, SUM(amount) FROM transactions
+            WHERE adjust=0 AND type='expense' AND substr(date,1,7) IN (?,?,?) GROUP BY 1""", tuple(prev))}
+    p = pace(month)
+    rows, unb = [], []
+    tb = ts = 0.0
+    for c in d.q("SELECT * FROM categories WHERE kind='expense' ORDER BY sort, name"):
+        b = d.budget_for(c["id"], ym)
+        sp = spend.get(c["id"], 0.0)
+        ov = d.q1("SELECT 1 FROM budgets WHERE category_id=? AND month=?", (c["id"], ym)) is not None
+        row = {"id": c["id"], "icon": ic(c["icon"], c["name"]), "name": c["name"], "spent": money(sp), "spentShort": compact(sp),
+               "avg": compact(avg.get(c["id"], 0.0)), "override": ov, "default": money(c["budget"])}
+        if b > 0:
+            tb += b
+            ts += sp
+            pct = sp / b
+            row |= {"budget": money(b), "left": money(b - sp), "over": sp > b, "pct": pct,
+                    "tone": "error" if sp > b else "warn" if pct > max(p, 0.0001) + 0.05 and p < 1 else "ok",
+                    "status": f"{money(sp - b)} over" if sp > b else f"{money(b - sp)} left"}
+            rows.append(row)
+        else:
+            row |= {"value": sp}
+            unb.append(row)
+    unb.sort(key=lambda r: -r["value"])
+    nocat = spend.get(None, 0.0)
+    return {"rows": rows, "unbudgeted": unb, "noCategory": money(nocat) if nocat else "",
+            "total": money(tb), "spent": money(ts), "left": money(tb - ts), "over": ts > tb, "pct": ts / tb if tb else 0,
+            "pace": p, "paceLabel": "" if p in (0.0, 1.0) else f"{p * 100:.0f}% of the month gone",
+            "suggest": compact(sum(avg.values()))}
+
+
+def v_cards(d) -> dict:
+    today = date.today()
+    bal = d.balances()
+    cards = [card_info(d, a, today, bal) for a in d.q("SELECT * FROM accounts WHERE type='card' ORDER BY hidden, sort, name")]
+    sel = UI.get("card")
+    ids = [c["id"] for c in cards]
+    sel = sel if sel in ids else (ids[0] if ids else None)
+    detail = None
+    if sel is not None:
+        a = d.q1("SELECT * FROM accounts WHERE id=?", (sel,))
+        st = d.card_status(a, today)
+        stm = d.card_statements(a, today)
+        t = today.isoformat()
+        cyc = [txn(r, t) for r in d.q(TXN_COLS + " WHERE tx.account_id=? AND tx.type<>'transfer' AND tx.date > ? AND tx.date <= ? "
+                                                 "ORDER BY tx.date DESC, tx.time DESC, tx.id DESC",
+                                      (sel, st["last_close"].isoformat(), st["next_close"].isoformat()))] if st else []
+        mx = max([s["amount"] for s in stm] + [1])
+        known = {c.isoformat() for c, _ in d.card_closings(sel)}
+        pay = d.q1("SELECT name FROM accounts WHERE id=?", (a["pay_account_id"],)) if a["pay_account_id"] else None
+        detail = {"id": sel, "name": a["name"], "payFrom": pay["name"] if pay else "",
+                  "statements": [{"label": MON[s["close"].month - 1], "close": short_date(s["close"]), "due": short_date(s["due"]),
+                                  "amount": compact(s["amount"]), "full": money(s["amount"]), "inst": money(s["installments"]),
+                                  "h": max(0.0, s["amount"]) / mx, "hi": max(0.0, s["installments"]) / mx, "state": s["state"],
+                                  "known": s["close"].isoformat() in known} for s in stm],
+                  "cycle": cyc,
+                  "closings": [{"close": short_date(c), "due": short_date(dd) if dd else "—", "key": c.isoformat(),
+                                "past": c < today} for c, dd in d.card_closings(sel)][-8:]}
+    return {"cards": cards, "selected": sel, "detail": detail}
+
+
+def v_plans(d) -> dict:
+    g = G()
+    today = date.today()
+    t = today.isoformat()
+    this_m, next_m = ym_of(today), ym_of(g.add_months(today, 1, 1))
+    active, done = [], []
+    pend = 0.0
+    for p in d.q("""
+            SELECT p.*, a.name AS aname, c.name AS cname, c.icon AS cicon,
+                   SUM(CASE WHEN t.date <= ? THEN 1 ELSE 0 END) AS paid, COUNT(t.id) AS cnt,
+                   SUM(CASE WHEN t.date > ? THEN t.amount ELSE 0 END) AS remaining,
+                   MIN(CASE WHEN t.date > ? THEN t.date END) AS nxt, MAX(t.date) AS last,
+                   (SELECT amount FROM transactions WHERE plan_id=p.id ORDER BY inst_no DESC LIMIT 1) AS each_
+            FROM plans p JOIN accounts a ON a.id = p.account_id
+            LEFT JOIN categories c ON c.id = p.category_id
+            LEFT JOIN transactions t ON t.plan_id = p.id
+            GROUP BY p.id ORDER BY last, p.description""", (t, t, t)):
+        paid = (p["paid"] or 0) + (p["n"] - (p["cnt"] or 0))
+        rem = float(p["remaining"] or 0)
+        pend += rem
+        row = {"id": p["id"], "desc": p["description"], "acct": p["aname"], "cat": p["cname"] or "No category",
+               "icon": ic(p["cicon"], p["cname"] or p["description"]), "paid": paid, "n": p["n"], "pct": paid / p["n"] if p["n"] else 1,
+               "each": money(p["each_"] or 0), "total": money(p["total"]), "left": money(rem),
+               "next": short_date(p["nxt"]) if p["nxt"] else "", "end": f"{MON[int(p['last'][5:7]) - 1]} {p['last'][:4]}" if p["last"] else "",
+               "open": STATE["plan"] == p["id"]}
+        if row["open"]:
+            row["items"] = [{"id": r["id"], "no": f"{r['inst_no']}/{p['n']}", "date": short_date(r["date"]), "amount": money(r["amount"]),
+                             "paid": r["date"] <= t} for r in d.q("SELECT * FROM transactions WHERE plan_id=? ORDER BY inst_no, date", (p["id"],))]
+        (active if rem > 0.005 else done).append(row)
+    months = [g.add_months(today, i, 1) for i in range(12)]
+    by = {r[0]: float(r[1]) for r in d.q("""SELECT substr(date,1,7), SUM(amount) FROM transactions
+                                           WHERE plan_id IS NOT NULL AND substr(date,1,7) BETWEEN ? AND ? GROUP BY 1""",
+                                        (ym_of(months[0]), ym_of(months[-1])))}
+    mx = max(list(by.values()) + [1])
+    return {"pending": money(pend), "thisMonth": money(by.get(this_m, 0.0)), "nextMonth": money(by.get(next_m, 0.0)),
+            "count": len(active), "active": active, "done": done[-12:][::-1], "doneCount": len(done),
+            "commit": [{"label": MON[m.month - 1], "amount": compact(by.get(ym_of(m), 0.0)), "h": by.get(ym_of(m), 0.0) / mx}
+                       for m in months]}
+
+
+def v_scheduled(d) -> dict:
+    g = G()
+    today = date.today()
+    rows = []
+    tot = {"expense": 0.0, "income": 0.0}
+    for r in d.q("""SELECT r.*, a.name AS aname, a.currency AS acur, ta.name AS taname, c.name AS cname, c.icon AS cicon
+                    FROM recurring r JOIN accounts a ON a.id = r.account_id
+                    LEFT JOIN accounts ta ON ta.id = r.to_account_id
+                    LEFT JOIN categories c ON c.id = r.category_id
+                    ORDER BY r.active DESC, r.next_date, r.description"""):
+        cur = r["currency"] or r["acur"]
+        conv = d.convert(r["amount"], cur, g.MAIN_CURRENCY) or 0.0
+        k = {"monthly": 1, "weekly": 52 / 12, "yearly": 1 / 12, "daily": 30.4}.get(r["freq"], 1)
+        if r["active"] and r["type"] in tot:
+            tot[r["type"]] += conv * k
+        sign = "-" if r["type"] == "expense" else "+" if r["type"] == "income" else ""
+        rows.append({"id": r["id"], "desc": r["description"], "type": r["type"], "active": bool(r["active"]),
+                     "amount": f"{sign}{money(r['amount'], cur if cur != g.MAIN_CURRENCY else '')}", "freq": r["freq"],
+                     "acct": r["aname"] + (f" → {r['taname']}" if r["taname"] else ""), "cat": r["cname"] or "",
+                     "icon": "⇄" if r["type"] == "transfer" else ic(r["cicon"], r["cname"] or r["description"]),
+                     "next": short_date(r["next_date"]), "when": when(r["next_date"]) if r["active"] else "paused",
+                     "soon": r["active"] and 0 <= days_to(r["next_date"]) <= 7,
+                     "ends": short_date(r["end_date"]) if r["end_date"] else ""})
+    occ = recurring_occurrences(d, today, date.fromordinal(today.toordinal() + 30))
+    occ.sort(key=lambda o: o["date"])
+    for o in occ:
+        o["when"], o["dlabel"] = when(o["date"]), short_date(o["date"])
+    return {"rows": rows, "out": money(tot["expense"]), "in": money(tot["income"]),
+            "net": ("+" if tot["income"] >= tot["expense"] else "-") + money(abs(tot["income"] - tot["expense"])),
+            "upcoming": occ[:14], "active": sum(1 for r in rows if r["active"])}
+
+
+def v_reports(d, month: date) -> dict:
+    g = G()
+    first = d.val("SELECT MIN(date) FROM transactions WHERE adjust=0", default="")
+    months = [m for m in month_list(month, 12) if not first or ym_of(m) >= first[:7]] or [month]
+    tot = month_totals(d, months)
+    mx = max([max(v["income"], v["expense"]) for v in tot.values()] + [1])
+    trend = [{"label": MON[m.month - 1], "income": tot[ym_of(m)]["income"] / mx, "expense": tot[ym_of(m)]["expense"] / mx,
+              "inc": compact(tot[ym_of(m)]["income"]), "exp": compact(tot[ym_of(m)]["expense"]), "sel": m == month}
+             for m in months]
+    ym = ym_of(month)
+    spend = cat_spend(d, ym)
+    prev = [ym_of(g.add_months(month, -i, 1)) for i in (1, 2, 3)]
+    avg = {r[0]: float(r[1]) / 3 for r in d.q("""SELECT category_id, SUM(amount) FROM transactions
+            WHERE adjust=0 AND type='expense' AND substr(date,1,7) IN (?,?,?) GROUP BY 1""", tuple(prev))}
+    cats = {c["id"]: c for c in d.q("SELECT * FROM categories")}
+    keys = sorted(set(spend) | set(avg), key=lambda k: -max(spend.get(k, 0.0), avg.get(k, 0.0)))
+    cmx = max([max(spend.get(k, 0.0), avg.get(k, 0.0)) for k in keys] + [1])
+    comp = []
+    for k in keys[:10]:
+        a, s = avg.get(k, 0.0), spend.get(k, 0.0)
+        comp.append({"name": cats[k]["name"] if k in cats else "No category", "icon": ic(cats[k]["icon"], cats[k]["name"]) if k in cats else "?",
+                     "now": s / cmx, "avg": a / cmx, "nowFmt": compact(s), "avgFmt": compact(a),
+                     "delta": f"{(s - a) / a * 100:+.0f}%" if a > 0 else "new", "up": s > a})
+    t = date.today().isoformat()
+    top = [txn(r, t) for r in d.q(TXN_COLS + " WHERE tx.date LIKE ? AND tx.type='expense' AND tx.adjust=0 "
+                                             "ORDER BY tx.amount DESC LIMIT 8", (ym + "%",))]
+    acc = d.q("""SELECT a.name, SUM(tx.amount) AS s FROM transactions tx JOIN accounts a ON a.id=tx.account_id
+                 WHERE tx.date LIKE ? AND tx.type='expense' AND tx.adjust=0 GROUP BY a.id ORDER BY s DESC""", (ym + "%",))
+    amx = max([float(r["s"]) for r in acc] + [1])
+    y = [tot[ym_of(m)] for m in months]
+    ti, te = sum(v["income"] for v in y), sum(v["expense"] for v in y)
+    span = f"{len(months)} months"
+    return {"trend": trend, "comp": comp, "top": top,
+            "byAccount": [{"name": r["name"], "amount": compact(r["s"]), "h": float(r["s"]) / amx} for r in acc],
+            "year": {"income": compact(ti), "expense": compact(te), "net": compact(ti - te), "span": span,
+                     "avgExp": compact(te / len(months)), "rate": f"{(ti - te) / ti * 100:.0f}%" if ti > 0 else "—"}}
+
+
 def get() -> dict:
     with LOCK:
         if not STATE["rates_started"]:
             STATE["rates_started"] = True
             update_rates()
-        tab = UI.get("tab") or "overview"
+        view = UI.get("view") if UI.get("view") in VIEWS else "overview"
         if STATE["import"]:
-            tab = UI["tab"] = "manage"
+            view = UI["view"] = "manage"
+        d, m = db(), STATE["month"]
         try:
-            groups = {"overview": page_overview, "plans": page_plans, "rec": page_rec, "cards": page_cards,
-                      "manage": manage_groups}.get(tab, page_overview)()
+            data = {"overview": lambda: v_overview(d, m), "transactions": lambda: v_transactions(d, m),
+                    "budgets": lambda: v_budgets(d, m), "cards": lambda: v_cards(d), "plans": lambda: v_plans(d),
+                    "scheduled": lambda: v_scheduled(d), "reports": lambda: v_reports(d, m),
+                    "manage": lambda: {}}[view]()
+            side = sidebar(d)
         except Exception as e:  # noqa: BLE001 - base rota o bloqueada
-            return L.page("Expenses", f"Database error: {e}"[:120], [])
-        p = L.page("Expenses", STATE["rates"] or "Accounts, budgets, installments, recurring and cards", groups, refresh=30)
-        p.update(tabs=[{"key": k, "label": lbl} for k, lbl in TABS], tab=tab, search="Filter transactions…")
-        return p
+            return {"ok": False, "msg": f"Database error: {e}"[:160]}
+        return {"ok": True, "view": view, "data": data, "sidebar": side, "status": STATE["rates"], "rates": rates_line(),
+                "month": ym_of(m), "monthLabel": f"{MONTH_FULL[m.month - 1]} {m.year}", "isThisMonth": m == date.today().replace(day=1),
+                "currency": G().MAIN_CURRENCY, "refresh": 30000}
 
 
 def on_ui(name: str):
-    if name == "tab":                             # al cambiar de pestaña se pliegan cuotas y ciclo abiertos
-        STATE["plan"] = STATE["card"] = None
+    if name == "view":                            # al cambiar de vista se pliega la compra abierta
+        STATE["plan"] = None
     return None
 
 
@@ -468,16 +714,21 @@ def txn_form(key=None, preset=None, vals=None, error=""):
         else:
             vals = {"desc": "", "date": date.today().isoformat(), "type": "expense", "acc": accts[0][1], "to": "0",
                     "cat": "0", "note": "", "amount": "", "cur": "", "inst": "1"} | p
+    # Orden de carga rápida: lo que siempre se completa primero; el destino solo en transferencias
+    is_tr = vals.get("type") == "transfer"
     fields = [fld("desc", "Description", vals), fld("amount", "Amount (total, for installments too)", vals),
-              fld("cur", "Paid in", vals, g.currency_choices("account's currency")),
-              fld("date", "Date (DD/MM/YYYY; for installments, the first one)", vals),
-              fld("type", "Type", vals, g.FORM_TYPES), fld("acc", "Account", vals, accts),
-              fld("to", "Destination account (transfers only)", vals, [("—", "0")] + accts),
-              fld("cat", "Category", vals, g.categories_choices())]
-    if not r:
+              fld("acc", "From account" if is_tr else "Account", vals, accts)]
+    if is_tr or r:
+        fields.append(fld("to", "Destination account (transfers only)", vals, [("—", "0")] + accts))
+    if not is_tr:
+        fields.append(fld("cat", "Category", vals, g.categories_choices()))
+    fields.append(fld("date", "Date (DD/MM/YYYY; for installments, the first one)", vals))
+    if not r and not is_tr:
         fields.append(fld("inst", "Installments (1 = single payment)", vals))
-    fields.append(fld("note", "Note (optional)", vals))
-    title = "Edit transaction" if r else ("New purchase in installments" if str(vals.get("inst", "1")) != "1" else "New transaction")
+    fields += [fld("type", "Type", vals, g.FORM_TYPES), fld("cur", "Paid in", vals, g.currency_choices("account's currency")),
+               fld("note", "Note (optional)", vals)]
+    title = "Edit transaction" if r else ("New purchase in installments" if str(vals.get("inst", "1")) != "1" else
+                                          {"income": "New income", "transfer": "New transfer"}.get(vals.get("type"), "New expense"))
     if r and r["plan_id"]:
         title += f" · installment {r['inst_no']}"
     return L.form(f"txn:save:{key or 0}", title, fields, error=error)
@@ -506,8 +757,8 @@ def txn_save(key: int, v: dict):
             return "Installments only apply to expenses"
         return None
 
-    v.setdefault("note", "")
-    v.setdefault("cur", "")
+    for k, dv in (("note", ""), ("cur", ""), ("to", "0"), ("cat", "0")):
+        v.setdefault(k, dv)
     if err := check():
         return txn_form(key or None, vals=raw, error=err)
     acc = int(v["acc"])
@@ -612,7 +863,7 @@ def acc_form(key=None, preset=None, vals=None, error=""):
     return L.form(f"acc:save:{key or 0}", "Edit account" if r else "New account", [
         fld("name", "Name", vals), fld("type", "Type", vals, [(f"{i} {lbl}", k) for k, lbl, i in g.ACCT_TYPES]),
         fld("cur", "Currency", vals, g.currency_choices("—")[1:]), fld("bal", bal_label, vals),
-        fld("close", "Credit card: closing day (0 = none)", vals), fld("due", "Credit card: due day", vals),
+        fld("close", "Credit card: usual closing day (0 = none)", vals), fld("due", "Credit card: usual due day", vals),
         fld("pay", "Credit card: paid from", vals, pay), fld("hidden", "Hidden", vals, [("no", "0"), ("yes", "1")]),
         fld("notes", "Notes (optional)", vals)], error=error)
 
@@ -642,6 +893,41 @@ def acc_save(key: int, v: dict):
         return acc_form(key or None, vals=raw, error=str(e)[:120])
     adj = d.set_balance(key, bal) if key else None
     return L.ok(f"Account '{v['name']}' saved" + (f" · balance adjusted to {money(bal)}" if adj else ""))
+
+
+def balance_form(key: int, vals=None, error=""):
+    """Saldo de hoy de una cuenta (en una tarjeta, lo que se debe): la diferencia se guarda como ajuste."""
+    d = db()
+    a = d.q1("SELECT * FROM accounts WHERE id=?", (key,))
+    now = round(d.balances().get(key, 0.0), 2)
+    card = a["type"] == "card"
+    if vals is None:
+        vals = {"bal": f"{(-now if card else now):.2f}", "note": ""}
+    label = (f"Owed today in {a['currency']} (as the bank shows it; negative = credit in your favor)" if card
+             else f"Balance today in {a['currency']}")
+    return L.form(f"acc:balsave:{key}", f"Set balance · {a['name']}", [fld("bal", label, vals), fld("note", "Note (optional)", vals)],
+                  error=error, ok_label="Adjust",
+                  hint=f"Now: {money(-now if card else now, a['currency'])}{' owed' if card else ''}. The difference is saved as a "
+                       "balance adjustment dated today; the other transactions stay as they are.")
+
+
+def balance_save(key: int, v: dict):
+    d = db()
+    a = d.q1("SELECT * FROM accounts WHERE id=?", (key,))
+    v.setdefault("note", "")
+    raw = dict(v)
+    if not str(v.get("bal", "")).strip():
+        return balance_form(key, vals=raw, error="The balance is missing")
+    if err := G().num_check("Balance", v, "bal"):
+        return balance_form(key, vals=raw, error=err)
+    card = a["type"] == "card"
+    target = -float(v["bal"]) if card else float(v["bal"])
+    before = d.balances().get(key, 0.0)
+    if not d.set_balance(key, target, note=v["note"]):
+        return L.ok(f"{a['name']} already has that balance")
+    diff = target - before
+    return L.ok(f"{a['name']}: {'+' if diff > 0 else '-'}{money(abs(diff))} adjustment · "
+                + (f"owes {money(-target)}" if card else f"balance {money(target, a['currency'])}"))
 
 
 def cat_form(key=None, vals=None, error=""):
@@ -681,7 +967,7 @@ def budget_form(key: int, vals=None, error=""):
     vals = vals or {"amount": f"{cur['amount']:g}" if cur else ""}
     return L.form(f"cat:budgetsave:{key}", f"Budget · {c['name']} · {g.MONTHS[m.month - 1]} {m.year}",
                   [fld("amount", f"Amount for this month (empty = default {money(c['budget'])})", vals)], error=error,
-                  hint="The month is the one shown in Overview.")
+                  hint="The month is the one shown at the top.")
 
 
 def statement_form(key: int, vals=None, error=""):
@@ -697,6 +983,17 @@ def statement_form(key: int, vals=None, error=""):
         fld("note", "Note (optional)", vals)], error=error,
         hint=f"Paid since the closing: {money(ci['paid'])} (payments are transfers: Pay). "
              "Differences with what's recorded are saved as adjustments.")
+
+
+def closing_form(key: int, vals=None, error=""):
+    a = db().q1("SELECT * FROM accounts WHERE id=?", (key,))
+    st = db().card_status(a, date.today())
+    if vals is None:
+        vals = {"close": st["next_close"].isoformat() if st else "", "due": st["next_due"].isoformat() if st else ""}
+    return L.form(f"card:closesave:{key}", f"Closing dates · {a['name']}", [
+        fld("close", "Closing date (DD/MM/YYYY)", vals), fld("due", "Due date (optional)", vals)], error=error,
+        hint="The dates printed on the statement (next closing / next due). They replace the usual closing day "
+             f"({a['close_day'] or '—'}) for that statement only; the others keep it.")
 
 
 def cur_form(code=None, vals=None, error=""):
@@ -827,6 +1124,8 @@ def _act(key: str, text):
             preset = {}
             if arg == "inst":
                 preset["inst"] = "3"
+            elif arg.startswith("type:"):
+                preset["type"] = arg[5:]
             elif arg.startswith("acc:"):
                 preset["acc"] = arg[4:]
             return txn_form(preset=preset)
@@ -884,6 +1183,10 @@ def _act(key: str, text):
             return acc_form(preset={"type": "card"} if arg == "card" else None)
         if op == "edit":
             return acc_form(int(arg))
+        if op == "balance":
+            return balance_form(int(arg))
+        if op == "balsave":
+            return balance_save(int(arg), v)
         if op == "save":
             return acc_save(int(arg), v)
         if op == "del":
@@ -916,7 +1219,7 @@ def _act(key: str, text):
                           "DELETE FROM categories WHERE id=?", text)
 
     if kind == "card":
-        k = int(arg)
+        k = int(arg.partition(":")[0])
         if op == "open":
             STATE["card"] = None if STATE["card"] == k else k
             return L.ok()
@@ -934,6 +1237,23 @@ def _act(key: str, text):
             if v["current"] and d.adjust(k, ci["current"] - float(v["current"]), None, "Cycle adjustment", v["note"]):
                 n += 1
             return L.ok(f"{a['name']}: {n} adjustment(s) saved" if n else "Nothing to adjust")
+        if op == "closing":
+            return closing_form(k)
+        if op == "closesave":
+            v.setdefault("due", "")
+            if err := g.date_check("Closing date", v, "close") or g.date_check("Due date", v, "due", optional=True):
+                return closing_form(k, vals=v, error=err)
+            if v["due"] and v["due"] <= v["close"]:
+                return closing_form(k, vals=v, error="The due date has to be after the closing date")
+            d.run("INSERT OR REPLACE INTO card_closings(account_id, close_date, due_date) VALUES(?,?,?)", (k, v["close"], v["due"]))
+            return L.ok(f"Closing {g.ddmm(v['close'])} saved" + (f" · due {g.ddmm(v['due'])}" if v["due"] else ""))
+        if op == "closedel":
+            acc_id, _, day = arg.partition(":")
+            if not L.yes(text):
+                return L.confirm(key, "Delete closing date", f"Delete the closing of {day}? That statement goes back to the usual closing day.",
+                                 ok_label="Delete")
+            d.run("DELETE FROM card_closings WHERE account_id=? AND close_date=?", (int(acc_id), day))
+            return L.ok("Closing date deleted")
         if op == "pay":
             a = d.q1("SELECT * FROM accounts WHERE id=?", (k,))
             ci = d.card_status(a, date.today())

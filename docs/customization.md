@@ -170,6 +170,20 @@ categorías de gasto e ingreso con presupuesto mensual (y uno distinto por mes),
 **gastos fijos** que se generan solos al llegar la fecha, y el resumen de cada tarjeta (cerrado, ciclo en curso,
 cuotas que vienen y deuda; `s` lo carga como lo muestra el banco y `p` registra el pago).
 
+**Cierres dinámicos** (`d` en Cards): la fecha real de cierre (y de vencimiento) que trae un resumen. Reemplaza al
+cierre por día fijo más cercano (±15 días) solo en ese resumen; los demás siguen con el día de siempre, y un cierre
+sin vencimiento usa la distancia cierre→vencimiento del último que la tenga. Ciclos, resumen a pagar, vencimientos,
+el widget Money y la proyección de resúmenes futuros salen de `Database.card_schedule`; sin cierres cargados da lo
+mismo que el día fijo. Con vencimiento `-` se borra ese cierre.
+
+En el modo de sesión GUI (Quickshell), `Super+G` abre una app de finanzas propia (`config/quickshell/Finance.qml`,
+datos por vista desde `tools/gui/sections/expenses.py`): barra lateral con patrimonio, activos/deuda y cuentas (clic
+en una cuenta filtra sus movimientos; clic en el monto abre *Set balance*: el saldo real de hoy, la diferencia queda
+como ajuste) y ocho vistas (`1`-`8`; `←`/`→` o `h`/`l` cambian de mes, `n` gasto nuevo): **Overview**,
+**Transactions**, **Budgets** (con la línea de ritmo del mes), **Cards** (resúmenes cerrados, el abierto y 6 que
+vienen; cierres dinámicos), **Installments**, **Scheduled**, **Reports** y **Manage** (la sección Finances). Los
+formularios y validaciones son los de la TUI.
+
 | Página | Qué muestra |
 |---|---|
 | `1` Overview | Mes en curso (`h`/`l` cambia de mes): patrimonio, cuentas, presupuesto por categoría y movimientos |

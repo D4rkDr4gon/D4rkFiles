@@ -18,5 +18,5 @@ ShellRoot {
     ToolWindow { target: "sec-storage"; section: "storage"; heading: "Storage"; cardWidth: 680; cardHeight: 520 }
     ToolWindow { target: "sec-agents"; section: "agents"; heading: "AI Agents"; cardWidth: 640; cardHeight: 560 }
     ToolWindow { target: "sec-backup"; section: "backup"; heading: "Backup"; cardWidth: 680; cardHeight: 560 }
-    ToolWindow { target: "sec-expenses"; section: "expenses"; heading: "Expenses"; cardWidth: 760; cardHeight: 720 }
+    ToolWindow { target: "sec-expenses"; section: "expenses"; heading: "Finances"; page: "finance"; cardWidth: 1240; cardHeight: 860 }
 }

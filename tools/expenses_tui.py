@@ -13,7 +13,8 @@ Cuatro páginas (1-4):
   3 Recurring     gastos/ingresos fijos; se generan solos al abrir la TUI
                   cuando llega la fecha (p los genera a mano)
   4 Cards         tarjetas: resumen cerrado, ciclo en curso, cuotas que
-                  vienen y deuda; p carga el pago del resumen
+                  vienen y deuda; p carga el pago del resumen, d los cierres
+                  dinámicos (fecha real de cierre/vencimiento de un resumen)
 
 Al abrirse pide las cotizaciones a internet (expenses_rates.py, en un hilo
 aparte; sin red quedan las últimas) y recién después genera los fijos
@@ -549,6 +550,7 @@ class ExpensesApp(Manage, DApp):
         Binding("b", "budget", "month budget"),
         Binding("p", "pay", "pay card / post recurring"),
         Binding("s", "statement", "set card statement"),
+        Binding("d", "closing", "card closing dates"),
         Binding("space", "toggle", "pause recurring"),
         Binding("i", "import_mm", "import Money Manager"),
         Binding("dollar_sign", "currencies", "exchange rates"),
@@ -851,7 +853,7 @@ class ExpensesApp(Manage, DApp):
                                         Text(money(debt), style=f"bold {err}" if debt > 0.005 else ok)]))
         t = self.query_one("#card", Table)
         t.set_rows(rows)
-        self.query_one("#card-panel").border_subtitle = (" s set statement · p pay · e closing / due day " if rows
+        self.query_one("#card-panel").border_subtitle = (" s set statement · p pay · d closing dates · e usual closing / due day " if rows
                                                          else " no credit cards (account type: credit card) ")
         self.refresh_cycle()
 
@@ -894,7 +896,7 @@ class ExpensesApp(Manage, DApp):
             "plan": [("n", "new purchase"), ("e", "edit"), ("x", "delete plan")],
             "inst": [("e", "edit installment")],
             "rec": [("n", "new"), ("e", "edit"), ("x", "delete"), ("space", "pause"), ("p", "post due")],
-            "card": [("s", "set statement"), ("p", "pay"), ("e", "edit card"), ("t", "new transaction")],
+            "card": [("s", "set statement"), ("p", "pay"), ("d", "closing dates"), ("e", "edit card"), ("t", "new transaction")],
             "cyc": [("e", "edit"), ("x", "delete")],
         }[tid]
         self.set_hints(h + [("tab", "panel"), ("1-4", "page"), ("i", "import"), ("q", "quit")])
@@ -1025,6 +1027,45 @@ class ExpensesApp(Manage, DApp):
                 "Differences with what's recorded are saved as adjustments.",
             validate=lambda v: num_check("Closed statement", v, "closed") or num_check("Current cycle", v, "current")),
             done)
+
+    def action_closing(self) -> None:
+        """Cierres dinámicos: la fecha real de cierre (y vencimiento) de un
+        resumen, como la publica el banco. Reemplaza al día fijo solo en ese
+        resumen (expenses_db.card_schedule). Con vencimiento "-" se borra."""
+        if self.focused_table() not in ("card", "cyc") or (key := self.sel("card")) is None:
+            return
+        a = db.q1("SELECT * FROM accounts WHERE id=?", (key,))
+        ci = self.card_info(a, date.today())
+        known = db.card_closings(key)
+
+        def check(v: dict) -> Optional[str]:
+            if err := date_check("Closing date", v, "close"):
+                return err
+            if v["due"].strip() == "-":
+                return None
+            if err := date_check("Due date", v, "due", optional=True):
+                return err
+            return "The due date has to be after the closing date" if v["due"] and v["due"] <= v["close"] else None
+
+        def done(v: Optional[dict]) -> None:
+            if not v:
+                return
+            if v["due"].strip() == "-":
+                db.run("DELETE FROM card_closings WHERE account_id=? AND close_date=?", (key, v["close"]))
+                msg = f"closing {ddmm(v['close'])} deleted"
+            else:
+                db.run("INSERT OR REPLACE INTO card_closings(account_id, close_date, due_date) VALUES(?,?,?)",
+                       (key, v["close"], v["due"]))
+                msg = f"closing {ddmm(v['close'])} saved" + (f" · due {ddmm(v['due'])}" if v["due"] else "")
+            self.refresh_all()
+            self.notify_ok(f"{a['name']}: {msg}")
+
+        loaded = ", ".join(f"{ddmm(c)}→{ddmm(d) if d else '—'}" for c, d in known[-6:]) or "none"
+        self.push_screen(Form(f"Closing dates · {a['name']}", [
+            Field("close", "Closing date (DD/MM/YYYY)", ci["next_close"].isoformat() if ci else ""),
+            Field("due", "Due date (optional; - deletes that closing)", ci["next_due"].isoformat() if ci else ""),
+        ], hint=f"The dates printed on the statement. They replace the usual closing day ({a['close_day'] or '—'}) "
+                f"for that statement only. Loaded: {loaded}", validate=check), done)
 
     def action_budget(self) -> None:
         if self.focused_table() != "cat" or (key := self.sel("cat")) is None:

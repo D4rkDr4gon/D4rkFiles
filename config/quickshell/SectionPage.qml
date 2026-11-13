@@ -20,7 +20,7 @@ Item {
     property string status: ""
     property bool active: true                    // la página está a la vista (pausa el refresco)
     property var queue: []
-    property var asking: null                     // {key, label, secret, placeholder}
+    property alias asking: forms.asking           // {key, label, secret, placeholder}
     property string sig: ""
     signal closeRequested()
     property var tabs: []                         // [{key, label}] pestañas de la página
@@ -116,7 +116,7 @@ Item {
     }
 
     property int runInflight: 0
-    property var viewer: null                     // {title, body}: texto largo (diffs, logs)
+    property alias viewer: forms.viewer           // {title, body}: texto largo (diffs, logs)
     function onResult(r, sec) {
         if (sec === "" || sec === section) {
             status = r.msg ?? ""
@@ -469,221 +469,10 @@ Item {
         color: Theme.muted; font.family: Theme.fontUi; font.pixelSize: 14
     }
 
-    // ── pedido de datos: ask (un campo, act recibe el texto) o form (varios campos, act recibe JSON) ──
-    property var vals: ({})
-    readonly property var askFields: asking ? (asking.confirm ? [] : asking.fields ?? [{ name: "value", label: asking.label, text: asking.text ?? "", secret: !!asking.secret }]) : []
-    onAskingChanged: {
-        const v = {}
-        if (asking) {
-            const fs = asking.fields ?? [{ name: "value", text: asking.text ?? "" }]
-            for (const f of fs) v[f.name] = f.text ?? (f.choices && f.choices.length ? root.choiceValue(f.choices[0]) : "")
-        }
-        vals = v
-    }
-    function choiceValue(c) { return Array.isArray(c) ? c[1] : c }
-    function choiceLabel(c) { return Array.isArray(c) ? c[0] : c }
-    function setVal(name, value) { const v = Object.assign({}, vals); v[name] = value; vals = v }
-
-    Rectangle {
-        id: askLayer
+    // ── formularios, confirmaciones y visor de texto (FormLayer.qml) ──
+    FormLayer {
+        id: forms
         anchors.fill: parent
-        visible: root.asking !== null
-        color: Qt.alpha(Theme.background, 0.82)
-        MouseArea { anchors.fill: parent }
-        Rectangle {
-            id: askCard
-            anchors.centerIn: parent
-            width: Math.min(560, root.width - 24)
-            height: Math.min(askCol.implicitHeight + 36, root.height - 24)
-            radius: Theme.radius + 2
-            color: Theme.surface0
-            border.width: 1; border.color: Theme.line
-
-            Flickable {
-              id: askFlick
-              anchors.fill: parent
-              anchors.margins: 1
-              clip: true
-              contentHeight: askCol.implicitHeight + 34
-              boundsBehavior: Flickable.StopAtBounds
-              Column {
-                id: askCol
-                x: 19; y: 17
-                width: askFlick.width - 38
-                spacing: 12
-                Text {
-                    text: root.asking ? (root.asking.title ?? root.asking.label ?? "") : ""
-                    color: Theme.foreground; font.family: Theme.fontUi; font.pixelSize: 15; font.bold: true
-                }
-                Text {
-                    visible: !!(root.asking && root.asking.error)
-                    width: parent.width; wrapMode: Text.WordWrap
-                    text: root.asking && root.asking.error ? "✗ " + root.asking.error : ""
-                    color: Theme.error; font.family: Theme.fontUi; font.pixelSize: 13
-                }
-                Repeater {
-                    model: root.askFields
-                    delegate: Column {
-                        id: fld
-                        required property var modelData
-                        required property int index
-                        width: askCol.width
-                        spacing: 5
-                        Text {
-                            visible: root.askFields.length > 1
-                            text: fld.modelData.label
-                            color: Theme.muted; font.family: Theme.fontUi; font.pixelSize: 11; font.letterSpacing: 1
-                        }
-                        Rectangle {
-                            visible: !fld.modelData.choices
-                            width: parent.width; height: 38
-                            radius: Theme.radius; color: "transparent"; border.width: 1
-                            border.color: inp.activeFocus ? Theme.foreground : Theme.lineStrong
-                            Behavior on border.color { ColorAnimation { duration: Motion.snap } }
-                            TextInput {
-                                id: inp
-                                anchors { fill: parent; leftMargin: 12; rightMargin: 12 }
-                                verticalAlignment: TextInput.AlignVCenter
-                                color: Theme.foreground; font.family: Theme.fontUi; font.pixelSize: 14
-                                echoMode: fld.modelData.secret ? TextInput.Password : TextInput.Normal
-                                clip: true
-                                text: fld.modelData.text ?? ""
-                                onTextChanged: if (fld.modelData.choices === undefined) root.setVal(fld.modelData.name, text)
-                                Component.onCompleted: if (fld.index === 0 && !fld.modelData.choices) { forceActiveFocus(); selectAll() }
-                                activeFocusOnTab: true
-                                Keys.onEscapePressed: root.asking = null
-                                Keys.onReturnPressed: root.submitAsk()
-                            }
-                        }
-                        Flow {
-                            visible: !!fld.modelData.choices
-                            width: parent.width
-                            spacing: 6
-                            Repeater {
-                                model: fld.modelData.choices ?? []
-                                delegate: Rectangle {
-                                    id: chip
-                                    required property var modelData
-                                    readonly property string cv: root.choiceValue(modelData)
-                                    readonly property bool sel: root.vals[fld.modelData.name] === cv
-                                    height: 30; width: chipT.implicitWidth + 24
-                                    radius: Theme.radius
-                                    color: sel ? Theme.foreground : "transparent"
-                                    border.width: 1; border.color: sel ? Theme.foreground : Theme.lineStrong
-                                    Behavior on color { ColorAnimation { duration: Motion.snap } }
-                                    Text {
-                                        id: chipT; anchors.centerIn: parent; text: root.choiceLabel(chip.modelData)
-                                        color: chip.sel ? Theme.background : Theme.foreground
-                                        font.family: Theme.fontUi; font.pixelSize: 13
-                                    }
-                                    MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: root.setVal(fld.modelData.name, chip.cv) }
-                                }
-                            }
-                        }
-                    }
-                }
-                Text {
-                    visible: !!(root.asking && root.asking.hint)
-                    width: parent.width; wrapMode: Text.WordWrap
-                    text: root.asking && root.asking.hint ? root.asking.hint : ""
-                    color: Theme.muted; font.family: Theme.fontUi; font.pixelSize: 12
-                }
-                Text {
-                    visible: !!(root.asking && root.asking.message)
-                    width: parent.width
-                    wrapMode: Text.WordWrap
-                    text: root.asking && root.asking.message ? root.asking.message : ""
-                    color: Theme.inkMuted; font.family: Theme.fontUi; font.pixelSize: 13
-                }
-                Item {
-                    width: parent.width; height: 32
-                    Text { anchors.verticalCenter: parent.verticalCenter; text: "enter to confirm · esc to cancel"; color: Theme.muted; font.family: Theme.fontUi; font.pixelSize: 12 }
-                    Row {
-                        anchors.right: parent.right
-                        spacing: 8
-                        Repeater {
-                            model: [{ k: "cancel", t: "Cancel" }, { k: "ok", t: root.asking && root.asking.okLabel ? root.asking.okLabel : (root.asking && root.asking.confirm ? "Confirm" : "Save") }]
-                            delegate: Rectangle {
-                                id: mb
-                                required property var modelData
-                                readonly property bool primary: modelData.k === "ok"
-                                readonly property bool danger: primary && !!(root.asking && root.asking.danger)
-                                height: 30; width: mbT.implicitWidth + 26
-                                radius: Theme.radius
-                                color: mbA.containsMouse ? (danger ? Theme.error : Theme.foreground) : "transparent"
-                                border.width: 1; border.color: danger ? Theme.error : (primary ? Theme.foreground : Theme.lineStrong)
-                                Behavior on color { ColorAnimation { duration: Motion.snap } }
-                                Text {
-                                    id: mbT; anchors.centerIn: parent; text: mb.modelData.t
-                                    color: mbA.containsMouse ? Theme.background : (mb.danger ? Theme.error : Theme.foreground)
-                                    font.family: Theme.fontUi; font.pixelSize: 13
-                                }
-                                MouseArea {
-                                    id: mbA; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor
-                                    onClicked: mb.primary ? root.submitAsk() : (root.asking = null)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            }
-        }
-        focus: visible && root.askFields.length === 0
-        onVisibleChanged: if (visible && root.askFields.length === 0) forceActiveFocus()
-        Keys.onEscapePressed: root.asking = null
-        Keys.onReturnPressed: root.submitAsk()
-    }
-    // ── texto largo (diffs, logs, salida de comandos) ──
-    Rectangle {
-        anchors.fill: parent
-        visible: root.viewer !== null
-        color: Qt.alpha(Theme.background, 0.88)
-        MouseArea { anchors.fill: parent; onClicked: root.viewer = null }
-        Rectangle {
-            anchors.centerIn: parent
-            width: parent.width - 40; height: parent.height - 40
-            radius: Theme.radius + 2
-            color: Theme.surface0
-            border.width: 1; border.color: Theme.line
-            MouseArea { anchors.fill: parent }
-            Text {
-                id: vT; x: 20; y: 16
-                text: root.viewer ? (root.viewer.title ?? "") : ""
-                color: Theme.foreground; font.family: Theme.fontUi; font.pixelSize: 15; font.bold: true
-            }
-            Text {
-                anchors { right: parent.right; rightMargin: 20; verticalCenter: vT.verticalCenter }
-                text: "esc to close"; color: Theme.muted; font.family: Theme.fontUi; font.pixelSize: 12
-            }
-            Flickable {
-                id: vF
-                x: 20; y: 48; width: parent.width - 40; height: parent.height - 64
-                clip: true
-                contentWidth: width; contentHeight: vBody.implicitHeight
-                boundsBehavior: Flickable.StopAtBounds
-                focus: root.viewer !== null
-                Keys.onEscapePressed: root.viewer = null
-                onVisibleChanged: if (visible) { contentY = 0; forceActiveFocus() }
-                TextEdit {
-                    id: vBody
-                    width: vF.width
-                    readOnly: true; selectByMouse: true
-                    wrapMode: TextEdit.WrapAnywhere
-                    text: root.viewer ? (root.viewer.body ?? "") : ""
-                    color: Theme.foreground; font.family: Theme.fontMono; font.pixelSize: 12
-                }
-            }
-        }
-    }
-
-    function submitAsk() {
-        if (!asking) return
-        const a = asking
-        const v = vals
-        asking = null
-        if (a.confirm) act(a.key, "yes")
-        else if (a.fields) act(a.key, JSON.stringify(v))
-        else act(a.key, v["value"] ?? "")
+        onSubmitted: (key, text) => root.act(key, text)
     }
 }

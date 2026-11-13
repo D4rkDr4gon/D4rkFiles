@@ -19,7 +19,8 @@ def get() -> dict:
                     L.info("exp", "Expenses this month", GX.money(s["expenses"])),
                     L.info("bud", "Budget used", f"{GX.money(s['budget_spent'])} / {GX.money(s['budget'])}"),
                     L.button("open", "Expenses", "Transactions, installments, recurring and cards (Mod+G)", "Open")]
-            groups = [L.group("Overview", over)] + GX.manage_groups()
+            # dentro de la GUI de Finanzas (vista Manage) el resumen ya está a la vista
+            groups = ([] if UI.get("standalone") else [L.group("Overview", over)]) + GX.manage_groups()
         except Exception as e:  # noqa: BLE001
             return L.page("Finances", f"Database unavailable: {e}"[:100], [])
     return L.page("Finances", GX.STATE["rates"] or "Accounts, categories, exchange rates, import and export", groups, refresh=30)

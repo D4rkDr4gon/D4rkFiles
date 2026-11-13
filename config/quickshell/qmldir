@@ -5,6 +5,8 @@ singleton Drawers 1.0 Drawers.qml
 Launcher 1.0 Launcher.qml
 Settings 1.0 Settings.qml
 SectionPage 1.0 SectionPage.qml
+FormLayer 1.0 FormLayer.qml
+Finance 1.0 Finance.qml
 Toggle 1.0 Toggle.qml
 Segmented 1.0 Segmented.qml
 Slider 1.0 Slider.qml

@@ -23,6 +23,10 @@ Modelo (lo mismo que guarda Money Manager):
                 comisiones a su transferencia (fee_of).
   plans         compras en cuotas: las cuotas se crean de una como
                 transacciones con fecha futura (igual que la app)
+  card_closings cierres dinámicos de una tarjeta: la fecha real de cierre (y de
+                vencimiento) de un resumen, como la publica el banco. Reemplaza
+                al cierre por día fijo más cercano (close_day); los demás
+                resúmenes siguen con el día fijo
   recurring     gastos/ingresos fijos que se generan solos al llegar la fecha
   mm_uid        en cada tabla: de qué registro de Money Manager vino (para
                 que un import nuevo solo agregue lo que no está); mm_sig, cómo
@@ -43,7 +47,7 @@ from typing import Optional
 STATE_HOME = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state")
 CONFIG_HOME = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
 DB_FILE = Path(os.environ.get("EXPENSES_DB") or STATE_HOME / "dotfiles" / "expenses" / "expenses.db")
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def _user_conf() -> dict[str, str]:
@@ -105,19 +109,6 @@ def next_date(d: date, freq: str, day: int) -> date:
     if freq == "weekly":
         return date.fromordinal(d.toordinal() + 7)
     return add_months(d, 12 if freq == "yearly" else 1, day)
-
-
-def card_cycle(close_day: int, pay_day: int, today: date) -> dict:
-    """Ciclo de una tarjeta: último cierre, el anterior, el próximo y los
-    vencimientos de cada resumen (el vencimiento cae después del cierre)."""
-    last = add_months(today, 0 if today.day > close_day else -1, close_day)
-    prev, nxt = add_months(last, -1, close_day), add_months(last, 1, close_day)
-
-    def due(close: date) -> date:
-        return add_months(close, 0 if pay_day > close_day else 1, pay_day)
-
-    return {"prev_close": prev, "last_close": last, "next_close": nxt,
-            "last_due": due(last), "next_due": due(nxt)}
 
 
 def split_installments(total: float, n: int) -> list[float]:
@@ -194,6 +185,12 @@ CREATE TABLE IF NOT EXISTS recurring (
     active        INTEGER NOT NULL DEFAULT 1,
     mm_uid        TEXT,
     created       TEXT    DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS card_closings (
+    account_id INTEGER NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+    close_date TEXT    NOT NULL,
+    due_date   TEXT    NOT NULL DEFAULT '',
+    PRIMARY KEY (account_id, close_date)
 );
 CREATE TABLE IF NOT EXISTS transactions (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -373,13 +370,64 @@ class Database:
                                  FROM transactions WHERE account_id=? AND type<>'transfer' AND date > ? AND date <= ?""",
                               (acc_id, lo.isoformat(), hi.isoformat())))
 
+    # ── tarjetas: cierres dinámicos ──
+
+    def card_closings(self, acc_id: int) -> list[tuple[date, Optional[date]]]:
+        """Cierres cargados a mano (fecha real de cada resumen), ordenados."""
+        try:
+            rows = self.q("SELECT close_date, due_date FROM card_closings WHERE account_id=? ORDER BY close_date", (acc_id,))
+        except sqlite3.OperationalError:              # base sin migrar abierta en solo lectura (widget)
+            return []
+        return [(date.fromisoformat(r["close_date"]), date.fromisoformat(r["due_date"]) if r["due_date"] else None)
+                for r in rows]
+
+    def card_schedule(self, a, lo: date, hi: date) -> list[tuple[date, date]]:
+        """(cierre, vencimiento) de cada resumen de la tarjeta entre lo y hi
+        (con uno de margen a cada lado). Base: el día fijo (close_day) y su
+        vencimiento por el día de pago (pay_day); cada cierre cargado a mano
+        reemplaza al fijo más cercano (±15 días). Un cierre cargado sin
+        vencimiento usa la distancia cierre→vencimiento del último cargado que
+        la tenga (o el día de pago)."""
+        known = self.card_closings(a["id"])
+        close_day = a["close_day"] or (known[-1][0].day if known else 0)
+        if not close_day:
+            return []
+        pay_day = a["pay_day"] or close_day
+        gap = next(((d - c).days for c, d in reversed(known) if d), None)
+
+        def fixed_due(c: date) -> date:
+            return add_months(c, 0 if pay_day > close_day else 1, pay_day)
+
+        start = add_months(lo, -2, 1)
+        fixed = [add_months(start, i, close_day) for i in range((hi.year - start.year) * 12 + hi.month - start.month + 3)]
+        sched = {c: fixed_due(c) for c in fixed}
+        for c, d in known:
+            near = min(sched, key=lambda f: abs((f - c).days), default=None)
+            if near is not None and abs((near - c).days) <= 15 and near not in dict(known):
+                del sched[near]
+            sched[c] = d or (date.fromordinal(c.toordinal() + gap) if gap is not None else fixed_due(c))
+        out = sorted(sched.items())
+        i = max(0, next((k for k, (c, _) in enumerate(out) if c >= lo), len(out)) - 1)
+        j = next((k for k, (c, _) in enumerate(out) if c > hi), len(out) - 1)
+        return out[i:j + 1]
+
+    def card_cycle(self, a, today: date) -> Optional[dict]:
+        """Ciclo de la tarjeta con los cierres dinámicos: el último cierre es el
+        más reciente ANTES de hoy (el día del cierre todavía entra en el ciclo)."""
+        sch = self.card_schedule(a, add_months(today, -3, 1), add_months(today, 2, 1))
+        k = next((i for i, (c, _) in enumerate(sch) if c >= today), None)
+        if k is None or k < 2:
+            return None
+        return {"prev_close": sch[k - 2][0], "last_close": sch[k - 1][0], "last_due": sch[k - 1][1],
+                "next_close": sch[k][0], "next_due": sch[k][1]}
+
     def card_status(self, a, today: Optional[date] = None) -> Optional[dict]:
         """Estado de una tarjeta (fila de accounts): ciclo, resumen cerrado,
         pagado desde el cierre, ciclo en curso y cuotas de después."""
-        if not a["close_day"]:
-            return None
         today = today or date.today()
-        cy = card_cycle(a["close_day"], a["pay_day"] or a["close_day"], today)
+        cy = self.card_cycle(a, today) if a["type"] == "card" or a["close_day"] else None
+        if not cy:
+            return None
         paid = self.val("SELECT SUM(COALESCE(to_amount, amount)) FROM transactions WHERE to_account_id=? "
                         "AND type='transfer' AND date > ? AND date <= ?",
                         (a["id"], cy["last_close"].isoformat(), today.isoformat()))
@@ -388,6 +436,23 @@ class Database:
                      "upcoming": float(self.val("SELECT SUM(amount) FROM transactions WHERE account_id=? AND "
                                                 "plan_id IS NOT NULL AND date > ?",
                                                 (a["id"], cy["next_close"].isoformat())))}
+
+    def card_statements(self, a, today: Optional[date] = None, past: int = 3, ahead: int = 6) -> list[dict]:
+        """Resúmenes de la tarjeta: `past` cerrados, el abierto y `ahead` futuros
+        (estos últimos con lo ya cargado: cuotas y gastos con fecha futura)."""
+        today = today or date.today()
+        sch = self.card_schedule(a, add_months(today, -past - 1, 1), add_months(today, ahead + 1, 1))
+        k = next((i for i, (c, _) in enumerate(sch) if c >= today), None)
+        if k is None or k == 0:
+            return []
+        out = []
+        for i in range(max(1, k - past), min(len(sch), k + ahead + 1)):
+            (lo, _), (close, due) = sch[i - 1], sch[i]
+            inst = float(self.val("SELECT SUM(amount) FROM transactions WHERE account_id=? AND plan_id IS NOT NULL "
+                                  "AND type='expense' AND date > ? AND date <= ?", (a["id"], lo.isoformat(), close.isoformat())))
+            out.append({"from": lo, "close": close, "due": due, "amount": self.card_spent(a["id"], lo, close),
+                        "installments": inst, "state": "closed" if i < k else "open" if i == k else "future"})
+        return out
 
     def summary(self, today: Optional[date] = None) -> dict:
         """Balance general (widget Money): patrimonio, mes en curso,
