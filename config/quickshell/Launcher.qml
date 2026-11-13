@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Hyprland
+import "calc.js" as Calc
 
 // Launcher: apps (Mod+Space), emoji (Mod+E) y power (Mod+L). Misma lógica que
 // tools/launcher_tui.py (favoritas de ~/.config/dotfiles/launcher-favorites.txt,
@@ -146,6 +147,9 @@ Scope {
         }
         if (!q) return []                     // apps: solo el buscador hasta que se escribe algo
         const rows = []
+        // una cuenta (2+2, 15% de algo, sqrt(2)…) va primera; enter copia el resultado (como la TUI)
+        const res = Calc.calc(query)
+        const calcRow = res === null ? [] : [{ label: "= " + res, sub: "enter copies the result", glyph: "󰃬", calc: res }]
         for (const e of DesktopEntries.applications.values) {
             if (e.noDisplay) continue
             const fav = !!favorites[e.name.toLowerCase()]
@@ -156,7 +160,7 @@ Scope {
             rows.push({ label: e.name, sub: e.comment || e.genericName || "", entry: e, fav: fav, s: s })
         }
         rows.sort((a, b) => b.s - a.s || a.label.localeCompare(b.label))
-        return rows.slice(0, 60)
+        return calcRow.concat(rows.slice(0, 60))
     }
 
     Process { id: runner }
@@ -165,7 +169,11 @@ Scope {
     function activate(i) {
         if (i < 0 || i >= results.length) return
         const r = results[i]
-        if (mode === "apps") {
+        if (mode === "apps" && r.calc !== undefined) {
+            runner.command = ["sh", "-c", 'printf %s "$1" | wl-copy && { swayosd-client --custom-message "Copied $1" --custom-icon edit-copy-symbolic 2>/dev/null || notify-send -t 1500 Copied "$1"; }', "_", r.calc]
+            runner.running = true
+            close()
+        } else if (mode === "apps") {
             helper.command = ["python3", bridge, "bump", r.entry.id + ".desktop"]
             helper.running = true
             r.entry.execute()
@@ -318,19 +326,19 @@ Scope {
 
                     Image {
                         id: icon
-                        visible: root.mode === "apps"
+                        visible: root.mode === "apps" && row.modelData.calc === undefined
                         x: 12; anchors.verticalCenter: parent.verticalCenter
                         width: 28; height: 28
                         sourceSize: Qt.size(56, 56)
-                        source: root.mode === "apps" ? Quickshell.iconPath(row.modelData.entry.icon, "application-x-executable") : ""
+                        source: root.mode === "apps" && row.modelData.entry ? Quickshell.iconPath(row.modelData.entry.icon, "application-x-executable") : ""
                     }
                     Text {
-                        visible: root.mode !== "apps"
+                        visible: root.mode !== "apps" || row.modelData.calc !== undefined
                         x: 12; width: 28
                         anchors.verticalCenter: parent.verticalCenter
                         horizontalAlignment: Text.AlignHCenter
                         text: row.modelData.glyph ?? ""
-                        color: row.selected ? Theme.background : (row.modelData.danger ? Theme.error : Theme.foreground)
+                        color: row.selected ? Theme.background : (row.modelData.danger ? Theme.error : row.modelData.calc !== undefined ? Theme.ok : Theme.foreground)
                         font.family: root.mode === "emoji" ? "Noto Color Emoji" : Theme.fontMono
                         font.pixelSize: root.mode === "emoji" ? 22 : 20
                     }

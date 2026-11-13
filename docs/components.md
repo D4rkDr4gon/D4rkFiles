@@ -60,7 +60,7 @@ tabla `dialogs` de `config/hypr/hyprland.lua`).
 
 | Modo | Atajo | Qué hace |
 |---|---|---|
-| `apps` | `Super+Space` | Apps de los `.desktop` (favoritas `★` y más usadas arriba) + según lo escrito: resultado de una cuenta en vivo (`enter` copia), comando de `$PATH` con argumentos y búsqueda web con `BROWSER` en el workspace 5 |
+| `apps` | `Super+Space` | Apps de los `.desktop` (favoritas `★` y más usadas arriba) + según lo escrito: resultado de una cuenta en vivo (`enter` copia; en el modo GUI la hace `config/quickshell/calc.js`, misma gramática que la TUI y sin `eval`), comando de `$PATH` con argumentos y búsqueda web con `BROWSER` en el workspace 5 |
 | `emoji` | `Super+E` | ~840 emojis por nombre en inglés; `enter` copia |
 | `power` | `Super+L` | Lock, Suspend, Log out, Reboot, Power off (los tres últimos piden confirmación) |
 | `workspaces` | clic en los workspaces de waybar | 1..N con sus ventanas; `enter` va |
