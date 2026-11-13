@@ -31,7 +31,7 @@ def load() -> list:
 def matches(app: str) -> list:
     q = (UI.get("search") or "").strip().lower()
     return [(i, s) for i, s in enumerate(load()) if s.app == app and
-            (not q or q in s.combo.lower() or q in (s.description or s.action).lower() or q in s.category.lower())]
+            (not q or S().combo_matches(s, q) or q in (s.description or s.action).lower() or q in s.category.lower())]
 
 
 def on_ui(name: str):
@@ -52,7 +52,7 @@ def get() -> dict:
         rows.sort(key=lambda r: order.index(r[1].category))
     for i, s in rows:
         g = s.category if tab in s_.KEYMAP_APPS else tab
-        groups.setdefault(g, []).append(L.item(f"e:{i}", s.combo, sub=(s.description or s.action)[:120]
+        groups.setdefault(g, []).append(L.item(f"e:{i}", s.display or s.combo, sub=(s.description or s.action)[:120]
                                                + ("" if s.editable else " · read only"),
                                                glyph="󰌌" if s.editable else "󰌾", on=s.editable,
                                                actions=[L.action(f"e:{i}", "Edit")] if s.editable else []))
@@ -95,7 +95,8 @@ def act(key: str, text=None):
             return L.form(key, f"Edit key · {s.section}", [{"name": "combo", "label": "KEYS", "text": combo}], hint=hint, error=err)
         STATE["all"] = None
         return L.ok("Saved. " + ("Back to default" if not combo.strip() else s.reload_hint))
-    hint = f"Current: {s.combo}  ({s.description or s.action})\n{s_.FORMATS.get(s.app, '')}"
+    hint = (f"Current: {s.combo}  ({s.description or s.action})\nShown as: {s.display or s.combo}\n"
+            f"{s_.FORMATS.get(s.app, '')}")
     if text is None:
         return L.form(key, f"Edit shortcut · {s.app}", [{"name": "combo", "label": "COMBO", "text": s.combo}], hint=hint)
     combo = L.parse_form(text).get("combo", "").strip()

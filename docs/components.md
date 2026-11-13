@@ -184,6 +184,12 @@ bluetui no tiene tema propio: usa la paleta ANSI de kitty.
 - **`tools/shortcuts_tui.py`** — cheatsheet (`Super+K`) con los atajos de Hyprland, kitty,
   herdr y los defaults de LazyVim; permite reasignar combinaciones. Panel **Buscar**
   (`/`), **Apps** con la cantidad de atajos y la tabla de la app elegida (`tab` cambia).
+  La columna Combo muestra todos con **una sola forma** (`normalize_combo()`): modificadores capitalizados en orden
+  fijo `Super+Ctrl+Alt+Shift` (`SUPER SHIFT, F` → `Super+Shift+F`), teclas con nombres comunes (`Return`/`<CR>` →
+  `Enter`, `escape` → `Esc`, flechas `←→↑↓`, `mouse:272` → `LMB`) y secuencias con ` › ` (el `prefix` de herdr se
+  expande: `Ctrl+Space › Alt+G`; en LazyVim `<leader>` = `Space` y la mayúscula es otra tecla: `Space › G › Shift+G`).
+  Lo que no entiende (gestos, `XF86…`) queda igual. La búsqueda acepta las dos formas y al editar se escribe en el
+  formato nativo de la app (el formulario muestra `Shown as:`).
 - **wayvnc** — usar una tablet como monitor secundario: `scripts/wayland/wayvnc-toggle.sh`
   (`init`, `on`, `off`, `status`; aliases `vnc-on`/`vnc-off`).
 - **Unidades systemd de usuario** (`system/systemd-user/`): `battery-watch.{service,timer}`

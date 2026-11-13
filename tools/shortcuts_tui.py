@@ -75,6 +75,123 @@ class Shortcut:
     default: str = ""   # Settings: tecla por defecto del binding
     section: str = ""   # Settings: sección a la que pertenece
     category: str = ""  # Settings: categoría del menú (encabezado de grupo en la lista)
+    display: str = ""   # combo en la nomenclatura común (lo que se ve); `combo` queda nativo
+
+
+# ── Nomenclatura común ────────────────────────────────────────────────────
+# Cada app escribe sus combos a su manera (SUPER SHIFT, F · ctrl+shift+f · Mod+Shift+F ·
+# <C-f> · prefix+f). Para mostrarlos se pasan todos a una sola forma: modificadores
+# Super+Ctrl+Alt+Shift en ese orden, tecla en mayúscula y secuencias con " › "
+# (prefix de herdr, leader de LazyVim). Solo es visual: leer y guardar sigue en nativo.
+
+MOD_ALIASES = {"super": "Super", "mainmod": "Super", "win": "Super", "logo": "Super", "meta": "Super",
+               "ctrl": "Ctrl", "control": "Ctrl", "c": "Ctrl", "mod": "Ctrl",  # Mod de Obsidian = Ctrl en Linux
+               "alt": "Alt", "m": "Alt", "a": "Alt", "opt": "Alt",
+               "shift": "Shift", "s": "Shift"}
+MOD_ORDER = ["Super", "Ctrl", "Alt", "Shift"]
+KEY_ALIASES = {"space": "Space", "return": "Enter", "enter": "Enter", "cr": "Enter", "kp_enter": "Enter",
+               "escape": "Esc", "esc": "Esc", "tab": "Tab", "backspace": "Backspace", "bs": "Backspace",
+               "bksp": "Backspace", "delete": "Del", "del": "Del", "insert": "Ins",
+               "left": "←", "right": "→", "up": "↑", "down": "↓",
+               "home": "Home", "end": "End", "pageup": "PgUp", "page_up": "PgUp", "pagedown": "PgDn",
+               "page_down": "PgDn", "print": "Print",
+               "minus": "-", "plus": "+", "slash": "/", "backslash": "\\", "comma": ",", "period": ".",
+               "full_stop": ".", "equal": "=", "equals_sign": "=", "question_mark": "?", "grave": "`",
+               "semicolon": ";", "apostrophe": "'", "bar": "|", "lt": "<", "gt": ">",
+               "mouse:272": "LMB", "mouse:273": "RMB", "mouse:274": "MMB"}
+SEQ = " › "
+
+
+def _norm_key(k: str, vim: bool = False) -> str:
+    if k == " " or not k.strip():
+        return "Space"
+    k = k.strip()
+    if k.lower() in KEY_ALIASES:
+        return KEY_ALIASES[k.lower()]
+    if len(k) == 1:
+        # en vim la mayúscula es otra tecla (gk ≠ gK): se marca con Shift
+        return f"Shift+{k}" if vim and k.isupper() else k.upper()
+    if re.fullmatch(r"[fF]\d{1,2}", k):
+        return k.upper()
+    if "/" in k and all(len(p) == 1 for p in k.split("/")):   # h/j/k/l
+        return "/".join(p.upper() for p in k.split("/"))
+    return k[0].upper() + k[1:] if k.islower() else k       # XF86…, mouse:272, 1…0 quedan igual
+
+
+def _norm_chord(mods: list[str], key: str, vim: bool = False) -> str:
+    names = {MOD_ALIASES.get(m.strip().lower(), m.strip().capitalize()) for m in mods if m.strip()}
+    k = _norm_key(key, vim)
+    if k.startswith("Shift+"):
+        names.add("Shift")
+        k = k[6:]
+    ordered = [m for m in MOD_ORDER if m in names] + sorted(names - set(MOD_ORDER))
+    return "+".join([*ordered, k])
+
+
+def _norm_plus(combo: str) -> str:
+    """ctrl+shift+f / Mod+Shift+  (Obsidian: la tecla espacio es " ") / ctrl++."""
+    if combo.endswith("++"):
+        mods, key = combo[:-2].split("+"), "+"
+    else:
+        *mods, key = combo.split("+")
+    return _norm_chord(mods, key)
+
+
+def _norm_vim(lhs: str) -> str:
+    """<leader>ff → Space › F › F · <C-h> → Ctrl+H · gK → G › Shift+K."""
+    out = []
+    for tok in re.findall(r"<[^<>]+>|.", lhs):
+        if tok.startswith("<") and len(tok) > 2:
+            inner = tok[1:-1]
+            low = inner.lower()
+            if low == "leader":
+                out.append("Space")
+            elif low == "localleader":
+                out.append("\\")
+            elif re.fullmatch(r"[a-z]-.+", low):
+                mods, key = inner.split("-")[:-1], inner.split("-")[-1] or "-"
+                # <C-h> y <C-H> son lo mismo en vim: la letra no suma Shift
+                out.append(_norm_chord(mods, key.lower() if len(key) == 1 else key))
+            else:
+                out.append(_norm_key(inner))
+        else:
+            out.append(_norm_key(tok, vim=True))
+    return SEQ.join(out)
+
+
+def normalize_combo(app: str, combo: str, herdr_prefix: str = "") -> str:
+    """Combo nativo de `app` → nomenclatura común. Lo que no entiende lo deja como está."""
+    try:
+        if app == "Hyprland":
+            if "," not in combo:
+                return combo                                  # gestos: "3 fingers ← →"
+            mods, _, key = combo.rpartition(",")
+            return _norm_chord(mods.split(), key)
+        if app == "LazyVim":
+            return _norm_vim(combo)
+        if app == "kitty":
+            return SEQ.join(_norm_plus(c) for c in combo.split(">"))   # ctrl+x>ctrl+y
+        if app == "Obsidian":
+            return _norm_plus(combo)
+        items = [c.strip() for c in combo.split(", ")] if app in ("herdr", "Settings", "Finances") else [combo]
+        res = []
+        for c in items:
+            if app == "herdr" and c.startswith("prefix+"):
+                rest = c[len("prefix+"):]
+                pre = _norm_plus(herdr_prefix) if herdr_prefix else "Prefix"
+                res.append(pre + SEQ + _norm_plus(rest))
+            else:
+                res.append(_norm_plus(c) if c != "+" else "+")
+        return ", ".join(res)
+    except Exception:  # noqa: BLE001 - un combo raro nunca rompe la lista: se ve el nativo
+        return combo
+
+
+def herdr_prefix() -> str:
+    if not HERDR_CONF.exists():
+        return ""
+    m = re.search(r'^\s*prefix\s*=\s*"([^"]+)"', HERDR_CONF.read_text(), re.M)
+    return m[1] if m else ""
 
 
 # ── Parsers ──────────────────────────────────────────────────────────────
@@ -399,10 +516,21 @@ APP_ORDER = ["Hyprland", "kitty", "herdr", "LazyVim", "Settings", "Finances"]
 
 
 def load_all() -> list[Shortcut]:
-    return (
+    rows = (
         parse_hyprland() + parse_kitty() + parse_herdr()
         + parse_lazyvim() + parse_settings()
     )
+    pre = herdr_prefix()
+    for s in rows:
+        s.display = normalize_combo(s.app, s.combo, pre)
+    return rows
+
+
+def combo_matches(s: Shortcut, q: str) -> bool:
+    """Búsqueda por combo en nativo o en la nomenclatura común (sin espacios ni ›),
+    así "ctrl+space" encuentra el de Obsidian (Mod+ ) y el prefix de herdr."""
+    flat = re.sub(r"\s|›", "", (s.display or s.combo).lower())
+    return q in s.combo.lower() or q in (s.display or "").lower() or q.replace(" ", "") in flat
 
 
 def save_shortcut(s: Shortcut, new_combo: str) -> None:
@@ -480,7 +608,7 @@ class ShortcutsView(DView):
     def matches(self, app: str) -> list[Shortcut]:
         q = self.query_text()
         rows = [s for s in self.shortcuts if s.app == app]
-        return [s for s in rows if not q or q in s.combo.lower() or q in (s.description or s.action).lower()
+        return [s for s in rows if not q or combo_matches(s, q) or q in (s.description or s.action).lower()
                 or q in s.category.lower()]
 
     def active_app(self) -> str:
@@ -507,7 +635,7 @@ class ShortcutsView(DView):
             label = Text(s.description or s.action)
             if not s.editable:
                 label.append("  · read only", style=THEME["muted"])
-            lst.add_row(Text(s.combo, style=f"bold {THEME['primary']}"), label, key=str(i))
+            lst.add_row(Text(s.display or s.combo, style=f"bold {THEME['primary']}"), label, key=str(i))
         lst.first_selectable()
         panel = self.query_one("#list-panel")
         panel.border_title = f" {app} "
@@ -600,7 +728,8 @@ class ShortcutsView(DView):
             self.app.notify_ok(f"Saved. To apply: {s.reload_hint}")
             self.action_reload()
 
-        hint = f"Current: {s.combo}  ({s.description or s.action})\n{FORMATS.get(s.app, '')}"
+        hint = (f"Current: {s.combo}  ({s.description or s.action})\nShown as: {s.display or s.combo}\n"
+                f"{FORMATS.get(s.app, '')}")
         self.app.push_screen(FormModal(f"Edit shortcut · {s.app}", [Field("combo", "Combo", s.combo)],
                                        hint=hint), done)
 
