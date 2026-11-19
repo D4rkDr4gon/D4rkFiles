@@ -34,6 +34,10 @@
 # Settings → System busca clones de git en ~ y en estas carpetas (separadas por ':').
 #EXTRA_REPO_DIRS="/mnt/data/code"
 
+# --- Tablet como monitor (Settings → Displays, scripts/wayland/wayvnc-toggle.sh) ---
+#VNC_RES=1920x1080                 # resolución del monitor virtual; más chica = más fluida por Wi-Fi
+#VNC_PORT=5900                     # Settings lo abre en firewalld solo a tu LAN mientras está prendida
+
 # --- Gestor de gastos (Super+G) ---
 #EXPENSES_CURRENCY=USD              # moneda principal; por defecto la del locale (LC_MONETARY) o USD
 #EXPENSES_RATES="USD,EUR"           # monedas que se cotizan de internet al abrir la TUI

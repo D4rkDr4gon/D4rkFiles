@@ -92,10 +92,19 @@ def set_value(key, value):
         r = L.run(["systemctl", "--user", "enable" if value else "disable", nl.UNIT])
         return L.ok("Starts at login" if value else "Won't start at login") if r.returncode == 0 else L.fail(r.stderr.strip()[:120])
     if key == "tablet":
+        # Igual que la TUI: abrir el puerto de VNC a la LAN antes de prender, cerrarlo después de apagar
+        fw_ok, fw_err = True, ""
+        if value and (cmds := t.vnc_open_cmds()):
+            fw_ok, fw_err = L.root_run(cmds)
         r = L.run(["bash", str(t.WAYVNC), "on" if value else "off"], timeout=20)
         if r.returncode:
             out = (r.stderr or r.stdout).strip().splitlines()
             return L.fail(out[-1] if out else "wayvnc failed")
+        if not value and (cmds := t.vnc_close_cmds()):
+            fw_ok, fw_err = L.root_run(cmds)
+        if not fw_ok:
+            return L.fail(f"Tablet monitor {'on' if value else 'off'}, but the firewall rule for port {t.vnc_port()} could not be "
+                          f"{'added' if value else 'removed'}" + (f": {fw_err.strip()[:100]}" if fw_err.strip() else ""))
         return L.ok("Tablet monitor on: connect from the tablet" if value else "Tablet monitor off")
     return L.fail("Unknown setting")
 

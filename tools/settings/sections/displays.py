@@ -8,7 +8,9 @@ monitor (wayvnc), cada uno en su tarjeta (tab cambia de tarjeta).
   ajustan en vivo por IPC y los guardan en config/hypr/hyprsunset.conf), la franja
   nocturna en una línea de 24 h con la hora actual, enter prende/apaga,
   s el formulario de horario, l el arranque al iniciar sesión.
-- Tablet: scripts/wayland/wayvnc-toggle.sh on/off/status.
+- Tablet: scripts/wayland/wayvnc-toggle.sh on/off/status. Con firewalld, prenderla abre
+  el puerto de VNC (VNC_PORT) a la subred de la LAN (regla runtime, con sudo) y apagarla lo cierra
+  (vnc_open_cmds / vnc_close_cmds): si no, la tablet ve "No route to host".
 
 Todo lo que pregunta a procesos corre en un worker; se refresca al mostrarse
 y cada 5 s mientras se ve.
@@ -17,6 +19,7 @@ y cada 5 s mientras se ve.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -25,7 +28,7 @@ from datetime import datetime
 from typing import Optional
 
 import nightlight
-from common import DOTFILES, HYPRLAND, run
+from common import DOTFILES, HYPRLAND, run, sudo_run, user_conf
 from dtui import THEME, Card, DView, Field, FormModal, Panel, bar, css
 from rich.text import Text
 from textual import work
@@ -53,6 +56,67 @@ def tablet_state() -> tuple[bool, str]:
     st = run(["bash", str(WAYVNC), "status"])
     m = re.search(r"([\d.]+:\d+)\s*$", st.stdout.strip())   # "wayvnc activo (PID n) en <ip>:<puerto>"
     return st.returncode == 0, m.group(1) if m else ""
+
+
+# ── firewall para la tablet ──
+# firewalld rechaza el puerto de VNC (VNC_PORT de user.conf, 5900 por defecto) en la zona de la LAN
+# y la tablet ve "No route to host". Al prender la
+# tablet se abre (regla runtime: sin --permanent, desaparece al reiniciar o recargar el firewall)
+# solo para la subred de la interfaz de la ruta por defecto; al apagarla se cierra. Las consultas
+# de firewall-cmd no piden root; agregar/sacar va con sudo (TUI) o rootd (GUI).
+
+def vnc_port() -> str:
+    """El mismo puerto que usa wayvnc-toggle.sh: VNC_PORT de user.conf (o del entorno), si no 5900."""
+    p = user_conf().get("VNC_PORT") or os.environ.get("VNC_PORT") or "5900"
+    return p if p.isdigit() else "5900"
+
+
+def _firewalld() -> bool:
+    return shutil.which("firewall-cmd") is not None and run(["systemctl", "is-active", "firewalld"]).stdout.strip() == "active"
+
+
+def vnc_rule() -> Optional[tuple[str, str]]:
+    """(zona, rich rule) para abrir el puerto de VNC a la LAN de la ruta por defecto; None sin firewalld o sin red."""
+    if not _firewalld():
+        return None
+    m = re.search(r"\bdev (\S+)", run(["ip", "-4", "route", "show", "default"]).stdout)
+    if not m:
+        return None
+    iface = m.group(1)
+    net = next((ln.split()[0] for ln in run(["ip", "-4", "route", "show", "dev", iface, "scope", "link",
+                                             "proto", "kernel"]).stdout.splitlines() if "/" in ln.split()[0]), "")
+    zone = run(["firewall-cmd", f"--get-zone-of-interface={iface}"]).stdout.strip() \
+        or run(["firewall-cmd", "--get-default-zone"]).stdout.strip()
+    if not (net and zone):
+        return None
+    return zone, f'rule family="ipv4" source address="{net}" port port="{vnc_port()}" protocol="tcp" accept'
+
+
+def vnc_open_cmds() -> list[list[str]]:
+    """Comandos root para abrir el puerto (vacío si ya está abierto o no hay firewalld)."""
+    zr = vnc_rule()
+    if not zr:
+        return []
+    zone, rule = zr
+    if run(["firewall-cmd", f"--zone={zone}", f"--query-rich-rule={rule}"]).returncode == 0:
+        return []
+    return [["firewall-cmd", f"--zone={zone}", f"--add-rich-rule={rule}"]]
+
+
+def vnc_close_cmds() -> list[list[str]]:
+    """Comandos root para sacar toda regla runtime que abra el puerto de VNC, en cualquier zona activa
+    (la interfaz pudo cambiar desde que se abrió)."""
+    if not _firewalld():
+        return []
+    port, cmds = vnc_port(), []
+    for zone in run(["firewall-cmd", "--get-active-zones"]).stdout.splitlines():
+        if not zone or zone[0].isspace():
+            continue
+        zone = zone.split()[0]
+        for rule in run(["firewall-cmd", f"--zone={zone}", "--list-rich-rules"]).stdout.splitlines():
+            if f'port port="{port}" protocol="tcp" accept' in rule:
+                cmds.append(["firewall-cmd", f"--zone={zone}", f"--remove-rich-rule={rule.strip()}"])
+    return cmds
 
 
 def night_state() -> dict:
@@ -286,12 +350,20 @@ class DisplaysView(DView):
 
     def toggle_tablet(self) -> None:
         on = run(["bash", str(WAYVNC), "status"]).returncode == 0
+        fw_ok = True
+        if not on and (cmds := vnc_open_cmds()):
+            fw_ok = sudo_run(self.app, cmds, f"Opening port {vnc_port()} to your LAN for the tablet (until reboot)")
         r = run(["bash", str(WAYVNC), "off" if on else "on"])
-        if r.returncode == 0:
-            self.app.notify_ok("Tablet monitor off" if on else "Tablet monitor on: connect from the tablet")
-        else:
+        if on and r.returncode == 0 and (cmds := vnc_close_cmds()):
+            fw_ok = sudo_run(self.app, cmds, f"Closing port {vnc_port()}")
+        if r.returncode != 0:
             out = (r.stderr or r.stdout).strip().splitlines()
             self.app.notify_err(out[-1] if out else "wayvnc failed")
+        elif not fw_ok:
+            self.app.notify_err(f"Tablet monitor {'off' if on else 'on'}, but the firewall rule for port {vnc_port()} "
+                                f"could not be {'removed' if on else 'added'}")
+        else:
+            self.app.notify_ok("Tablet monitor off" if on else "Tablet monitor on: connect from the tablet")
         self.reload()
 
     def night_ready(self) -> Optional[dict]:
