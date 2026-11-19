@@ -135,15 +135,41 @@ def act(key: str, text=None):
                              ok_label="Keep current")
         return L.root_ok([["rm", "-f", d["path"]]], f"Kept the current {tilde(d['target'])}")
     if op == "usenew" and d:
+        # Mismo criterio que la TUI (maintenance.carry_over): listar las líneas activas que se pierden y,
+        # si el nuevo las trae comentadas (locale.gen), ofrecer usarlo con ellas reactivadas
+        plan = t.use_new_plan(d)
+        backup = f"Your current one is kept as {tilde(d['target'])}.pacold."
+        if plan["merged"] is not None:
+            n = len(plan["lost"]) - len(plan["stuck"])
+            if text and not L.yes(text):
+                how = L.parse_form(text).get("how", "")
+                if how not in ("mine", "plain"):
+                    return L.ok()
+                merged = plan["merged"] if how == "mine" else None
+                return L.root_ok(t.use_new_cmds(d, merged), f"Using the new {tilde(d['target'])}"
+                                 + (f" with {n} of your lines" if merged else ""))
+            hint = (f"Your active lines that the new file has commented out:\n{t.lines_list(plan['lost'])}\n\n"
+                    f"{backup}"
+                    + (f"\n\nLost either way (not in the new file; Merge does it by hand):\n{t.lines_list(plan['stuck'])}"
+                       if plan["stuck"] else ""))
+            return L.form(key, f"Use the new {tilde(d['target'])}",
+                          [{"name": "how", "label": "HOW", "text": "mine",
+                            "choices": [[f"Use new, re-enabling my lines ({n})", "mine"],
+                                        [f"Use new as is (loses {len(plan['lost'])})", "plain"]]}],
+                          hint=hint, ok_label="Use new")
         if not d["target_exists"]:
-            cmds, msg = [["mv", d["path"], d["target"]]], f"Put {tilde(d['path'])} back as {tilde(d['target'])}?"
+            msg = f"Put {tilde(d['path'])} back as {tilde(d['target'])}?"
+        elif plan["lost"]:
+            msg = (f"Replace {tilde(d['target'])} with the new version?\n{backup}\n\n"
+                   f"These active lines of yours are lost (Merge keeps them):\n{t.lines_list(plan['lost'])}")
+        elif d["readable"]:
+            msg = f"Replace {tilde(d['target'])} with the new version?\n{backup}\nNone of your active lines is lost."
         else:
-            cmds = [["cp", "-a", d["target"], d["target"] + ".pacold"], ["mv", d["path"], d["target"]]]
-            msg = (f"Replace {tilde(d['target'])} with the new version?\nYour current one is kept as {tilde(d['target'])}.pacold. "
-                   "Lines you added are lost: check the diff first.")
+            msg = (f"Replace {tilde(d['target'])} with the new version?\n{backup} Only root can read it, so "
+                   "lines you added could be lost: check the diff first.")
         if not L.yes(text):
             return L.confirm(key, "Use the new file", msg, ok_label="Use new")
-        return L.root_ok(cmds, f"Using the new {tilde(d['target'])}")
+        return L.root_ok(t.use_new_cmds(d), f"Using the new {tilde(d['target'])}")
 
     scope, _, unit = arg.partition(":")
     u = next((x for x in STATE["units"] if x["scope"] == scope and x["unit"] == unit), None)

@@ -7,6 +7,9 @@
   sin root). enter muestra el diff, m los fusiona en nvim -d, k conserva el actual
   (borra el .pacnew), u usa el nuevo (el actual queda como .pacold). Nunca se
   aplican solos: un .pacnew pisa cambios propios (ej. pam_fprintd en pam.d/sudo).
+  u lista las líneas activas tuyas que se pierden y, si el nuevo las trae comentadas
+  (locale.gen: el paquete trae todo comentado), ofrece usarlo con ellas reactivadas
+  (carry_over). Sin eso, aceptar el locale.gen nuevo dejó al sistema sin en_US.UTF-8.
 - Failed units: servicios caídos del sistema y del usuario. enter logs, r
   reiniciar, m enmascarar (si es una instancia, la plantilla: todas), x olvidar.
 
@@ -29,7 +32,7 @@ from pathlib import Path
 from typing import Optional
 
 from common import root_file, run, sudo_run, tilde
-from dtui import THEME, ConfirmModal, DView, Panel, Table, TextModal, ago, css, human
+from dtui import THEME, ConfirmModal, DView, Field, FormModal, Panel, Table, TextModal, ago, css, human
 from rich.text import Text
 from textual import work
 from textual.app import ComposeResult
@@ -111,6 +114,69 @@ def config_files() -> list[dict]:
             d["minus"] = sum(1 for x in diff if x.startswith("< "))
         out.append(d)
     return sorted(out, key=lambda d: -d["mtime"])
+
+
+def _norm(line: str) -> str:
+    return " ".join(line.split())
+
+
+def _active(line: str) -> bool:
+    s = line.strip()
+    return bool(s) and not s.startswith("#")
+
+
+def carry_over(current: str, new: str) -> dict:
+    """Qué se pierde al usar el .pacnew tal cual y si se puede rescatar.
+
+    lost: líneas activas (sin comentar) del archivo actual que el nuevo no tiene activas.
+    merged: el nuevo con esas líneas descomentadas en su lugar, cuando el nuevo trae la misma
+    línea comentada (plantillas tipo locale.gen, donde el paquete trae todo comentado); None si
+    no se pudo rescatar ninguna. stuck: las perdidas que no están ni comentadas en el nuevo
+    (solo se conservan fusionando a mano)."""
+    new_lines = new.splitlines(keepends=True)
+    new_active = {_norm(x) for x in new_lines if _active(x)}
+    lost = []
+    for x in current.splitlines():
+        if _active(x) and _norm(x) not in new_active and x.strip() not in lost:
+            lost.append(x.strip())
+    stuck, restored = [], 0
+    for line in lost:
+        for i, x in enumerate(new_lines):
+            s = x.strip()
+            if s.startswith("#") and _norm(s.lstrip("#")) == _norm(line):
+                new_lines[i] = line + ("\n" if x.endswith("\n") else "")
+                restored += 1
+                break
+        else:
+            stuck.append(line)
+    return {"lost": lost, "stuck": stuck, "merged": "".join(new_lines) if restored else None}
+
+
+def use_new_plan(d: dict) -> dict:
+    """carry_over de un .pacnew pendiente (vacío si no hay archivo actual o solo root lo lee)."""
+    if not (d["target_exists"] and d["readable"]):
+        return {"lost": [], "stuck": [], "merged": None}
+    try:
+        return carry_over(Path(d["target"]).read_text(errors="replace"), Path(d["path"]).read_text(errors="replace"))
+    except OSError:
+        return {"lost": [], "stuck": [], "merged": None}
+
+
+def lines_list(lines: list[str], limit: int = 8) -> str:
+    shown = "\n".join(f"  {x}" for x in lines[:limit])
+    return shown + (f"\n  … and {len(lines) - limit} more" if len(lines) > limit else "")
+
+
+def use_new_cmds(d: dict, merged: Optional[str] = None) -> list[list[str]]:
+    """Comandos root para usar el nuevo. Con merged (de carry_over), se copia ese contenido sobre
+    el actual (cp a un archivo existente conserva dueño y permisos) y se borra el .pacnew."""
+    if not d["target_exists"]:
+        return [["mv", d["path"], d["target"]]]
+    backup = ["cp", "-a", d["target"], d["target"] + ".pacold"]
+    if merged is None:
+        return [backup, ["mv", d["path"], d["target"]]]
+    tmp = root_file(merged)
+    return [backup, ["cp", tmp, d["target"]], ["rm", "-f", d["path"], tmp]]
 
 
 def failed_units() -> list[dict]:
@@ -368,18 +434,52 @@ class MaintenanceView(DView):
     def action_use_new(self) -> None:
         if not (d := self.file(self.selected("mnt-files"))):
             return
+        plan = use_new_plan(d)
+        backup = f"Your current one is kept as {tilde(d['target'])}.pacold."
+
+        def apply(merged: Optional[str]) -> None:
+            if sudo_run(self.app, use_new_cmds(d, merged)):
+                self.app.notify_ok(f"Using the new {tilde(d['target'])}"
+                                   + (f" with {len(plan['lost']) - len(plan['stuck'])} of your lines" if merged else ""))
+            self.reload()
+
+        if plan["merged"] is not None:
+            # El paquete trae comentadas líneas que hoy tenés activas (ej. locale.gen): ofrecer reactivarlas
+            n = len(plan["lost"]) - len(plan["stuck"])
+            hint = (f"Your active lines that the new file has commented out:\n{lines_list(plan['lost'])}\n\n"
+                    f"{backup}"
+                    + (f"\n\nLost either way (not in the new file; m merges by hand):\n{lines_list(plan['stuck'])}"
+                       if plan["stuck"] else ""))
+
+            def chosen(v: Optional[dict]) -> None:
+                if v:
+                    apply(plan["merged"] if v["how"] == "mine" else None)
+                else:
+                    self.reload()
+
+            self.app.push_screen(FormModal(
+                f"Use the new {tilde(d['target'])}",
+                [Field("how", "How", "mine", choices=[(f"Use new, re-enabling my lines ({n})", "mine"),
+                                                      (f"Use new as is (loses {len(plan['lost'])})", "plain")])],
+                hint=hint), chosen)
+            return
         if not d["target_exists"]:
-            cmds, msg = [["mv", d["path"], d["target"]]], f"Put {tilde(d['path'])} back as {tilde(d['target'])}?"
+            msg = f"Put {tilde(d['path'])} back as {tilde(d['target'])}?"
+        elif plan["lost"]:
+            msg = (f"Replace {tilde(d['target'])} with the new version?\n{backup}\n\n"
+                   f"These active lines of yours are lost (m merges by hand):\n{lines_list(plan['lost'])}")
+        elif d["readable"]:
+            msg = (f"Replace {tilde(d['target'])} with the new version?\n{backup}\n"
+                   "None of your active lines is lost.")
         else:
-            cmds = [["cp", "-a", d["target"], d["target"] + ".pacold"], ["mv", d["path"], d["target"]]]
-            msg = (f"Replace {tilde(d['target'])} with the new version?\n"
-                   f"Your current one is kept as {tilde(d['target'])}.pacold. Lines you added are lost: "
-                   "check the diff (enter) first.")
+            msg = (f"Replace {tilde(d['target'])} with the new version?\n{backup} Only root can read it, so "
+                   "lines you added could be lost: check the diff (enter) first.")
 
         def done(yes: bool) -> None:
-            if yes and sudo_run(self.app, cmds):
-                self.app.notify_ok(f"Using the new {tilde(d['target'])}")
-            self.reload()
+            if yes:
+                apply(None)
+            else:
+                self.reload()
 
         self.app.push_screen(ConfirmModal("Use the new file", msg), done)
 
